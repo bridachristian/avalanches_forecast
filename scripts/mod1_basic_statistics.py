@@ -611,56 +611,128 @@ def L3L4_classification(df, savefig=False):
     global codice_nivometeo
 
     aspects_mapping = codice_nivometeo['L3']
-    altitude_mapping = codice_nivometeo['L3']
+    altitude_mapping = codice_nivometeo['L4']
 
-    small_df = df[['VQ1', 'VQ2', 'L3', 'L4']]
+    small_df = df[['L3', 'L4']]
 
-    wind_strenght = df['VQ1'].value_counts()
-    wind_strenght_mapping = {0.0: 'No wind',
-                             1.0: 'Fohn',
-                             2.0: 'Wind activity with slab formation',
-                             3.0: 'Strong wind activity',
-                             4.0: 'Wind activity without snow drift'}
+    # classify all L3 values in N, S, W, E
+    small_df.loc[small_df['L3'] == 1, 'L3'] = 'N'
+    small_df.loc[small_df['L3'] == 2, 'L3'] = 'E'
+    small_df.loc[small_df['L3'] == 3, 'L3'] = 'S'
+    small_df.loc[small_df['L3'] == 4, 'L3'] = 'W'
+    small_df.loc[small_df['L3'] == 5, 'L3'] = 'N'
+    small_df.loc[small_df['L3'] == 6, 'L3'] = 'S'
+    small_df.loc[small_df['L3'] == 7, 'L3'] = 'all'
+    small_df.loc[small_df['L3'] == 8, 'L3'] = 'W'
 
-    snowdrift_deposition_mapping = {0.0: 'No slab',
-                                    1.0: 'North exposed slopes',
-                                    2.0: 'Wind activity with slab formation',
-                                    3.0: 'South exposed slopes',
-                                    4.0: 'West exposed slopes',
-                                    5.0: 'Slopes in all aspects'}
+    # classify all L4 values based on bands <1800, 1800-2300, 2300-2800, > 2800
+    #                                         4        3          2          1
+    small_df.loc[small_df['L4'] == 1, 'L4'] = 4
+    small_df.loc[small_df['L4'] == 2, 'L4'] = 4
+    small_df.loc[small_df['L4'] == 3, 'L4'] = 4
+    small_df.loc[small_df['L4'] == 4, 'L4'] = 4
+    small_df.loc[small_df['L4'] == 5, 'L4'] = 3
+    small_df.loc[small_df['L4'] == 6, 'L4'] = 3
+    small_df.loc[small_df['L4'] == 7, 'L4'] = 2
+    small_df.loc[small_df['L4'] == 8, 'L4'] = 1
+    small_df.loc[small_df['L4'] == 9, 'L4'] = 0
 
-    small_df['VQ1'] = small_df['VQ1'].map(wind_strenght_mapping)
-    small_df['VQ2'] = small_df['VQ2'].map(snowdrift_deposition_mapping)
-    small_df['L3'] = small_df['L3'].map(aspects_mapping)
-    small_df['L4'] = small_df['L4'].map(altitude_mapping)
+    total = small_df.groupby(['L3', 'L4']).size().reset_index(name='count')
+    total = total.iloc[1:]  # exclude no avalanche
 
-    wind_strenght.index = wind_strenght.index.map(wind_strenght_mapping)
+    total = total[total['L3'] != 'all']
+    total = total[total['L4'] != 0]
 
-    snowdrift_deposition = df['VQ2'].value_counts()
+    # DA COMPLETARE!!!!
+    # # plot by aspects and elevation
 
-    snowdrift_deposition.index = snowdrift_deposition.index.map(
-        snowdrift_deposition_mapping)
+    # # Plotting the data
 
-    aspects = df['L3'].value_counts()
+    # directions = total.iloc[:, 0].values.tolist()
+    # elevations = total.iloc[:, 1].values.tolist()
+    # counts = total.iloc[:, 2].values.tolist()
+
+    # angles = np.linspace(0, 2 * np.pi, 4,
+    #                      endpoint=False).tolist()
+
+    # # Convert wind speeds to colors
+    # colors = [plt.cm.Blues(i / max(counts)) for i in counts]
+
+    # fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+    # bars = ax.bar(angles, 1, width=1.57, color=colors,
+    #               edgecolor='grey', alpha=0.9)
+
+    # ax.set_rticks([])
+    # ax.grid(False)
+
+    # # Add count labels to each sector
+    # for i, bar in enumerate(bars):
+    #     angle_rad = angles[i]
+    #     angle_deg = np.degrees(angle_rad)
+    #     if angle_deg >= 0 and angle_deg < 90:
+    #         ha = 'center'
+    #     elif angle_deg >= 90 and angle_deg < 180:
+    #         ha = 'right'
+    #     elif angle_deg >= 180 and angle_deg < 270:
+    #         ha = 'center'
+    #     else:
+    #         ha = 'left'
+    #     ax.text(angle_rad, 0.7, str(
+    #         counts[i]), transform=ax.get_xaxis_transform(), ha=ha, va='center')
+
+    # ax.set_theta_offset(np.pi / 2)
+    # ax.set_theta_direction(-1)
+    # ax.set_rlabel_position(0)
+    # ax.set_xticks(np.radians([0, 90, 180, 270]))
+    # ax.set_xticklabels(['N', 'E', 'S', 'W'])
+    # plt.title(f'Geographical distribution of avalanche release aspect')
+
+    # plt.show()
+
+    aspects = small_df.groupby(['L3']).size().reset_index(name='count')
     aspects = aspects.iloc[1:]  # exclude no avalanche
 
-    aspects.index = aspects.index.map(aspects_mapping)
+    aspects = aspects[aspects['L3'] != 'all']
 
-    altitude = df['L4'].value_counts()
-    altitude = altitude.iloc[1:]  # exclude no avalanche
+    # Plotting the data
 
-    altitude.index = altitude.index.map(altitude_mapping)
+    directions = aspects.iloc[:, 0].tolist()
+    counts = aspects.iloc[:, 1].tolist()
 
-    plt.figure(figsize=(8, 8))
-    # plt.pie(class_distribution, labels=class_distribution.index,
-    #         autopct=make_autopct(class_distribution), startangle=140)
-    # plt.title('Distribution of release avalanches altitude from L4')
+    angles = np.linspace(0, 2 * np.pi, len(aspects), endpoint=False).tolist()
 
-    # if savefig == True:
-    #     # Save figure with high resolution (300 dpi)
-    #     outpath = plot_folder / 'L4_altitude_of_release_pie.png'
-    #     plt.savefig(outpath, dpi=300)
-    # else:
+    # Convert wind speeds to colors
+    colors = [plt.cm.Blues(i / max(counts)) for i in counts]
+
+    fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+    bars = ax.bar(angles, 1, width=1.57, color=colors,
+                  edgecolor='grey', alpha=0.9)
+
+    ax.set_rticks([])
+    ax.grid(False)
+
+    # Add count labels to each sector
+    for i, bar in enumerate(bars):
+        angle_rad = angles[i]
+        angle_deg = np.degrees(angle_rad)
+        if angle_deg >= 0 and angle_deg < 90:
+            ha = 'center'
+        elif angle_deg >= 90 and angle_deg < 180:
+            ha = 'right'
+        elif angle_deg >= 180 and angle_deg < 270:
+            ha = 'center'
+        else:
+            ha = 'left'
+        ax.text(angle_rad, 0.7, str(
+            counts[i]), transform=ax.get_xaxis_transform(), ha=ha, va='center')
+
+    ax.set_theta_offset(np.pi / 2)
+    ax.set_theta_direction(-1)
+    ax.set_rlabel_position(0)
+    ax.set_xticks(np.radians([0, 90, 180, 270]))
+    ax.set_xticklabels(['N', 'E', 'S', 'W'])
+    plt.title(f'Geographical distribution of avalanche release aspect')
+
     plt.show()
 
 
