@@ -97,11 +97,14 @@ def L1_classification(df, savefig=False):
     global codice_nivometeo
 
     index_mapping = codice_nivometeo['L1']
+    index_mapping_numeric = {
+        float(key): value for key, value in index_mapping.items()}
 
     class_distribution = df['L1'].value_counts()
     class_distribution = class_distribution.iloc[1:]  # exclude no avalanche
 
-    class_distribution.index = class_distribution.index.map(index_mapping)
+    class_distribution.index = class_distribution.index.map(
+        index_mapping_numeric)
 
     plt.figure(figsize=(8, 8))
     plt.pie(class_distribution, labels=class_distribution.index,
@@ -135,11 +138,14 @@ def L2_classification(df, savefig=False):
     global codice_nivometeo
 
     index_mapping = codice_nivometeo['L2']
+    index_mapping_numeric = {
+        float(key): value for key, value in index_mapping.items()}
 
     class_distribution = df['L2'].value_counts()
     class_distribution = class_distribution.iloc[1:]  # exclude no avalanche
 
-    class_distribution.index = class_distribution.index.map(index_mapping)
+    class_distribution.index = class_distribution.index.map(
+        index_mapping_numeric)
 
     plt.figure(figsize=(8, 8))
     plt.pie(class_distribution, labels=class_distribution.index,
@@ -173,11 +179,14 @@ def L3_classification(df, savefig=False):
     global codice_nivometeo
 
     index_mapping = codice_nivometeo['L3']
+    index_mapping_numeric = {
+        float(key): value for key, value in index_mapping.items()}
 
     class_distribution = df['L3'].value_counts()
     class_distribution = class_distribution.iloc[1:]  # exclude no avalanche
 
-    class_distribution.index = class_distribution.index.map(index_mapping)
+    class_distribution.index = class_distribution.index.map(
+        index_mapping_numeric)
 
     plt.figure(figsize=(8, 8))
     plt.pie(class_distribution, labels=class_distribution.index,
@@ -211,11 +220,14 @@ def L4_classification(df, savefig=False):
     global codice_nivometeo
 
     index_mapping = codice_nivometeo['L4']
+    index_mapping_numeric = {
+        float(key): value for key, value in index_mapping.items()}
 
     class_distribution = df['L4'].value_counts()
     class_distribution = class_distribution.iloc[1:]  # exclude no avalanche
 
-    class_distribution.index = class_distribution.index.map(index_mapping)
+    class_distribution.index = class_distribution.index.map(
+        index_mapping_numeric)
 
     plt.figure(figsize=(8, 8))
     plt.pie(class_distribution, labels=class_distribution.index,
@@ -254,11 +266,14 @@ def L5_classification(df, savefig=False):
     global codice_nivometeo
 
     index_mapping = codice_nivometeo['L5']
+    index_mapping_numeric = {
+        float(key): value for key, value in index_mapping.items()}
 
     class_distribution = df['L5'].value_counts()
     class_distribution = class_distribution.iloc[1:]  # exclude no avalanche
 
-    class_distribution.index = class_distribution.index.map(index_mapping)
+    class_distribution.index = class_distribution.index.map(
+        index_mapping_numeric)
 
     plt.figure(figsize=(8, 8))
     plt.pie(class_distribution, labels=class_distribution.index,
@@ -297,11 +312,14 @@ def L6_classification(df, savefig=False):
     global codice_nivometeo
 
     index_mapping = codice_nivometeo['L6']
+    index_mapping_numeric = {
+        float(key): value for key, value in index_mapping.items()}
 
     class_distribution = df['L6'].value_counts()
     class_distribution = class_distribution.iloc[1:]  # exclude no avalanche
 
-    class_distribution.index = class_distribution.index.map(index_mapping)
+    class_distribution.index = class_distribution.index.map(
+        index_mapping_numeric)
 
     plt.figure(figsize=(8, 8))
     plt.pie(class_distribution, labels=class_distribution.index,
@@ -592,7 +610,7 @@ def L1_period(df, savefig=False):
         plt.show()
 
 
-def L3L4_classification(df, savefig=False):
+def L3L4_elevation_aspect_plot(df, savefig=False):
     '''
     Classify the elevation of avalanche release following mod.1 AINEVA and
     plot pie chart to summarise
@@ -643,108 +661,91 @@ def L3L4_classification(df, savefig=False):
     total = total[total['L3'] != 'all']
     total = total[total['L4'] != 0]
 
-    # DA COMPLETARE!!!!
-    # # plot by aspects and elevation
+    # Pivot the DataFrame
+    wide_df = total.pivot(index='L3', columns='L4',
+                          values='count').reset_index()
 
-    # # Plotting the data
-
-    # directions = total.iloc[:, 0].values.tolist()
-    # elevations = total.iloc[:, 1].values.tolist()
-    # counts = total.iloc[:, 2].values.tolist()
-
-    # angles = np.linspace(0, 2 * np.pi, 4,
-    #                      endpoint=False).tolist()
-
-    # # Convert wind speeds to colors
-    # colors = [plt.cm.Blues(i / max(counts)) for i in counts]
-
-    # fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
-    # bars = ax.bar(angles, 1, width=1.57, color=colors,
-    #               edgecolor='grey', alpha=0.9)
-
-    # ax.set_rticks([])
-    # ax.grid(False)
-
-    # # Add count labels to each sector
-    # for i, bar in enumerate(bars):
-    #     angle_rad = angles[i]
-    #     angle_deg = np.degrees(angle_rad)
-    #     if angle_deg >= 0 and angle_deg < 90:
-    #         ha = 'center'
-    #     elif angle_deg >= 90 and angle_deg < 180:
-    #         ha = 'right'
-    #     elif angle_deg >= 180 and angle_deg < 270:
-    #         ha = 'center'
-    #     else:
-    #         ha = 'left'
-    #     ax.text(angle_rad, 0.7, str(
-    #         counts[i]), transform=ax.get_xaxis_transform(), ha=ha, va='center')
-
-    # ax.set_theta_offset(np.pi / 2)
-    # ax.set_theta_direction(-1)
-    # ax.set_rlabel_position(0)
-    # ax.set_xticks(np.radians([0, 90, 180, 270]))
-    # ax.set_xticklabels(['N', 'E', 'S', 'W'])
-    # plt.title(f'Geographical distribution of avalanche release aspect')
-
-    # plt.show()
-
-    aspects = small_df.groupby(['L3']).size().reset_index(name='count')
-    aspects = aspects.iloc[1:]  # exclude no avalanche
-
-    aspects = aspects[aspects['L3'] != 'all']
+    aspects1 = wide_df.iloc[:, [0, 1]]
+    aspects2 = wide_df.iloc[:, [0, 2]]
+    aspects3 = wide_df.iloc[:, [0, 3]]
+    aspects4 = wide_df.iloc[:, [0, 4]]
 
     # Plotting the data
 
-    directions = aspects.iloc[:, 0].tolist()
-    counts = aspects.iloc[:, 1].tolist()
+    directions = aspects1.iloc[:, 0].tolist()
+    counts1 = aspects1.iloc[:, 1].tolist()
+    counts2 = aspects2.iloc[:, 1].tolist()
+    counts3 = aspects3.iloc[:, 1].tolist()
+    counts4 = aspects4.iloc[:, 1].tolist()
 
-    angles = np.linspace(0, 2 * np.pi, len(aspects), endpoint=False).tolist()
+    angles = np.linspace(0, 2 * np.pi, 4, endpoint=False).tolist()
 
     # Convert wind speeds to colors
-    colors = [plt.cm.Blues(i / max(counts)) for i in counts]
+    tot_counts = total['count'].values
+    colors1 = [plt.cm.Blues(i / max(tot_counts)) for i in counts1]
+    colors2 = [plt.cm.Blues(i / max(tot_counts)) for i in counts2]
+    colors3 = [plt.cm.Blues(i / max(tot_counts)) for i in counts3]
+    colors4 = [plt.cm.Blues(i / max(tot_counts)) for i in counts4]
 
-    fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
-    bars = ax.bar(angles, 1, width=1.57, color=colors,
-                  edgecolor='grey', alpha=0.9)
+    fig, ax = plt.subplots(
+        subplot_kw={'projection': 'polar', 'frame_on': False})
 
-    ax.set_rticks([])
+    bars4 = ax.bar(angles, 1, width=1.57, color=colors4,
+                   edgecolor='lightgrey', linestyle=':', alpha=1)
+    bars3 = ax.bar(angles, 0.8, width=1.57, color=colors3,
+                   edgecolor='lightgrey', linestyle=':', alpha=1)
+    bars2 = ax.bar(angles, 0.60, width=1.57, color=colors2,
+                   edgecolor='lightgrey', linestyle=':', alpha=1)
+    bars1 = ax.bar(angles, 0.4, width=1.57, color=colors1,
+                   edgecolor='lightgrey', linestyle=':', alpha=1)
+    # bars0 = ax.bar(angles, 0.2, width=1.57, color=colors1,
+    #                edgecolor='grey', linestyle=':', alpha=1)
+
+    # <1800, 1800-2300, 2300-2800, > 2800
+    # Custom radius labels
+    radius_labels = [2800, 2300, 1800, 1300]
+    for radius, label in zip([0.4, 0.6, 0.8, 1.0], radius_labels):
+        ax.text(np.pi/4, radius-0.1, f'{label}m',
+                fontsize=8, color='dimgrey')
+
+    ax.set_rticks([])  # Remove the default radial ticks
     ax.grid(False)
 
     # Add count labels to each sector
-    for i, bar in enumerate(bars):
-        angle_rad = angles[i]
-        angle_deg = np.degrees(angle_rad)
-        if angle_deg >= 0 and angle_deg < 90:
-            ha = 'center'
-        elif angle_deg >= 90 and angle_deg < 180:
-            ha = 'right'
-        elif angle_deg >= 180 and angle_deg < 270:
-            ha = 'center'
-        else:
-            ha = 'left'
-        ax.text(angle_rad, 0.7, str(
-            counts[i]), transform=ax.get_xaxis_transform(), ha=ha, va='center')
+    def add_labels(bars, counts, radius_factor):
+        for i, bar in enumerate(bars):
+            angle_rad = angles[i]
+            ax.text(angle_rad, radius_factor, str(counts[i]),
+                    transform=ax.get_xaxis_transform(), ha='center', va='center', fontsize=10)
+            # , bbox=dict(facecolor='white', edgecolor='none', alpha=0.6))
+
+    add_labels(bars1, counts1, 0.2)
+    add_labels(bars2, counts2, 0.5)
+    add_labels(bars3, counts3, 0.7)
+    add_labels(bars4, counts4, 0.9)
 
     ax.set_theta_offset(np.pi / 2)
     ax.set_theta_direction(-1)
     ax.set_rlabel_position(0)
     ax.set_xticks(np.radians([0, 90, 180, 270]))
-    ax.set_xticklabels(['N', 'E', 'S', 'W'])
-    plt.title(f'Geographical distribution of avalanche release aspect')
+    ax.set_xticklabels(['North', 'East', 'South', 'West'])
 
-    plt.show()
+    # # n.valanghe classificate come 'diverse altitidutini' e 'diverse esposizioni'
+    # av_class_all = 666 - sum(tot_counts)
+    # plt.figtext(0.5, -0.5, f'Note:\nAval. days classified on aspect and elevation: {sum(tot_counts)}\nAval. days at various altitudes and various aspects: {av_class_all}',
+    #             horizontalalignment='center', fontsize=10, wrap=True)
+
+    plt.title(f'Geographical distribution of avalanche release')
+
+    if savefig == True:
+        # Save figure with high resolution (300 dpi)
+        outpath = plot_folder / 'geograpyical_distribution_L3L4.png'
+        plt.savefig(outpath, dpi=300)
+    else:
+        plt.show()
 
 
-def main():
-    '''
-    Main function
-
-    Returns
-    -------
-    None.
-
-    '''
+if __name__ == '__main__':
 
     data_folder = Path(
         "C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\")
@@ -760,14 +761,14 @@ def main():
     df['DataRilievo'] = pd.to_datetime(
         df['DataRilievo'], format="%d/%m/%Y")
 
-    savefig = True
-
     codice_file = 'codice_nivometeorologico.json'
     with open(data_folder/codice_file, 'r') as file:
         codice_nivometeo = json.load(file)
 
+    savefig = False
+
     L1_counts(df, savefig)
-    # L1_classification(df, savefig)
+    L1_classification(df, savefig)
     L2_classification(df, savefig)
     L3_classification(df, savefig)
     L4_classification(df, savefig)
@@ -778,6 +779,4 @@ def main():
     L1_timeline_season_class(df, savefig)
     L1_period(df, savefig)
 
-
-if __name__ == '__main__':
-    main()
+    L3L4_elevation_aspect_plot(df, savefig)
