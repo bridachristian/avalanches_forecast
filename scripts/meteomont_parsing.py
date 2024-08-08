@@ -1,48 +1,44 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Jul 18 11:15:49 2024
+Created on Thu Aug  8 10:09:39 2024
 
 @author: Christian
 """
-
 import pandas as pd
 from pathlib import Path
 import numpy as np
 
 
-def read_csv(file, variable):
+def read_csv(file):
 
     try:
-        df = pd.read_csv(file, sep=';')
+        df = pd.read_csv(file, sep=';', decimal='.', na_values='NaN')
 
     except UnicodeDecodeError as e:
         print(f"Error decoding the file: {e}")
-    df = df.iloc[:, :-1]
 
-    df.set_index('Date', inplace=True)
+    df.set_index('Date time', inplace=True)
     df.index = pd.to_datetime(df.index, format='%d/%m/%Y %H:%M')
-
-    df.columns.values[0] = variable
 
     return df
 
 
-def hourly_resample(df, variable, freq):
+def hourly_resample(df, freq):
     # Set the sampling frequency
     sampling_frequency = freq
 
     # Calculate the expected number of samples per hour
-    samples_per_hour = pd.Timedelta('1h') // pd.Timedelta(sampling_frequency)
+    samples_per_hour = pd.Timedelta('h') // pd.Timedelta(sampling_frequency)
 
     # Set the threshold to 75% of valid data
     threshold = 0.75
 
     def filter_and_resample(group, agg_func):
-        non_nan_count = group[variable].count()
+        non_nan_count = group.count()
         if non_nan_count < threshold * samples_per_hour:
             return pd.Series([np.nan], index=[variable])
         else:
-            return pd.Series([agg_func(group[variable])], index=[variable])
+            return pd.Series([agg_func(group)], index=[variable])
 
     def resample_wind_direction(series):
         # Extract wind direction values, ensuring it is a NumPy array
@@ -74,36 +70,57 @@ def hourly_resample(df, variable, freq):
 
         return mean_wd_deg
 
-    # Group by hours and apply the function
-    hourly_groups = df.resample('h')
+    # Dictionary to store the resampled data
+    resampled_data = {}
 
-    if variable == 'P':
-        hourly_resampled = hourly_groups.apply(
-            lambda group: filter_and_resample(group, np.sum))
-    elif variable in ['Ta', 'RH', 'SR']:
-        hourly_resampled = hourly_groups.apply(
-            lambda group: filter_and_resample(group, np.mean))
-    elif variable == 'WD':
-        hourly_resampled = hourly_groups[variable].apply(
-            resample_wind_direction)
-    elif variable == 'WV':
-        hourly_resampled_mean = hourly_groups.apply(
-            lambda group: filter_and_resample(group, np.mean))
-        hourly_resampled_gust = hourly_groups.apply(
-            lambda group: filter_and_resample(group, np.max))
-        hourly_resampled = pd.concat(
-            [hourly_resampled_mean, hourly_resampled_gust], axis=1)
-        hourly_resampled.columns = ['WV_avg', 'WV_gust']
+    for variable in df.columns:
+        resampler = df.resample('h')
+        resampled_df = resampler.mean()
+        time_index = resampled_df.index
+
+        hourly_groups = df.resample('h')[variable]
+
+        if variable == 'P':
+            resampled_data[variable] = hourly_groups.apply(
+                lambda group: filter_and_resample(group, np.sum))
+            resampled_data[variable].name = variable
+            resampled_data[variable].index = time_index
+        elif variable in ['Ta', 'RH', 'SR', 'HS', 'Ts']:
+            resampled_data[variable] = hourly_groups.apply(
+                lambda group: filter_and_resample(group, np.mean))
+            resampled_data[variable].name = variable
+            resampled_data[variable].index = time_index
+
+        elif variable == 'WD':
+            resampled_data[variable] = hourly_groups.apply(
+                resample_wind_direction)
+            resampled_data[variable].name = variable
+            resampled_data[variable].index = time_index
+        elif variable == 'WV':
+            hourly_resampled_mean = hourly_groups.apply(
+                lambda group: filter_and_resample(group, np.mean))
+            hourly_resampled_gust = hourly_groups.apply(
+                lambda group: filter_and_resample(group, np.max))
+            resampled_data['WV_avg'] = hourly_resampled_mean
+            resampled_data['WV_gust'] = hourly_resampled_gust
+            resampled_data['WV_avg'].name = 'WV_avg'
+            resampled_data['WV_gust'].name = 'WV_gust'
+            resampled_data['WV_avg'].index = time_index
+            resampled_data['WV_gust'].index = time_index
+
+    # Combine all resampled data into a single DataFrame
+    resampled_df = pd.concat(resampled_data.values(), axis=1)
+    resampled_df.columns = resampled_data.keys()
 
     # Convert index to DateTimeIndex for consistency
-    hourly_resampled.index = pd.to_datetime(hourly_resampled.index)
+    resampled_df.index = pd.to_datetime(resampled_df.index)
 
-    return hourly_resampled
+    return resampled_df
 
 
-def main_meteotrentino():
+def main_meteomont():
     data_folder = Path(
-        "C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\Dati_meteo\\")
+        "C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\Dati_meteo\\Meteomont\\")
 
     files = [file for file in data_folder.iterdir() if file.is_file()]
 
@@ -125,12 +142,11 @@ def main_meteotrentino():
         for file in files_for_first_station:
             print('--------------')
             station = file.name.split('_')[0]
-            variable = file.name.split('_')[1]
-            freq = file.name.split('_')[2][0:-4]
+            freq = file.name.split('_')[1][0:-4]
             print(f'Analyzing: {file.name}')
-            print(f'Variable: {variable}. Sampling frequency: {freq}')
-            df = read_csv(file, variable)
-            df_hourly = hourly_resample(df, variable, freq)
+            print(f'Sampling frequency: {freq}')
+            df = read_csv(file)
+            df_hourly = hourly_resample(df, freq)
             combined_df = pd.concat([combined_df, df_hourly], axis=1)
 
             duplicates = combined_df.columns[combined_df.columns.duplicated(
@@ -148,4 +164,4 @@ def main_meteotrentino():
 
 
 if __name__ == '__main__':
-    main_meteotrentino()
+    main_meteomont()
