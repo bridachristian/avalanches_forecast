@@ -28,7 +28,7 @@ def hourly_resample(df, freq):
     sampling_frequency = freq
 
     # Calculate the expected number of samples per hour
-    samples_per_hour = pd.Timedelta('h') // pd.Timedelta(sampling_frequency)
+    samples_per_hour = pd.Timedelta('3h') // pd.Timedelta(sampling_frequency)
 
     # Set the threshold to 75% of valid data
     threshold = 0.75
@@ -81,8 +81,9 @@ def hourly_resample(df, freq):
         hourly_groups = df.resample('h')[variable]
 
         if variable == 'P':
-            resampled_data[variable] = hourly_groups.apply(
-                lambda group: filter_and_resample(group, np.sum))
+            resampled_data[variable] = hourly_groups.sum()
+            # resampled_data[variable] = hourly_groups.apply(
+            #     lambda group: filter_and_resample(group, np.sum))
             resampled_data[variable].name = variable
             resampled_data[variable].index = time_index
         elif variable in ['Ta', 'RH', 'SR', 'HS', 'Ts']:
@@ -160,7 +161,11 @@ def main_meteomont():
                 combined_df = pd.concat([combined_df, tmp], axis=1)
 
             combined_df.to_csv(
-                data_folder / f'Results/{station}.csv', index=True, index_label='Date', sep=';', na_rep='NaN')
+                data_folder / f'Results/{station}.csv',
+                index_label='Date',
+                sep='\t',
+                na_rep='-999',
+                date_format='%Y-%m-%dT%H:%M')
 
 
 if __name__ == '__main__':

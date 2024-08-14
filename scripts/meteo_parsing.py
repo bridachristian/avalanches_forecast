@@ -78,8 +78,9 @@ def hourly_resample(df, variable, freq):
     hourly_groups = df.resample('h')
 
     if variable == 'P':
-        hourly_resampled = hourly_groups.apply(
-            lambda group: filter_and_resample(group, np.sum))
+        hourly_resampled = hourly_groups.sum()
+        # hourly_resampled = hourly_groups.apply(
+        #     lambda group: filter_and_resample(group, np.sum))
     elif variable in ['Ta', 'RH', 'SR']:
         hourly_resampled = hourly_groups.apply(
             lambda group: filter_and_resample(group, np.mean))
@@ -144,7 +145,12 @@ def main_meteotrentino():
                 combined_df = pd.concat([combined_df, tmp], axis=1)
 
             combined_df.to_csv(
-                data_folder / f'Results/{station}.csv', index=True, index_label='Date', sep=';', na_rep='NaN')
+                data_folder / f'Results/{station}.csv',
+                index=True,
+                index_label='Date',
+                sep='\t',
+                na_rep='-999',
+                date_format='%Y-%m-%dT%H:%M')
 
 
 if __name__ == '__main__':
