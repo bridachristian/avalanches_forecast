@@ -102,6 +102,27 @@ def hourly_resample(df, variable, freq):
     return hourly_resampled
 
 
+def count_nan(df, freq):
+
+    # Check for duplicate indices
+    if df.index.duplicated().any():
+        print("Duplicate indices found. Aggregating data...")
+        # Aggregating duplicates (e.g., taking the mean of duplicated rows)
+        df = df.groupby(df.index).mean()
+
+    full_date_range = pd.date_range(
+        start=df.index.min(), end=df.index.max(), freq=freq)
+
+    df_regularized = df.reindex(full_date_range)
+
+    # Count missing value
+    missing_values = df_regularized.isna().sum()
+
+    missing_value_percent = 100 * missing_values / len(full_date_range)
+    total_samples = len(full_date_range)
+    return missing_values, missing_value_percent, total_samples
+
+
 def main_meteotrentino():
     data_folder = Path(
         "C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\Dati_meteo\\")
@@ -123,15 +144,39 @@ def main_meteotrentino():
 
         # Print the filtered file paths
         combined_df = pd.DataFrame()
+
+        # Dictionary to store missing data info
+        missing_data_info = {}
+
         for file in files_for_first_station:
             print('--------------')
             station = file.name.split('_')[0]
             variable = file.name.split('_')[1]
             freq = file.name.split('_')[2][0:-4]
+            if freq == '5m':
+                freq = '5min'
+            elif freq == '10m':
+                freq = '10min'
+            elif freq == '15m':
+                freq = '15min'
+            elif freq == '30m':
+                freq = '30min'
+
             print(f'Analyzing: {file.name}')
             print(f'Variable: {variable}. Sampling frequency: {freq}')
             df = read_csv(file, variable)
             df_hourly = hourly_resample(df, variable, freq)
+
+            # Count missing values for each station
+            missing_values, missing_value_percent, total_samples = count_nan(
+                df, freq)
+            # Store missing data info
+            missing_data_info[file.name] = {
+                'Variable': variable,
+                'MissingValues': missing_values[variable],
+                'TotalSamples': total_samples
+            }
+
             combined_df = pd.concat([combined_df, df_hourly], axis=1)
 
             duplicates = combined_df.columns[combined_df.columns.duplicated(
@@ -144,13 +189,26 @@ def main_meteotrentino():
                 combined_df = combined_df.drop(columns=dup)
                 combined_df = pd.concat([combined_df, tmp], axis=1)
 
-            combined_df.to_csv(
-                data_folder / f'Results/{station}.csv',
-                index=True,
-                index_label='Date',
-                sep='\t',
-                na_rep='-999',
-                date_format='%Y-%m-%dT%H:%M')
+        missing_data_info_df = pd.DataFrame(missing_data_info)
+
+        missing_data_aggreg = missing_data_info_df.T.groupby(
+            'Variable', as_index=False).sum()
+        missing_data_aggreg['Percentage'] = 100 * \
+            missing_data_aggreg['MissingValues'] / \
+            missing_data_aggreg['TotalSamples']
+
+        # Write Outputs
+        combined_df.to_csv(
+            data_folder / f'Results/{station}.csv',
+            index=True,
+            index_label='Date',
+            sep='\t',
+            na_rep='-999',
+            date_format='%Y-%m-%dT%H:%M')
+
+        missing_data_aggreg.to_csv(
+            data_folder / f'Results/{station}_NanStatistics.csv',
+            index=False)
 
 
 if __name__ == '__main__':

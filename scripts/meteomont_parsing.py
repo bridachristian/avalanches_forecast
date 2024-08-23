@@ -23,12 +23,13 @@ def read_csv(file):
     return df
 
 
-def hourly_resample(df, freq):
+def hourly_resample(df, freq, output_freq):
     # Set the sampling frequency
     sampling_frequency = freq
 
     # Calculate the expected number of samples per hour
-    samples_per_hour = pd.Timedelta('3h') // pd.Timedelta(sampling_frequency)
+    samples_per_hour = pd.Timedelta(
+        output_freq) // pd.Timedelta(sampling_frequency)
 
     # Set the threshold to 75% of valid data
     threshold = 0.75
@@ -74,11 +75,11 @@ def hourly_resample(df, freq):
     resampled_data = {}
 
     for variable in df.columns:
-        resampler = df.resample('h')
+        resampler = df.resample(output_freq)
         resampled_df = resampler.mean()
         time_index = resampled_df.index
 
-        hourly_groups = df.resample('h')[variable]
+        hourly_groups = df.resample(output_freq)[variable]
 
         if variable == 'P':
             resampled_data[variable] = hourly_groups.sum()
@@ -119,7 +120,35 @@ def hourly_resample(df, freq):
     return resampled_df
 
 
-def main_meteomont():
+def count_nan(df, freq):
+
+    # Check for duplicate indices
+    if df.index.duplicated().any():
+        print("Duplicate indices found. Aggregating data...")
+        # Aggregating duplicates (e.g., taking the mean of duplicated rows)
+        df = df.groupby(df.index).mean()
+
+    full_date_range = pd.date_range(
+        start=df.index.min(), end=df.index.max(), freq=freq)
+
+    df_regularized = df.reindex(full_date_range)
+
+    # Count missing value
+    missing_values = df_regularized.isna().sum()
+
+    missing_value_percent = 100 * missing_values / len(full_date_range)
+    total_samples = len(full_date_range)
+
+    # Convert missing values to DataFrame
+    missing_data_df = pd.DataFrame(missing_values)
+
+    # Add total_samples as a new row
+    missing_data_df.loc['TotalSamples'] = [total_samples]
+
+    return missing_data_df
+
+
+def main_meteomont(output_freq):
     data_folder = Path(
         "C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\Dati_meteo\\Meteomont\\")
 
@@ -140,15 +169,36 @@ def main_meteomont():
 
         # Print the filtered file paths
         combined_df = pd.DataFrame()
+
+        # Dictionary to store missing data info
+        missing_data_combined = pd.DataFrame()
+
         for file in files_for_first_station:
             print('--------------')
             station = file.name.split('_')[0]
             freq = file.name.split('_')[1][0:-4]
+            if freq == '5m':
+                freq = '5min'
+            elif freq == '10m':
+                freq = '10min'
+            elif freq == '15m':
+                freq = '15min'
+            elif freq == '30m':
+                freq = '30min'
             print(f'Analyzing: {file.name}')
             print(f'Sampling frequency: {freq}')
+
             df = read_csv(file)
-            df_hourly = hourly_resample(df, freq)
+            df_hourly = hourly_resample(df, freq, output_freq)
+
+            # Count missing values for each station
+            missing_values = count_nan(
+                df, freq)
+
             combined_df = pd.concat([combined_df, df_hourly], axis=1)
+
+            missing_data_combined = pd.concat(
+                [missing_data_combined, missing_values], axis=1)
 
             duplicates = combined_df.columns[combined_df.columns.duplicated(
             )].unique()
@@ -160,13 +210,34 @@ def main_meteomont():
                 combined_df = combined_df.drop(columns=dup)
                 combined_df = pd.concat([combined_df, tmp], axis=1)
 
-            combined_df.to_csv(
-                data_folder / f'Results/{station}.csv',
-                index_label='Date',
-                sep='\t',
-                na_rep='-999',
-                date_format='%Y-%m-%dT%H:%M')
+        missing_data_combined['MissingValues'] = missing_data_combined.sum(
+            axis=1)
+        value_to_divide = missing_data_combined.loc['TotalSamples',
+                                                    'MissingValues']
+        missing_data_combined['TotalSamples'] = value_to_divide
+
+        missing_data_combined['Percentage'] = 100 * \
+            missing_data_combined['MissingValues'] / \
+            missing_data_combined['TotalSamples']
+
+        missing_data_aggreg = missing_data_combined.drop(
+            missing_data_combined.columns[[0, 1]], axis=1)
+
+        missing_data_aggreg = missing_data_aggreg.drop(
+            missing_data_aggreg.index[-1])
+
+        combined_df.to_csv(
+            data_folder / f'Results/{station}_{output_freq}.csv',
+            index_label='Date',
+            sep='\t',
+            na_rep='-999',
+            date_format='%Y-%m-%dT%H:%M')
+
+        missing_data_aggreg.to_csv(
+            data_folder / f'Results/{station}_{output_freq}_NanStatistics.csv',
+            index=True)
 
 
 if __name__ == '__main__':
-    main_meteomont()
+    output_freq = '3h'
+    main_meteomont(output_freq)
