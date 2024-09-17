@@ -5,6 +5,11 @@ Created on Fri Sep  6 09:38:13 2024
 @author: Christian
 """
 
+from itertools import combinations
+from matplotlib.pyplot import show
+from seaborn import heatmap
+from pandas import DataFrame
+from numpy.random import randn
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
@@ -39,36 +44,17 @@ mod1.set_index('DataRilievo', inplace=True)
 print(mod1.dtypes)
 
 mod1_subset = mod1[['Stagione', 'N', 'V',
-                   'VQ1', 'VQ2', 'TaG', 'TminG', 'TmaxG', 'HSnum', 'HNnum', 'rho', 'TH01G', 'TH03G', 'PR', 'CS', 'B', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6']]
+                   'VQ1', 'VQ2', 'TaG', 'TminG', 'TmaxG', 'HSnum', 'HNnum', 'rho', 'TH01G', 'TH03G', 'PR', 'CS', 'B', 'L1']]
 statistics = mod1_subset.describe()
 print(mod1_subset.dtypes)
 
-
-# ------ Data Manipulation ------
-# Add snowdrift index based on VQ1
-mod1_subset['SnowDrift'] = mod1_subset['VQ1'].map(
-    {0: 0, 1: 1, 2: 2, 3: 3, 4: 0})
-
-# Map wind direction on VQ2
-# mod1_subset['WD'] = mod1_subset['VQ2'].map(
-#     {0: 'None', 1: 'N', 2: 'E', 3: 'S', 4: 'W', 5: 'All'})
-
-# Add Snow Water Equivalent of fresh snow.
-mod1_subset['rho_adjusted'] = np.where(
-    mod1_subset['HNnum'] < 6, 100, mod1_subset['rho'])  # rho = 100 for HN < 6
-mod1_subset['SWEnew'] = mod1_subset['HNnum']*mod1_subset['rho_adjusted']/100
-
-mod1_subset['SWE_cumulative'] = mod1_subset.groupby('Stagione')[
-    'SWEnew'].cumsum()
 
 # Add avalanche day based on L1
 mod1_subset['AvalDay'] = np.where(mod1_subset['L1'] >= 1, 1, mod1_subset['L1'])
 
 # ------ Correlation Matrix------
 
-mod1_final = mod1_subset[['N', 'V',
-                          'SnowDrift', 'VQ2', 'TaG', 'TminG', 'TmaxG', 'HSnum', 'HNnum', 'rho', 'TH01G', 'TH03G', 'PR', 'CS', 'B', 'SWEnew', 'SWE_cumulative']]
-
+mod1_final = mod1_subset.drop(columns=['Stagione', 'L1'])
 corr_matrix = mod1_final.corr()
 
 # Generate a mask for the upper triangle
@@ -118,7 +104,7 @@ plt.show()
 # Example DataFrame (you can use mod1_subset or any other dataset)
 # Assuming mod1_subset is already created
 data = mod1_subset[['N', 'V',
-                    'SnowDrift', 'VQ2', 'TaG', 'TminG', 'TmaxG', 'HSnum', 'HNnum', 'rho', 'TH01G', 'TH03G', 'PR', 'CS', 'B', 'SWEnew', 'SWE_cumulative']]
+                    'VQ1', 'VQ2', 'TaG', 'TminG', 'TmaxG', 'HSnum', 'HNnum', 'rho', 'TH01G', 'TH03G', 'PR', 'CS', 'B']]
 
 # ************* 2D PCA ***********
 
@@ -127,12 +113,12 @@ scaler = StandardScaler()
 data_scaled = scaler.fit_transform(data.dropna())  # Dropping NaN if present
 
 # Step 2: Perform PCA (reduce to 2 principal components for 2D plotting)
-pca = PCA(n_components=16)
+pca = PCA(n_components=15)
 pca_components = pca.fit_transform(data_scaled)
 
 # Step 3: Create a DataFrame for the principal components
 pca_df = pd.DataFrame(data=pca_components, columns=[
-                      'PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8', 'PC9', 'PC10', 'PC11', 'PC12', 'PC13', 'PC14', 'PC15', 'PC16'])
+                      'PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8', 'PC9', 'PC10', 'PC11', 'PC12', 'PC13', 'PC14', 'PC15'])
 
 # Step 4: Plot the PCA result
 plt.figure(figsize=(8, 6))
@@ -147,12 +133,12 @@ explained_variance = pca.explained_variance_ratio_
 
 # Step 4: Plot the explained variance ratio of the 12 components
 plt.figure(figsize=(10, 6))
-plt.bar(range(1, 17), explained_variance,
+plt.bar(range(1, 16), explained_variance,
         alpha=0.7, align='center', color='blue')
 plt.xlabel('Principal Component')
 plt.ylabel('Explained Variance Ratio')
 plt.title('Explained Variance by Principal Components (1-16)')
-plt.xticks(np.arange(1, 17))
+plt.xticks(np.arange(1, 16))
 plt.grid(True)
 plt.show()
 
@@ -172,10 +158,34 @@ sorted_loadings = loadings_df.reindex(
 print(sorted_loadings)
 
 
+loadings_dict = {}
+
+# Loop through each component and store the loadings
+for i in range(pca.n_components_):
+    # Extract loadings for the ith principal component
+    loadings = pca.components_[i]
+
+    # Create a DataFrame for the loadings and add it to the dictionary
+    loadings_df = pd.DataFrame(
+        loadings, index=data.columns, columns=[f'PC{i+1}_Loading'])
+
+    # Sort the loadings by absolute value to see the top contributors
+    sorted_loadings_df = loadings_df.reindex(
+        loadings_df[f'PC{i+1}_Loading'].abs().sort_values(ascending=False).index)
+
+    # Store the sorted loadings in the dictionary
+    loadings_dict[f'PC{i+1}'] = sorted_loadings_df
+
+# Concatenate all loadings into a single DataFrame
+all_loadings_df = pd.concat(loadings_dict, axis=1)
+
+# Print the resulting DataFrame with loadings for all principal components
+print(all_loadings_df)
+
 # Step 4: Get the loadings for the first two principal components
 loadings = pca.components_.T  # Transpose to align with features
 loadings_df = pd.DataFrame(loadings, index=data.columns,
-                           columns=['PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8', 'PC9', 'PC10', 'PC11', 'PC12', 'PC13', 'PC14', 'PC15', 'PC16'])
+                           columns=['PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8', 'PC9', 'PC10', 'PC11', 'PC12', 'PC13', 'PC14', 'PC15'])
 
 # Step 5: Plot PC1 vs PC2
 plt.figure(figsize=(10, 8))
@@ -262,8 +272,8 @@ plt.show()
 
 
 # ------ New variable creation ------
-mod1_features = mod1_subset[['N', 'V',
-                             'SnowDrift', 'VQ2', 'TaG', 'TminG', 'TmaxG', 'HSnum', 'HNnum', 'rho', 'TH01G', 'TH03G', 'PR', 'CS', 'B', 'SWEnew']]
+mod1_features = mod1[['Stagione', 'N', 'V',
+                      'VQ1', 'VQ2', 'TaG', 'TminG', 'TmaxG', 'HSnum', 'HNnum', 'rho', 'TH01G', 'TH03G', 'PR', 'CS', 'B', 'L1']]
 
 
 # .... Snow Height ....
@@ -303,7 +313,32 @@ mod1_features['Tdelta72h'] = mod1_features['Tmax72h'] - \
 mod1_features['Tdelta120h'] = mod1_features['Tmax120h'] - \
     mod1_features['Tmin120h']
 
+# .... Wind ....
+# Snow Drift based on VQ1
+mod1_features['SnowDrift'] = mod1_features['VQ1'].map(
+    {0: 0, 1: 1, 2: 2, 3: 3, 4: 0})
+mod1_features['SnowDrift48h'] = mod1_features['SnowDrift'].rolling(
+    window=2).sum()
+mod1_features['SnowDrift72h'] = mod1_features['SnowDrift'].rolling(
+    window=3).sum()
+mod1_features['SnowDrift120h'] = mod1_features['SnowDrift'].rolling(
+    window=5).sum()
+
+
+# Location of Wind Slab
+mod1_features['WindSlab'] = mod1_features['VQ2'].map(
+    {0: 'None', 1: 'N', 2: 'E', 3: 'S', 4: 'W', 5: 'All'})
+
 # .... Precipitation ....
+
+# Snow Water Equivalent from fresh snow
+mod1_features['rho_adjusted'] = np.where(
+    mod1_features['HNnum'] < 6, 100, mod1_features['rho'])  # rho = 100 for HN < 6
+mod1_features['SWEnew'] = mod1_features['HNnum'] * \
+    mod1_features['rho_adjusted']/100
+
+mod1_features['SWE_cumulative'] = mod1_features.groupby('Stagione')[
+    'SWEnew'].cumsum()
 
 # Precipitation (mm) from SWE 2 days, 3 days, 5 days.
 mod1_features['PSUM24h'] = mod1_features['SWEnew']
@@ -340,5 +375,155 @@ mod1_features['WetSnow'] = np.where(
 
 # .... Temperature Gradient ....
 
-mod1_features['Gradient'] = abs(mod1_features['TH01G']) / \
+mod1_features['T_gradient'] = abs(mod1_features['TH01G']) / \
     (mod1_features['HSnum'] - 10)
+
+mod1_features['T_gradient'] = np.where(
+    mod1_features['T_gradient'] == np.inf, np.nan, mod1_features['T_gradient'])
+
+
+# .... Surface Hoar ....
+
+mod1_features['SH'] = mod1_features['B'].map({0: 0, 1: 1, 2: 1, 3: 1})
+
+# .... Avalanche Observations ....
+
+# Avalanche day based on L1
+mod1_features['AvalDay'] = np.where(
+    mod1_features['L1'] >= 1, 1, mod1_features['L1'])
+
+mod1_features['AvalDay48h'] = mod1_features['AvalDay'].rolling(window=2).sum()
+mod1_features['AvalDay72h'] = mod1_features['AvalDay'].rolling(window=3).sum()
+mod1_features['AvalDay120h'] = mod1_features['AvalDay'].rolling(window=5).sum()
+
+# ------ Correlation Matrix------
+
+mod1_features_final = mod1_features.drop(columns=['Stagione', 'WindSlab'])
+corr_matrix_features = mod1_features_final.corr()
+
+# Generate a mask for the upper triangle
+mask = np.triu(np.ones_like(corr_matrix_features, dtype=bool))
+
+# Set up the matplotlib figure
+plt.figure(figsize=(10, 8))
+
+sns.heatmap(corr_matrix_features, mask=mask, annot=False, cmap='coolwarm',
+            vmin=-1, vmax=1, fmt='.2f', linewidths=0.1,
+            cbar_kws={'shrink': 0.8},  # Shrink the color bar slightly
+            xticklabels=corr_matrix_features.columns, yticklabels=corr_matrix_features.columns)
+
+# Decrease the size of x and y labels
+plt.xticks(fontsize=8)  # Decrease x-label font size
+plt.yticks(fontsize=8)  # Decrease y-label font size
+
+
+# Add title
+plt.title('Correlation Matrix', size=16)
+
+# Show the plot
+plt.show()
+
+# ------ Principal Component Analysis------
+
+# Example DataFrame (you can use mod1_subset or any other dataset)
+# Assuming mod1_subset is already created
+data = mod1_features.drop(columns=['Stagione', 'WindSlab'])
+# ************* 2D PCA ***********
+
+# Step 1: Standardize the data (important for PCA)
+scaler = StandardScaler()
+data_scaled = scaler.fit_transform(data.dropna())  # Dropping NaN if present
+
+# Step 2: Perform PCA (reduce to 2 principal components for 2D plotting)
+pca = PCA(n_components=15)
+pca_components = pca.fit_transform(data_scaled)
+
+# Step 3: Create a DataFrame for the principal components
+pca_df = pd.DataFrame(data=pca_components, columns=[
+                      'PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8', 'PC9', 'PC10', 'PC11', 'PC12', 'PC13', 'PC14', 'PC15'])
+
+# Step 4: Plot the PCA result
+plt.figure(figsize=(8, 6))
+plt.scatter(pca_df['PC1'], pca_df['PC2'], c='blue', edgecolor='k', s=50)
+plt.xlabel('Principal Component 1')
+plt.ylabel('Principal Component 2')
+plt.title('PCA - 2 Principal Components')
+plt.grid(True)
+plt.show()
+
+explained_variance = pca.explained_variance_ratio_
+
+# Step 4: Plot the explained variance ratio of the 12 components
+plt.figure(figsize=(10, 6))
+plt.bar(range(1, 16), explained_variance,
+        alpha=0.7, align='center', color='blue')
+plt.xlabel('Principal Component')
+plt.ylabel('Explained Variance Ratio')
+plt.title('Explained Variance by Principal Components (1-16)')
+plt.xticks(np.arange(1, 16))
+plt.grid(True)
+plt.show()
+
+print(pca.explained_variance_ratio_)
+
+# Step 3: Get the loadings for the first principal component
+loadings = pca.components_[0]  # Loadings for PC1
+
+# Create a DataFrame for easier interpretation
+loadings_df = pd.DataFrame(
+    loadings, index=data.columns, columns=['PC1_Loading'])
+
+# Sort the loadings by absolute value to see the top contributors
+sorted_loadings = loadings_df.reindex(
+    loadings_df['PC1_Loading'].abs().sort_values(ascending=False).index)
+
+print(sorted_loadings)
+
+
+loadings_dict = {}
+
+# Loop through each component and store the loadings
+for i in range(pca.n_components_):
+    # Extract loadings for the ith principal component
+    loadings = pca.components_[i]
+
+    # Create a DataFrame for the loadings and add it to the dictionary
+    loadings_df = pd.DataFrame(
+        loadings, index=data.columns, columns=[f'PC{i+1}_Loading'])
+
+    # Sort the loadings by absolute value to see the top contributors
+    sorted_loadings_df = loadings_df.reindex(
+        loadings_df[f'PC{i+1}_Loading'].abs().sort_values(ascending=False).index)
+
+    # Store the sorted loadings in the dictionary
+    loadings_dict[f'PC{i+1}'] = sorted_loadings_df
+
+# Concatenate all loadings into a single DataFrame
+all_loadings_df = pd.concat(loadings_dict, axis=1)
+
+# Print the resulting DataFrame with loadings for all principal components
+print(all_loadings_df)
+
+# Step 4: Get the loadings for the first two principal components
+loadings = pca.components_.T  # Transpose to align with features
+loadings_df = pd.DataFrame(loadings, index=data.columns,
+                           columns=['PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8', 'PC9', 'PC10', 'PC11', 'PC12', 'PC13', 'PC14', 'PC15'])
+
+# Step 5: Plot PC1 vs PC2
+plt.figure(figsize=(10, 8))
+plt.scatter(pca_df['PC1'], pca_df['PC2'], alpha=0.1,
+            c='blue',  s=50)
+
+# Add arrows and labels for each variable
+for i, variable in enumerate(loadings_df.index):
+    plt.text(loadings_df['PC1'][i]*10, loadings_df['PC2'][i]*10,
+             variable, color='black', ha='center', va='center')
+    plt.arrow(0, 0, loadings_df['PC1'][i]*10, loadings_df['PC2'][i]*10,
+              head_width=0.5, head_length=0.5, fc='red', ec='red')
+
+
+plt.xlabel(f'Principal Component 1 - ({explained_variance[0]:.3f})')
+plt.ylabel(f'Principal Component 2- ({explained_variance[1]:.3f})')
+plt.title('PCA: PC1 vs PC2 with Variable Contributions')
+plt.grid(True)
+plt.show()
