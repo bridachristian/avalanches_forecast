@@ -480,10 +480,10 @@ def perform_pca_new(df, plot_folder):
     plt.savefig(outpath, dpi=300)
 
 
-def plot_density(data_aval_0, data_aval_1, plot_folder):
+def plot_density(data_aval_0, data_aval_1, plot_folder, outname, nrows=5, ncols=3):
     """Plot density distributions for two groups based on Avalanche Days."""
     # Set up the figure for a 5x3 grid layout
-    fig, axes = plt.subplots(nrows=5, ncols=3, figsize=(12, 12))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(12, 12))
     fig.subplots_adjust(hspace=0.5, wspace=0.3, right=0.85)
 
     # Flatten axes for easy iteration
@@ -497,7 +497,7 @@ def plot_density(data_aval_0, data_aval_1, plot_folder):
                     label='AvalDays = 1', fill=True, alpha=0.5)
 
         # Remove the y-axis labels for the central and right columns
-        if i % 3 != 0:  # Central and right columns
+        if i % ncols != 0:  # Central and right columns
             axes[i].set_ylabel('')
 
     # Remove empty subplots if mod1_compare has fewer than 15 columns
@@ -507,22 +507,22 @@ def plot_density(data_aval_0, data_aval_1, plot_folder):
     # Create a single legend for all plots on the right side
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc='center left',
-               bbox_to_anchor=(0.9, 0.5), borderaxespad=0, ncol=1)
+               bbox_to_anchor=(0.85, 0.5), borderaxespad=0, ncol=1)
 
     # Add overall title
     plt.suptitle(
         'Density Plots for AvalDays = 0 and AvalDays = 1', fontsize=16)
 
     # Save the figure
-    outpath_density = plot_folder / 'density_plots_avaldays.png'
+    outpath_density = plot_folder / outname
     plt.savefig(outpath_density, dpi=300)
     plt.close(fig)  # Close the figure after saving
 
 
-def plot_histogram(data_aval_0, data_aval_1, plot_folder):
+def plot_histogram(data_aval_0, data_aval_1, plot_folder, outname,  nrows=5, ncols=3):
     """Plot histograms for two groups based on Avalanche Days."""
     # Set up the figure for a 5x3 grid layout
-    fig, axes = plt.subplots(nrows=5, ncols=3, figsize=(12, 12))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(12, 12))
     fig.subplots_adjust(hspace=0.5, wspace=0.3, right=0.85)
 
     # Flatten axes for easy iteration
@@ -536,7 +536,7 @@ def plot_histogram(data_aval_0, data_aval_1, plot_folder):
                      label='AvalDays = 1', bins=20, alpha=0.5, stat='count')
 
         # Remove the y-axis labels for the central and right columns
-        if i % 3 != 0:  # Central and right columns
+        if i % ncols != 0:  # Central and right columns
             axes[i].set_ylabel('')
 
     # Remove empty subplots if there are fewer than 15 columns
@@ -546,16 +546,60 @@ def plot_histogram(data_aval_0, data_aval_1, plot_folder):
     # Create a single legend for all plots on the right side
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc='center left',
-               bbox_to_anchor=(0.9, 0.5), borderaxespad=0, ncol=1)
+               bbox_to_anchor=(0.85, 0.5), borderaxespad=0, ncol=1)
 
     # Add overall title
     plt.suptitle(
         'Histogram Plots for AvalDays = 0 and AvalDays = 1', fontsize=16)
 
     # Save the figure
-    outpath_histogram = plot_folder / 'histogram_plots_avaldays.png'
+    outpath_histogram = plot_folder / outname
     plt.savefig(outpath_histogram, dpi=300)
     plt.close(fig)  # Close the figure after saving
+
+
+def plot_boxplots(data_aval_0, data_aval_1, plot_folder, outname, nrows=5, ncols=3):
+    """Plot box plots for two groups based on Avalanche Days."""
+    # Set up the figure for a 5x3 grid layout
+    fig, axes = plt.subplots(nrows, ncols, figsize=(12, 12))
+    fig.subplots_adjust(hspace=0.5, wspace=0.3, right=0.85)
+
+    # Flatten axes for easy iteration
+    axes = axes.flatten()
+
+    # Loop through each column to plot its box plot
+    for i, col in enumerate(data_aval_0.columns):
+        # Combine data from both groups for plotting
+        combined_data = pd.concat([data_aval_0[col], data_aval_1[col]], axis=1)
+        combined_data.columns = ['0', '1']
+
+        # Create the box plot
+        sns.boxplot(data=combined_data, ax=axes[i], palette=[
+                    'blue', 'red'])
+
+        # Set the title as the column name
+        axes[i].set_title(col)
+
+        # Remove the y-axis labels for the central and right columns
+        if i % ncols != 0:  # Central and right columns
+            axes[i].set_ylabel('')
+
+    # Remove empty subplots if there are fewer than 15 columns
+    for j in range(i + 1, len(axes)):
+        fig.delaxes(axes[j])
+
+    # Add overall title
+    plt.suptitle('Box Plots for AvalDays = 0 and AvalDays = 1', fontsize=16)
+
+    # Save the figure
+    outpath_boxplot = plot_folder / outname
+    plt.savefig(outpath_boxplot, dpi=300)
+    plt.close(fig)
+
+
+def save_mod1_features(df, output_filepath):
+    """Save the mod1_features dataframe to a CSV file."""
+    df.to_csv(output_filepath, index=True, sep=';', na_rep='NaN')
 
 
 def main():
@@ -567,6 +611,9 @@ def main():
 
     plot_folder = Path(
         'C:/Users/Christian/OneDrive/Desktop/Family/Christian/MasterMeteoUnitn/Corsi/4_Tesi/05_Plots/03_Correlation_mod1')
+
+    output_filepath = Path(
+        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\mod1_newfeatures.csv')
 
     # --- DATA MANIPULATION ---
 
@@ -639,6 +686,9 @@ def main():
     mod1_features = calculate_temperature_gradient(mod1_features)
     mod1_features = calculate_avalanche_days(mod1_features)
 
+    # --- SAVE mod1_feauters AS CSV ---
+    save_mod1_features(mod1_features, output_filepath)
+
     # --- CORRELATION MATRIX NEW FEATURES ---
 
     # Plot the correlation matrix
@@ -665,8 +715,31 @@ def main():
                                                                   'AvalDay'])
 
     # Generate plots
-    plot_density(data_aval_0, data_aval_1, plot_folder)
-    plot_histogram(data_aval_0, data_aval_1, plot_folder)
+    plot_density(data_aval_0, data_aval_1, plot_folder,
+                 outname='density_plots_avaldays.png', nrows=5, ncols=3)
+    plot_histogram(data_aval_0, data_aval_1, plot_folder,
+                   outname='histogram_plots_avaldays.png', nrows=5, ncols=3)
+    plot_boxplots(data_aval_0, data_aval_1, plot_folder,
+                  outname='boxplot_plots_avaldays.png', nrows=5, ncols=3)
+
+    # --- DISTRIBUTION OF ORIGINAL VARIABLES IN AvDays and NotAvDays  ---
+
+    # Assuming mod1_subset and plot_folder are already defined.
+    mod1_compare_new = mod1_features.drop(columns=['Stagione'])
+
+    # Separate data based on AvalDays
+    data_aval_0_new = mod1_compare_new[mod1_compare_new['AvalDay'] == 0].drop(columns=[
+        'AvalDay'])
+    data_aval_1_new = mod1_compare_new[mod1_compare_new['AvalDay'] == 1].drop(columns=[
+        'AvalDay'])
+
+    # Generate plots
+    plot_density(data_aval_0_new, data_aval_1_new, plot_folder,
+                 outname='density_plots_avaldays_newvar.png', nrows=7, ncols=7)
+    plot_histogram(data_aval_0_new, data_aval_1_new, plot_folder,
+                   outname='histogram_plots_avaldays_newvar.png', nrows=7, ncols=7)
+    plot_boxplots(data_aval_0_new, data_aval_1_new, plot_folder,
+                  outname='boxplot_plots_avaldays_newvar.png', nrows=7, ncols=7)
 
 
 if __name__ == '__main__':
