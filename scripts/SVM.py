@@ -58,7 +58,7 @@ def main():
 
     # --- SPLIT FEATURES AND TARGET---
 
-    X = mod1_undersampled[['HN72h']]
+    X = mod1_undersampled[['HNnum', 'HN72h']]
     y = mod1_undersampled['AvalDay']
 
     # Normalizzare i dati
@@ -68,7 +68,7 @@ def main():
     # --- SPLIT TRAIN AND TEST DATASET---
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.25, random_state=42)
+        X_scaled, y, test_size=0.25, random_state=42)
 
     # Definire il modello SVM
     svm_model = SVC(kernel='rbf', random_state=42)
@@ -79,3 +79,19 @@ def main():
     # Mostra i risultati
     print("Cross-Validation Accuracy Scores:", cv_scores)
     print("Mean CV Accuracy:", cv_scores.mean())
+
+    # Create a svm Classifier
+    clf = svm.SVC(kernel='rbf')  # Linear Kernel
+
+    # Train the model using the training sets
+    clf.fit(X_train, y_train)
+
+    # Predict the response for test dataset
+    y_pred = clf.predict(X_test)
+
+    print("Accuracy:", metrics.accuracy_score(y_test, y_pred))
+    # Model Precision: what percentage of positive tuples are labeled as such?
+    print("Precision:", metrics.precision_score(y_test, y_pred))
+
+    # Model Recall: what percentage of positive tuples are labelled as such?
+    print("Recall:", metrics.recall_score(y_test, y_pred))
