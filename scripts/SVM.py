@@ -67,12 +67,12 @@ def main():
     X_scaled = scaler.fit_transform(X)
 
     # --- CROSS VALIDATION ---
-    problem = svm_problem(y, X)
+    problem = svm_problem(y, X_scaled)
 
     # Definisci i parametri SVM con cross-validation
     # C è il parametro di penalità e `-v` specifica il numero di fold per la cross-validation
     # `-t 0` indica un kernel lineare, `-v 5` indica 5-fold CV
-    param = svm_parameter('-t 2 -c 1 -v 5')
+    param = svm_parameter('-t 3 -c 0.01 -v 5 -h 0')
     # Esegui la cross-validation
     accuracy = svm_train(problem, param)
     print("Cross-validation accuracy:", accuracy)
