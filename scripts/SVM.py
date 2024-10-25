@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 from sklearn.svm import SVC
 from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.preprocessing import StandardScaler
+from libsvm.svmutil import svm_train, svm_problem, svm_parameter
 
 
 def load_data(filepath):
@@ -43,7 +44,7 @@ def main():
     # --- PATHS ---
     # Filepath and plot folder paths
     common_path = Path(
-        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati')
+        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\MOD1_manipulation\\')
 
     filepath = common_path / 'mod1_undersampling.csv'
 
@@ -56,19 +57,34 @@ def main():
     mod1_undersampled = load_data(filepath)
     print(mod1_undersampled.dtypes)  # For initial data type inspection
 
-    # --- SPLIT FEATURES AND TARGET---
+    # --- SPLIT FEATURES AND TARGET ---
 
-    X = mod1_undersampled[['HNnum', 'HN72h']]
-    y = mod1_undersampled['AvalDay']
+    X = mod1_undersampled[['HN72h']].values
+    y = mod1_undersampled['AvalDay'].values
 
     # Normalizzare i dati
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    # --- SPLIT TRAIN AND TEST DATASET---
+    # --- CROSS VALIDATION ---
+    problem = svm_problem(y, X)
+
+    # Definisci i parametri SVM con cross-validation
+    # C è il parametro di penalità e `-v` specifica il numero di fold per la cross-validation
+    # `-t 0` indica un kernel lineare, `-v 5` indica 5-fold CV
+    param = svm_parameter('-t 2 -c 1 -v 5')
+    # Esegui la cross-validation
+    accuracy = svm_train(problem, param)
+    print("Cross-validation accuracy:", accuracy)
+
+    # --- SPLIT TRAIN AND TEST DATASET ---
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X_scaled, y, test_size=0.25, random_state=42)
+        X, y, test_size=0.25, random_state=42)
+
+    # --- MODEL ---
+
+    # --- EVALUATION ---
 
     # Definire il modello SVM
     svm_model = SVC(kernel='rbf', random_state=42)
