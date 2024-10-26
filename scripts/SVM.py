@@ -16,6 +16,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from libsvm.svmutil import svm_train, svm_problem, svm_parameter, svm_predict
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
+import seaborn as sns
 
 
 def load_data(filepath):
@@ -29,6 +31,86 @@ def load_data(filepath):
     data.set_index('DataRilievo', inplace=True)
 
     return data
+
+# Function to normalize data
+
+
+def normalize_data(X):
+    scaler = StandardScaler()
+    return scaler.fit_transform(X)
+
+# Function to find best C and gamma values using cross-validation
+
+
+def cross_validate_svm(y, X, C_values, gamma_values, second_order_factor=0.5):
+    problem = svm_problem(y, X)
+    best_accuracy, best_C, best_gamma = 0, None, None
+    refined_search_needed = True
+
+    # Initial cross-validation loop with range adjustment
+    while refined_search_needed:
+        refined_search_needed = False  # Reset flag
+        best_accuracy, best_C, best_gamma = 0, None, None  # Reset best values for each run
+
+        for C in C_values:
+            for gamma in gamma_values:
+                param_str = f'-t 2 -c {C} -g {gamma} -v 5'
+                param = svm_parameter(param_str)
+                accuracy = svm_train(problem, param)
+
+                if accuracy > best_accuracy:
+                    best_accuracy, best_C, best_gamma = accuracy, C, gamma
+
+        # Adjust C and gamma ranges if at the bounds, and flag further refinement if needed
+        if best_C == max(C_values):
+            C_values = np.logspace(np.log10(min(C_values)), np.log10(
+                max(C_values)) + 1, len(C_values) + 1)
+            refined_search_needed = True
+        elif best_C == min(C_values):
+            C_values = np.logspace(
+                np.log10(min(C_values)) - 1, np.log10(max(C_values)), len(C_values) + 1)
+            refined_search_needed = True
+
+        if best_gamma == max(gamma_values):
+            gamma_values = np.logspace(np.log10(min(gamma_values)), np.log10(
+                max(gamma_values)) + 1, len(gamma_values) + 1)
+            refined_search_needed = True
+        elif best_gamma == min(gamma_values):
+            gamma_values = np.logspace(np.log10(
+                min(gamma_values)) - 1, np.log10(max(gamma_values)), len(gamma_values) + 1)
+            refined_search_needed = True
+
+    # Second-order refined cross-validation search
+    refined_C_values = np.logspace(
+        np.log10(best_C) - second_order_factor, np.log10(best_C) + second_order_factor, num=5
+    )
+    refined_gamma_values = np.logspace(
+        np.log10(best_gamma) - second_order_factor, np.log10(best_gamma) + second_order_factor, num=5
+    )
+
+    for C in refined_C_values:
+        for gamma in refined_gamma_values:
+            param_str = f'-t 2 -c {C} -g {gamma} -v 5'
+            param = svm_parameter(param_str)
+            accuracy = svm_train(problem, param)
+
+            if accuracy > best_accuracy:
+                best_accuracy, best_C, best_gamma = accuracy, C, gamma
+
+    return best_C, best_gamma, best_accuracy
+
+# Function to train and test the model
+
+
+def train_and_evaluate(X_train, y_train, X_test, y_test, best_C, best_gamma):
+    problem_train = svm_problem(y_train, X_train)
+    param_string = f'-t 2 -c {best_C} -g {best_gamma}'
+    param = svm_parameter(param_string)
+    model = svm_train(problem_train, param)
+
+    predicted_labels, accuracy, decision_values = svm_predict(
+        y_test, X_test, model, options="b")
+    return accuracy[0], predicted_labels, decision_values
 
 
 def main():
@@ -50,67 +132,62 @@ def main():
 
     # --- SPLIT FEATURES AND TARGET ---
 
-    # X = mod1_undersampled[['HN72h']].values
-    X = mod1_undersampled.drop(columns=['Stagione', 'AvalDay']).values
-    # X = mod1_undersampled[['HSdiff72h']].values
+    # Specify target
     y = mod1_undersampled['AvalDay'].values
 
-    # # Normalizzare i dati
-    scaler = StandardScaler()
-    X = scaler.fit_transform(X)
+    # Specify features
+    # X = mod1_undersampled[['HN72h']].values
+    # X = mod1_undersampled.drop(columns=['Stagione', 'AvalDay']).values
+    features = ['HN72h']  # Example feature set
+    X = mod1_undersampled[features].values
 
-    # --- CROSS VALIDATION ---
-    problem = svm_problem(y, X)
+    # Normalize data
+    X = normalize_data(X)
 
-    # Definisci la griglia di parametri
-    C_values = np.logspace(-3, 3, 7)  # ad esempio, 0.01, 0.1, 1, 10, 100
-    gamma_values = np.logspace(-3, 3, 7)  # ad esempio, 0.001, 0.01, 0.1, 1, 10
+    # Define parameter grid
+    C_values = np.logspace(-3, 3, 7)
+    gamma_values = np.logspace(-3, 3, 7)
 
-    best_accuracy = 0
-    best_C = None
-    best_gamma = None
+    # Cross-validation to find best parameters
+    best_C, best_gamma, best_accuracy = cross_validate_svm(
+        y, X, C_values, gamma_values)
+    print(
+        f"Best C: {best_C}, Best gamma: {best_gamma}, Best CV accuracy: {best_accuracy}")
 
-    # Cerca la combinazione migliore
-    for C in C_values:
-        for gamma in gamma_values:
-            # "-v 5" esegue una 5-fold cross-validation
-            param_str = f'-t 2 -c {C} -g {gamma} -v 5'
-            param = svm_parameter(param_str)
-
-            # Esegui la cross-validation
-            accuracy = svm_train(problem, param)
-
-            # Aggiorna i migliori parametri se l'accuratezza è migliorata
-            if accuracy > best_accuracy:
-                best_accuracy = accuracy
-                best_C = C
-                best_gamma = gamma
-
-    print("Best C:", best_C)
-    print("Best gamma:", best_gamma)
-    print("Best cross-validation accuracy:", best_accuracy)
-
-    # --- SPLIT TRAIN AND TEST DATASET ---
-
+    # Split dataset
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.25, random_state=42)
 
-    # --- MODEL ---
-    problem = svm_problem(y, X)
+    # Train and evaluate
+    test_accuracy, predicted_labels, decision_values = train_and_evaluate(
+        X_train, y_train, X_test, y_test, best_C, best_gamma)
 
-    param_string = f'-t 2 -c {best_C} -g {best_gamma}'
-
-    param = svm_parameter(param_string)
-
-    model = svm_train(problem, param)
-
-    # --- EVALUATION ---
-    predicted_labels, accuracy, decision_values = svm_predict(
-        y_test, X_test, model)
-
+    # Output performance
+    print("Test accuracy:", test_accuracy)
     print("Predicted labels:", predicted_labels)
-    print("Accuracy:", accuracy)
     print("Decision values:", decision_values)
+
+    # 1. Calculate confusion matrix
+    conf_matrix = confusion_matrix(y_test, predicted_labels)
+
+    # 2. Print or visualize the confusion matrix
+    print("Confusion Matrix:")
+    print(conf_matrix)
+
+    # For a better visualization, plot the confusion matrix as a heatmap
+    plt.figure(figsize=(6, 4))
+    sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues", xticklabels=[
+                'Pred 0', 'Pred 1'], yticklabels=['True 0', 'True 1'])
+    plt.xlabel("Predicted labels")
+    plt.ylabel("True labels")
+    plt.title(f'{features}')
+    plt.show()
+
+    # 3. Additional evaluation metrics
+    print("\nClassification Report:")
+    print(classification_report(y_test, predicted_labels))
+
+    print("Accuracy Score:", accuracy_score(y_test, predicted_labels))
 
     # --- PLOT ---
 
