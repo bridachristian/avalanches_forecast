@@ -55,7 +55,7 @@ def cross_validate_svm(y, X, C_values, gamma_values, second_order_factor=0.5):
 
         for C in C_values:
             for gamma in gamma_values:
-                param_str = f'-t 2 -c {C} -g {gamma} -v 5'
+                param_str = f'-t 2 -c {C} -g {gamma} -v 5 -q'
                 param = svm_parameter(param_str)
                 accuracy = svm_train(problem, param)
 
@@ -91,7 +91,7 @@ def cross_validate_svm(y, X, C_values, gamma_values, second_order_factor=0.5):
 
     for C in refined_C_values:
         for gamma in refined_gamma_values:
-            param_str = f'-t 2 -c {C} -g {gamma} -v 5'
+            param_str = f'-t 2 -c {C} -g {gamma} -v 5 -q'
             param = svm_parameter(param_str)
             accuracy = svm_train(problem, param)
 
@@ -105,7 +105,7 @@ def cross_validate_svm(y, X, C_values, gamma_values, second_order_factor=0.5):
 
 def train_and_evaluate(X_train, y_train, X_test, y_test, best_C, best_gamma):
     problem_train = svm_problem(y_train, X_train)
-    param_string = f'-t 2 -c {best_C} -g {best_gamma} -b 1'
+    param_string = f'-t 2 -c {best_C} -g {best_gamma} -b 1 -q'
     param = svm_parameter(param_string)
     model = svm_train(problem_train, param)
 
@@ -194,34 +194,7 @@ def evaluate_model_performance(y_true, y_pred):
     print("Accuracy Score:", accuracy_score(y_true, y_pred))
 
 
-def main():
-    # --- PATHS ---
-    # Filepath and plot folder paths
-    common_path = Path(
-        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\MOD1_manipulation\\')
-
-    filepath = common_path / 'mod1_undersampling.csv'
-
-    # output_filepath = Path(
-    #     'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\mod1_undersampling.csv')
-
-    # --- DATA IMPORT ---
-
-    # Load and clean data
-    mod1_undersampled = load_data(filepath)
-    print(mod1_undersampled.dtypes)  # For initial data type inspection
-
-    # --- SPLIT FEATURES AND TARGET ---
-
-    # Specify target
-    y = mod1_undersampled['AvalDay'].values
-
-    # Specify features
-    # X = mod1_undersampled[['HN72h']].values
-    # X = mod1_undersampled.drop(columns=['Stagione', 'AvalDay']).values
-    features = ['HN72h', 'TmaxG']  # Example feature set
-    X = mod1_undersampled[features].values
-
+def run_svm_experiment(X, y, test_size=0.25):
     # Normalize data
     X = normalize_data(X)
 
@@ -252,7 +225,61 @@ def main():
     # print("Predicted labels:", predicted_labels)
     # print("Decision values:", decision_values[:,0])
 
-    metrics = calculate_metrics(y_test, predicted_labels)
+    calculate_metrics(y_test, predicted_labels)
 
     # Call the evaluation function
     evaluate_model_performance(y_test, predicted_labels)
+    return test_accuracy, predicted_labels, decision_values
+
+
+def main():
+    # --- PATHS ---
+    # Filepath and plot folder paths
+    common_path = Path(
+        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\MOD1_manipulation\\')
+
+    filepath = common_path / 'mod1_undersampling.csv'
+
+    # output_filepath = Path(
+    #     'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\mod1_undersampling.csv')
+
+    # --- DATA IMPORT ---
+
+    # Load and clean data
+    mod1_undersampled = load_data(filepath)
+    # print(mod1_undersampled.dtypes)  # For initial data type inspection
+    print(mod1_undersampled.columns)
+
+    # --- SPLIT FEATURES AND TARGET ---
+
+    FEATURES_TO_TEST = ['N', 'V', 'TaG', 'TminG', 'TmaxG',
+                        'HSnum', 'HNnum', 'TH01G', 'TH03G', 'PR', 'CS', 'B']
+
+    # Specify features
+    # X = mod1_undersampled[['HN72h']].values
+    # X = mod1_undersampled.drop(columns=['Stagione', 'AvalDay']).values
+
+    # Initialize an empty list to collect accuracy results
+    results = []
+
+    for feat in FEATURES_TO_TEST:
+        features = [feat]  # Example feature set
+        X = mod1_undersampled[features].values
+
+        # Specify target
+        y = mod1_undersampled['AvalDay'].values
+
+        test_accuracy, predicted_labels, decision_values = run_svm_experiment(
+            X, y)
+        # Append the result to the results list
+        results.append({'feat': feat, 'test_accuracy': test_accuracy})
+
+    # Convert the results list into a DataFrame
+    accuracy_df = pd.DataFrame(results)
+
+    # Display or save the DataFrame
+    print(accuracy_df)
+
+
+if __name__ == '__main__':
+    main()
