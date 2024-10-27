@@ -263,12 +263,19 @@ def test_multiple_features(mod1_undersampled, features_list):
     return results_df
 
 
+def save_outputfile(df, output_filepath):
+    """Save the mod1_features dataframe to a CSV file."""
+    df.to_csv(output_filepath, index=True, sep=';', na_rep='NaN')
+
+
 def main():
     # --- PATHS ---
     common_path = Path(
         'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\MOD1_manipulation\\')
 
     filepath = common_path / 'mod1_undersampling.csv'
+
+    output_filepath = common_path / 'results_single_features.csv'
 
     # --- DATA IMPORT ---
 
@@ -283,6 +290,11 @@ def main():
 
     results_df = results_df.sort_values(
         by='test_accuracy', ascending=False).reset_index(drop=True)
+    results_df.set_index('feature', inplace=True)
+
+    save_outputfile(results_df, output_filepath)
+
+    corr_matrix = results_df.corr()
 
 
 if __name__ == '__main__':
