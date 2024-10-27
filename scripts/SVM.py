@@ -137,13 +137,14 @@ def calculate_metrics(y_true, y_pred):
     }
 
 
-def plot_roc_curve(y_true, probabilities):
+def plot_roc_curve(y_true, probabilities, feature_name):
     """
     Plots the ROC curve given true labels and predicted probabilities.
 
     Parameters:
     - y_true: True labels
     - probabilities: Predicted probabilities for the positive class
+    - feature_name: The name of the feature being analyzed, used in the plot title
     """
     # Calculate ROC curve
     fpr, tpr, thresholds = metrics.roc_curve(y_true, probabilities)
@@ -157,19 +158,19 @@ def plot_roc_curve(y_true, probabilities):
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic')
+    plt.title(f'ROC Curve for Feature: {feature_name}')
     plt.legend(loc='lower right')
     plt.show()
 
 
-def evaluate_model_performance(y_true, y_pred):
+def evaluate_model_performance(y_true, y_pred, feature_name):
     """
     Evaluates the performance of a model using a confusion matrix and other metrics.
 
     Parameters:
     - y_true: True labels
     - y_pred: Predicted labels
-    - features: Name of the feature set for labeling purposes in the plot title
+    - feature_name: The name of the feature set for labeling purposes in the plot title
     """
     # 1. Calculate confusion matrix
     conf_matrix = confusion_matrix(y_true, y_pred)
@@ -184,7 +185,7 @@ def evaluate_model_performance(y_true, y_pred):
                 xticklabels=['Pred 0', 'Pred 1'], yticklabels=['True 0', 'True 1'])
     plt.xlabel("Predicted labels")
     plt.ylabel("True labels")
-    plt.title(f'Confusion Matrix')
+    plt.title(f'Confusion Matrix for Feature: {feature_name}')
     plt.show()
 
     # 3. Additional evaluation metrics
@@ -194,21 +195,33 @@ def evaluate_model_performance(y_true, y_pred):
     print("Accuracy Score:", accuracy_score(y_true, y_pred))
 
 
-def run_svm_experiment(X, y, test_size=0.25):
+def svm_feature_experiment(mod1_undersampled, feature, C_values=np.logspace(-2, 2, 5), gamma_values=np.logspace(-2, 2, 5)):
+    """
+    Conducts an SVM experiment on a specific feature, including cross-validation, training, and evaluation.
+
+    Parameters:
+    - mod1_undersampled (DataFrame): The undersampled data containing features and target.
+    - feature (str): The feature to test with the SVM model.
+    - C_values (array-like): Range of C values for cross-validation.
+    - gamma_values (array-like): Range of gamma values for cross-validation.
+
+    Returns:
+    - dict: Dictionary with feature name, best parameters, and test accuracy.
+    """
+    # Prepare data
+    X = mod1_undersampled[[feature]].values
+    y = mod1_undersampled['AvalDay'].values
+
     # Normalize data
     X = normalize_data(X)
-
-    # Define parameter grid
-    C_values = np.logspace(-3, 3, 7)
-    gamma_values = np.logspace(-3, 3, 7)
 
     # Cross-validation to find best parameters
     best_C, best_gamma, best_accuracy = cross_validate_svm(
         y, X, C_values, gamma_values)
     print(
-        f"Best C: {best_C}, Best gamma: {best_gamma}, Best CV accuracy: {best_accuracy}")
+        f"Feature: {feature} | Best C: {best_C}, Best gamma: {best_gamma}, Best CV accuracy: {best_accuracy}")
 
-    # Split dataset
+    # Split dataset into training and testing
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.25, random_state=42)
 
@@ -218,67 +231,58 @@ def run_svm_experiment(X, y, test_size=0.25):
 
     # Probabilities for the positive class
     probabilities = np.array(decision_values)[:, 1]
-    plot_roc_curve(y_test, probabilities)
+    plot_roc_curve(y_test, probabilities, feature)
 
     # Output performance
     print("Test accuracy:", test_accuracy)
-    # print("Predicted labels:", predicted_labels)
-    # print("Decision values:", decision_values[:,0])
 
-    calculate_metrics(y_test, predicted_labels)
+    # Calculate and print metrics
+    metrics_dict = calculate_metrics(y_test, predicted_labels)
+    print(metrics_dict)
 
-    # Call the evaluation function
-    evaluate_model_performance(y_test, predicted_labels)
-    return test_accuracy, predicted_labels, decision_values
+    # Evaluate and plot performance
+    evaluate_model_performance(y_test, predicted_labels, feature)
+
+    # Return results as a dictionary for easy aggregation
+    return {'feature': feature, 'best_C': best_C, 'best_gamma': best_gamma, 'cv_accuracy': best_accuracy, 'test_accuracy': test_accuracy, **metrics_dict}
+
+# Function to test multiple features
+
+
+def test_multiple_features(mod1_undersampled, features_list):
+    results = []
+
+    for feature in features_list:
+        print(f'----- Testing Feature: {feature} -----')
+        result = svm_feature_experiment(mod1_undersampled, feature)
+        results.append(result)
+
+    # Convert the results list into a DataFrame for easy viewing and saving
+    results_df = pd.DataFrame(results)
+    print(results_df)
+    return results_df
 
 
 def main():
     # --- PATHS ---
-    # Filepath and plot folder paths
     common_path = Path(
         'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\MOD1_manipulation\\')
 
     filepath = common_path / 'mod1_undersampling.csv'
 
-    # output_filepath = Path(
-    #     'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\mod1_undersampling.csv')
-
     # --- DATA IMPORT ---
 
     # Load and clean data
     mod1_undersampled = load_data(filepath)
-    # print(mod1_undersampled.dtypes)  # For initial data type inspection
     print(mod1_undersampled.columns)
 
-    # --- SPLIT FEATURES AND TARGET ---
-
+   # Usage example
     FEATURES_TO_TEST = ['N', 'V', 'TaG', 'TminG', 'TmaxG',
                         'HSnum', 'HNnum', 'TH01G', 'TH03G', 'PR', 'CS', 'B']
+    results_df = test_multiple_features(mod1_undersampled, FEATURES_TO_TEST)
 
-    # Specify features
-    # X = mod1_undersampled[['HN72h']].values
-    # X = mod1_undersampled.drop(columns=['Stagione', 'AvalDay']).values
-
-    # Initialize an empty list to collect accuracy results
-    results = []
-
-    for feat in FEATURES_TO_TEST:
-        features = [feat]  # Example feature set
-        X = mod1_undersampled[features].values
-
-        # Specify target
-        y = mod1_undersampled['AvalDay'].values
-
-        test_accuracy, predicted_labels, decision_values = run_svm_experiment(
-            X, y)
-        # Append the result to the results list
-        results.append({'feat': feat, 'test_accuracy': test_accuracy})
-
-    # Convert the results list into a DataFrame
-    accuracy_df = pd.DataFrame(results)
-
-    # Display or save the DataFrame
-    print(accuracy_df)
+    results_df = results_df.sort_values(
+        by='test_accuracy', ascending=False).reset_index(drop=True)
 
 
 if __name__ == '__main__':
