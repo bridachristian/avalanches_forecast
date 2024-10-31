@@ -158,7 +158,7 @@ def plot_roc_curve(y_true, probabilities, feature_name):
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title(f'ROC Curve for Feature: {feature_name}')
+    # plt.title(f'ROC Curve for Feature: {feature_name}')
     plt.legend(loc='lower right')
     plt.show()
 
@@ -185,7 +185,7 @@ def evaluate_model_performance(y_true, y_pred, feature_name):
                 xticklabels=['Pred 0', 'Pred 1'], yticklabels=['True 0', 'True 1'])
     plt.xlabel("Predicted labels")
     plt.ylabel("True labels")
-    plt.title(f'Confusion Matrix for Feature: {feature_name}')
+    # plt.title(f'Confusion Matrix for Feature: {feature_name}')
     plt.show()
 
     # 3. Additional evaluation metrics
@@ -195,7 +195,7 @@ def evaluate_model_performance(y_true, y_pred, feature_name):
     print("Accuracy Score:", accuracy_score(y_true, y_pred))
 
 
-def svm_feature_experiment(mod1_undersampled, feature, C_values=np.logspace(-2, 2, 5), gamma_values=np.logspace(-2, 2, 5)):
+def svm_feature_experiment(mod1_undersampled, feature, C_values=np.logspace(-3, 3, 7), gamma_values=np.logspace(-3, 3, 7)):
     """
     Conducts an SVM experiment on a specific feature, including cross-validation, training, and evaluation.
 
@@ -209,7 +209,11 @@ def svm_feature_experiment(mod1_undersampled, feature, C_values=np.logspace(-2, 
     - dict: Dictionary with feature name, best parameters, and test accuracy.
     """
     # Prepare data
-    X = mod1_undersampled[[feature]].values
+    feature = ['N', 'V', 'VQ1', 'VQ2', 'TaG', 'TminG',
+               'TmaxG', 'HSnum', 'HNnum', 'TH01G', 'TH03G', 'PR']
+
+    X = mod1_undersampled[feature].values
+    # X = mod1_undersampled.drop(columns=['AvalDay']).values
     y = mod1_undersampled['AvalDay'].values
 
     # Normalize data
@@ -254,7 +258,7 @@ def test_multiple_features(mod1_undersampled, features_list):
 
     for feature in features_list:
         print(f'----- Testing Feature: {feature} -----')
-        result = svm_feature_experiment(mod1_undersampled, feature)
+        result = svm_feature_experiment(mod1_undersampled, [feature])
         results.append(result)
 
     # Convert the results list into a DataFrame for easy viewing and saving
@@ -273,7 +277,8 @@ def main():
     common_path = Path(
         'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\MOD1_manipulation\\')
 
-    filepath = common_path / 'mod1_undersampling.csv'
+    # filepath = common_path / 'mod1_undersampling.csv'
+    filepath = common_path / 'mod1_oversampling.csv'
 
     output_filepath = common_path / 'results_single_features.csv'
 
@@ -283,9 +288,23 @@ def main():
     mod1_undersampled = load_data(filepath)
     print(mod1_undersampled.columns)
 
-   # Usage example
-    FEATURES_TO_TEST = ['N', 'V', 'TaG', 'TminG', 'TmaxG',
-                        'HSnum', 'HNnum', 'TH01G', 'TH03G', 'PR', 'CS', 'B']
+    # --- SINGLE FEATURES MODEL ---
+
+    # feature = ['Tdelta72h']
+    feature = ['HSnum']
+
+    res = svm_feature_experiment(mod1_undersampled, feature)
+    print(res)
+
+    # --- SINGLE FEATURES MODEL ---
+
+    # Usage example
+    # FEATURES_TO_TEST = ['N', 'V', 'TaG', 'TminG', 'TmaxG',
+    #                     'HSnum', 'HNnum', 'TH01G', 'TH03G', 'PR', 'CS', 'B']
+
+    FEATURES_TO_TEST = ['N', 'V', 'VQ1', 'VQ2', 'TaG', 'TminG', 'TmaxG', 'HSnum', 'HNnum', 'TH01G', 'TH03G', 'PR', 'CS', 'B', 'HSdiff24h', 'HSdiff48h', 'HSdiff72h', 'HSdiff120h', 'HN48h', 'HN72h', 'HN120h', 'Tmin48h', 'Tmax48h', 'Tmin72h', 'Tmax72h', 'Tmin120h', 'Tmax120h',
+                        'Tdelta24h', 'Tdelta48h', 'Tdelta72h', 'Tdelta120h', 'SnowDrift', 'SnowDrift48h', 'SnowDrift72h', 'SnowDrift120h', 'SWEnew', 'SWE_cumulative', 'PSUM24h', 'PSUM48h', 'PSUM72h', 'PSUM120h', 'WetSnow1', 'WetSnow2', 'T_gradient', 'AvalDay', 'AvalDay48h', 'AvalDay72h', 'AvalDay120h']
+
     results_df = test_multiple_features(mod1_undersampled, FEATURES_TO_TEST)
 
     results_df = results_df.sort_values(
@@ -295,6 +314,45 @@ def main():
     save_outputfile(results_df, output_filepath)
 
     corr_matrix = results_df.corr()
+
+    # --- MULTI FEATURES MODEL ---
+
+    feature_sets = [
+        ['TH01G'],
+        ['TH01G', 'HSnum'],
+        ['TH01G', 'HSnum', 'TminG'],
+        ['TH01G', 'HSnum', 'TminG', 'TH03G'],
+        ['TH01G', 'HSnum', 'TminG', 'TH03G', 'HNnum'],
+        ['TH01G', 'HSnum', 'TminG', 'TH03G', 'HNnum', 'N'],
+        ['TH01G', 'HSnum', 'TminG', 'TH03G', 'HNnum', 'N', 'TmaxG'],
+        ['TH01G', 'HSnum', 'TminG', 'TH03G', 'HNnum', 'N', 'TmaxG', 'TaG'],
+        ['TH01G', 'HSnum', 'TminG', 'TH03G', 'HNnum', 'N', 'TmaxG', 'TaG', 'PR'],
+        ['TH01G', 'HSnum', 'TminG', 'TH03G', 'HNnum',
+            'N', 'TmaxG', 'TaG', 'PR', 'CS'],
+        ['TH01G', 'HSnum', 'TminG', 'TH03G', 'HNnum',
+            'N', 'TmaxG', 'TaG', 'PR', 'CS', 'B'],
+        ['TH01G', 'HSnum', 'TminG', 'TH03G', 'HNnum', 'N', 'TmaxG', 'TaG', 'PR', 'CS', 'B', 'V']]
+
+    # Initialize an empty list to collect each result
+    results_2 = []
+
+    # Run svm_feature_experiment for each feature set and collect results
+    for i, features in enumerate(feature_sets):
+        print(f'Running experiment for feature set {i+1}: {features}')
+        result2 = svm_feature_experiment(mod1_undersampled, features)
+        results_2.append(result2)  # Append each result to the results list
+
+    # Convert the results list into a DataFrame
+    results_2_df = pd.DataFrame(results_2)
+    # Add a new column 'num_features' with the count of elements in the 'features' column
+    results_2_df['num_features'] = results_2_df['feature'].apply(len)
+
+    # results_2_df = results_2_df.sort_values(
+    #     by='test_accuracy', ascending=False).reset_index(drop=True)
+    results_2_df.set_index('feature', inplace=True)
+
+    plt.plot(results_2_df['num_features'], results_2_df['test_accuracy'])
+    plt.scatter(results_2_df['num_features'], results_2_df['test_accuracy'])
 
 
 if __name__ == '__main__':
