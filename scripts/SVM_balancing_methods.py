@@ -372,23 +372,25 @@ def main():
     print(mod1.dtypes)  # For initial data type inspection
 
     # --- FEATURES SELECTION ---
-    # feature = ['HN72h']
-    feature = [
-        'N', 'V', 'TaG', 'TminG', 'TmaxG',
-        'HSnum', 'HNnum', 'TH01G', 'TH03G', 'PR', 'CS',
-        'HSdiff24h', 'HSdiff48h', 'HSdiff72h', 'HSdiff120h', 'HN48h', 'HN72h',
-        'HN120h', 'NewSnowIndex', 'NewSnow_5cm', 'NewSnow_15cm', 'NewSnow_30cm',
-        'NewSnow_50cm', '3dNewSnow_10cm', '3dNewSnow_30cm', '3dNewSnow_60cm',
-        '3dNewSnow_100cm', 'DaysSinceLastSnow', 'Tmin48h', 'Tmax48h', 'Tmin72h',
-        'Tmax72h', 'Tmin120h', 'Tmax120h', 'Tdelta24h', 'Tdelta48h',
-        'Tdelta72h', 'Tdelta120h', 'Tavg', 'DegreeDays',
-        'CumulativeDegreeDays48h', 'CumulativeDegreeDays72h',
-        'CumulativeDegreeDays120h', 'SWEnew', 'SWE_cumulative',
-        'PSUM24h', 'PSUM48h', 'PSUM72h', 'PSUM120h', 'Penetration_ratio',
-        'T_gradient', 'AvalDay48h', 'AvalDay72h', 'AvalDay120h'
-    ]
+    feature = ['HN72h', 'TH01G', 'Tmin120h']
+    # feature = [
+    #     'N', 'V', 'TaG', 'TminG', 'TmaxG',
+    #     'HSnum', 'HNnum', 'TH01G', 'TH03G', 'PR', 'CS',
+    #     'HSdiff24h', 'HSdiff48h', 'HSdiff72h', 'HSdiff120h', 'HN48h', 'HN72h',
+    #     'HN120h', 'NewSnowIndex', 'NewSnow_5cm', 'NewSnow_15cm', 'NewSnow_30cm',
+    #     'NewSnow_50cm', '3dNewSnow_10cm', '3dNewSnow_30cm', '3dNewSnow_60cm',
+    #     '3dNewSnow_100cm', 'DaysSinceLastSnow', 'Tmin48h', 'Tmax48h', 'Tmin72h',
+    #     'Tmax72h', 'Tmin120h', 'Tmax120h', 'Tdelta24h', 'Tdelta48h',
+    #     'Tdelta72h', 'Tdelta120h', 'Tavg', 'DegreeDays',
+    #     'CumulativeDegreeDays48h', 'CumulativeDegreeDays72h',
+    #     'CumulativeDegreeDays120h', 'SWEnew', 'SWE_cumulative',
+    #     'PSUM24h', 'PSUM48h', 'PSUM72h', 'PSUM120h', 'Penetration_ratio',
+    #     'T_gradient', 'AvalDay48h', 'AvalDay72h', 'AvalDay120h'
+    # ]
 
-    mod1_clean = mod1.dropna()  # Keep the clean DataFrame with the datetime index
+    mod1_clean = mod1[feature]
+    mod1_clean = mod1_clean.dropna()
+
     # X = mod1_clean.drop(columns=['Stagione', 'AvalDay'])
     X = mod1_clean[feature]
     y = mod1_clean['AvalDay']
