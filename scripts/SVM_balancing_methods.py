@@ -363,18 +363,21 @@ if __name__ == '__main__':
     # --- FEATURES SELECTION ---
     # feature = ['HN72h', 'TH01G', 'Tmin120h']
     feature = [
-        'N', 'V', 'TaG', 'TminG', 'TmaxG',
-        'HSnum', 'HNnum', 'TH01G', 'TH03G', 'PR', 'CS',
-        'HSdiff24h', 'HSdiff48h', 'HSdiff72h', 'HSdiff120h', 'HN48h', 'HN72h',
-        'HN120h', 'NewSnowIndex', 'NewSnow_5cm', 'NewSnow_15cm', 'NewSnow_30cm',
-        'NewSnow_50cm', '3dNewSnow_10cm', '3dNewSnow_30cm', '3dNewSnow_60cm',
-        '3dNewSnow_100cm', 'DaysSinceLastSnow', 'Tmin48h', 'Tmax48h', 'Tmin72h',
-        'Tmax72h', 'Tmin120h', 'Tmax120h', 'Tdelta24h', 'Tdelta48h',
-        'Tdelta72h', 'Tdelta120h', 'Tavg', 'DegreeDays',
+        'N', 'V', 'TaG', 'TminG', 'TmaxG', 'HSnum',
+        'HNnum', 'TH01G', 'TH03G', 'PR', 'HSdiff24h', 'HSdiff48h', 'HSdiff72h',
+        'HSdiff120h', 'HN48h', 'HN72h', 'HN120h', 'DaysSinceLastSnow',
+        'Tmin48h', 'Tmax48h', 'Tmin72h', 'Tmax72h', 'Tmin120h', 'Tmax120h',
+        'Tdelta24h', 'Tdelta48h', 'Tdelta72h', 'Tdelta120h', 'DeltaTa24h',
+        'DeltaTa48h', 'DeltaTa72h', 'DeltaTa120h', 'DeltaTmin24h',
+        'DeltaTmin48h', 'DeltaTmin72h', 'DeltaTmin120h', 'DeltaTmax24h',
+        'DeltaTmax48h', 'DeltaTmax72h', 'DeltaTmax120h', 'Tavg', 'DegreeDays',
         'CumulativeDegreeDays48h', 'CumulativeDegreeDays72h',
-        'CumulativeDegreeDays120h', 'SWEnew', 'SWE_cumulative',
-        'PSUM24h', 'PSUM48h', 'PSUM72h', 'PSUM120h', 'Penetration_ratio',
-        'T_gradient', 'AvalDay48h', 'AvalDay72h', 'AvalDay120h'
+        'CumulativeDegreeDays120h', 'SWEnew', 'SWE_cumulative', 'PSUM24h', 'PSUM48h',
+        'PSUM72h', 'PSUM120h', 'Penetration_ratio', 'WetSnow1', 'WetSnow2',
+        'T_gradient', 'TSNOW_diff24h', 'TSNOW_diff48h', 'TSNOW_diff72h',
+        'TSNOW_diff120h', 'WetSnowIndex', 'WetSnow_ConsecDays', 'MFcrust',
+        'NewCrust', 'CrustDays', 'AvalDay48h', 'AvalDay72h',
+        'AvalDay120h'
     ]
 
     feature_plus = feature + ['AvalDay']
