@@ -140,7 +140,7 @@ def calculate_wet_snow(df):
     df['WetSnow1'] = np.where(df['CS'] >= 20, 1, 0)
     df['WetSnow1'] = np.where(df['CS'].isna(), np.nan, df['WetSnow1'])
 
-    df['WetSnow2'] = np.where(df['TH01G'] >= -1, 1, 0)
+    df['WetSnow2'] = np.where(df['TH01G'] >= -2, 1, 0)
     df['WetSnow2'] = np.where(df['TH01G'].isna(), np.nan, df['WetSnow2'])
 
     return df

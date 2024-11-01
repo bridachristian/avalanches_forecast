@@ -97,19 +97,7 @@ def undersampling_random_timelimited(X, y, Ndays=10):
 
 
 def undersampling_nearmiss(X, y, version=1, n_neighbors=3):
-    """
-    Apply NearMiss undersampling algorithm to balance the classes in an imbalanced dataset.
 
-    Parameters:
-    - X: pd.DataFrame or np.ndarray, feature matrix
-    - y: pd.Series or np.ndarray, target vector with binary classes (0 and 1)
-    - version: int, NearMiss version (1, 2, or 3). Default is version 1.
-    - n_neighbors: int, number of neighbors to consider for selecting samples. Default is 3.
-
-    Returns:
-    - X_res: Resampled feature matrix after NearMiss undersampling
-    - y_res: Resampled target vector after NearMiss undersampling
-    """
     # Initialize the NearMiss object with the chosen version
     nearmiss = NearMiss(version=version, n_neighbors=n_neighbors)
 
@@ -268,7 +256,7 @@ def plot_roc_curve(X_test, y_test, clf):
     plt.show()
 
 
-def develop_svm_nearmiss(X_train, y_train, X_test, y_test, res_nm):
+def develop_SVM(X_train, y_train, X_test, y_test, res_nm):
     # Create SVM classifier
     clf = svm.SVC(kernel='rbf')
 
@@ -353,7 +341,8 @@ def permutation_ranking(classifier, X_test, y_test):
     return feature_importance_df
 
 
-def main():
+# def main():
+if __name__ == '__main__':
     # --- PATHS ---
 
     # Filepath and plot folder paths
@@ -372,23 +361,24 @@ def main():
     print(mod1.dtypes)  # For initial data type inspection
 
     # --- FEATURES SELECTION ---
-    feature = ['HN72h', 'TH01G', 'Tmin120h']
-    # feature = [
-    #     'N', 'V', 'TaG', 'TminG', 'TmaxG',
-    #     'HSnum', 'HNnum', 'TH01G', 'TH03G', 'PR', 'CS',
-    #     'HSdiff24h', 'HSdiff48h', 'HSdiff72h', 'HSdiff120h', 'HN48h', 'HN72h',
-    #     'HN120h', 'NewSnowIndex', 'NewSnow_5cm', 'NewSnow_15cm', 'NewSnow_30cm',
-    #     'NewSnow_50cm', '3dNewSnow_10cm', '3dNewSnow_30cm', '3dNewSnow_60cm',
-    #     '3dNewSnow_100cm', 'DaysSinceLastSnow', 'Tmin48h', 'Tmax48h', 'Tmin72h',
-    #     'Tmax72h', 'Tmin120h', 'Tmax120h', 'Tdelta24h', 'Tdelta48h',
-    #     'Tdelta72h', 'Tdelta120h', 'Tavg', 'DegreeDays',
-    #     'CumulativeDegreeDays48h', 'CumulativeDegreeDays72h',
-    #     'CumulativeDegreeDays120h', 'SWEnew', 'SWE_cumulative',
-    #     'PSUM24h', 'PSUM48h', 'PSUM72h', 'PSUM120h', 'Penetration_ratio',
-    #     'T_gradient', 'AvalDay48h', 'AvalDay72h', 'AvalDay120h'
-    # ]
+    # feature = ['HN72h', 'TH01G', 'Tmin120h']
+    feature = [
+        'N', 'V', 'TaG', 'TminG', 'TmaxG',
+        'HSnum', 'HNnum', 'TH01G', 'TH03G', 'PR', 'CS',
+        'HSdiff24h', 'HSdiff48h', 'HSdiff72h', 'HSdiff120h', 'HN48h', 'HN72h',
+        'HN120h', 'NewSnowIndex', 'NewSnow_5cm', 'NewSnow_15cm', 'NewSnow_30cm',
+        'NewSnow_50cm', '3dNewSnow_10cm', '3dNewSnow_30cm', '3dNewSnow_60cm',
+        '3dNewSnow_100cm', 'DaysSinceLastSnow', 'Tmin48h', 'Tmax48h', 'Tmin72h',
+        'Tmax72h', 'Tmin120h', 'Tmax120h', 'Tdelta24h', 'Tdelta48h',
+        'Tdelta72h', 'Tdelta120h', 'Tavg', 'DegreeDays',
+        'CumulativeDegreeDays48h', 'CumulativeDegreeDays72h',
+        'CumulativeDegreeDays120h', 'SWEnew', 'SWE_cumulative',
+        'PSUM24h', 'PSUM48h', 'PSUM72h', 'PSUM120h', 'Penetration_ratio',
+        'T_gradient', 'AvalDay48h', 'AvalDay72h', 'AvalDay120h'
+    ]
 
-    mod1_clean = mod1[feature]
+    feature_plus = feature + ['AvalDay']
+    mod1_clean = mod1[feature_plus]
     mod1_clean = mod1_clean.dropna()
 
     # X = mod1_clean.drop(columns=['Stagione', 'AvalDay'])
@@ -469,9 +459,11 @@ def main():
     results_df = pd.DataFrame(results_list)
     print(results_df)
 
-    # --- DEVELOP SVM FOR NearMiss UNDERSAMPLING ---
+    # ---------------------------------------------------------------
+    # --- a) DEVELOP SVM FOR NearMiss UNDERSAMPLING ---
+    # ---------------------------------------------------------------
 
-    classifier_nm = develop_svm_nearmiss(
+    classifier_nm = develop_SVM(
         X_nm_train, y_nm_train, X_nm_test, y_nm_test, res_nm)
 
     # --- PERMUTATION IMPORTANCE FEATURE SELECTION ---
@@ -511,12 +503,62 @@ def main():
     res_nm_new = train_and_evaluate_svm(
         X_train_new, y_train_new, X_test_new, y_test_new)
 
-    classifier_nm_new = develop_svm_nearmiss(
+    classifier_nm_new = develop_SVM(
         X_train_new, y_train_new, X_test_new, y_test_new, res_nm_new)
 
     feature_importance_df = permutation_ranking(
         classifier_nm_new, X_test_new, y_test_new)
 
+    # # ---------------------------------------------------------------
+    # # --- b) DEVELOP SVM FOR SMOTE OVERSAMPLING ---
+    # # ---------------------------------------------------------------
 
-if __name__ == '__main__':
-    main()
+    # classifier_sm = develop_SVM(
+    #     X_sm, y_sm, X_test, y_test, res_sm)
+
+    # # --- PERMUTATION IMPORTANCE FEATURE SELECTION ---
+
+    # feature_importance_df = permutation_ranking(classifier_sm, X_test, y_test)
+
+    # # Filter the DataFrame to include only positive importance values
+    # positive_features = feature_importance_df[feature_importance_df['Importance_Mean'] > 0]
+
+    # # Get only the feature names
+    # features_plus_aval = positive_features['Feature'].tolist() + ['AvalDay']
+
+    # # --- NEW SVM MODEL WITH FEATURES SELECTED ---
+
+    # # mod1_clean = mod1.dropna()  # Keep the clean DataFrame with the datetime index
+    # # X = mod1_clean.drop(columns=['Stagione', 'AvalDay'])
+    # mod1_filtered = mod1[features_plus_aval]
+    # mod1_filtered = mod1_filtered.dropna()
+
+    # X_new = mod1_filtered.drop(columns=['AvalDay'])
+    # y_new = mod1_filtered['AvalDay']
+
+    # # --- SCALING ---
+
+    # scaler = StandardScaler()
+    # X_new = pd.DataFrame(scaler.fit_transform(X_new),
+    #                      columns=X_new.columns,
+    #                      index=X_new.index)
+
+    # # --- SPLIT TRAIN AND TEST ---
+
+    # X_train_new, X_test_new, y_train_new, y_test_new = train_test_split(
+    #     X_new, y_new, test_size=0.25, random_state=42)
+
+    # X_sm_new, y_sm_new = oversampling_smote(X_train_new, y_train_new)
+
+    # res_sm_new = train_and_evaluate_svm(
+    #     X_sm_new, y_sm_new, X_test_new, y_test_new)
+
+    # classifier_sm_new = develop_SVM(
+    #     X_sm_new, y_sm_new, X_test_new, y_test_new, res_sm_new)
+
+    # feature_importance_df = permutation_ranking(
+    #     classifier_sm_new, X_test_new, y_test_new)
+
+
+# if __name__ == '__main__':
+#     main()
