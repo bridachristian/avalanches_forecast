@@ -341,6 +341,11 @@ def permutation_ranking(classifier, X_test, y_test):
     return feature_importance_df
 
 
+def save_outputfile(df, output_filepath):
+    """Save the mod1_features dataframe to a CSV file."""
+    df.to_csv(output_filepath, index=True, sep=';', na_rep='NaN')
+
+
 # def main():
 if __name__ == '__main__':
     # --- PATHS ---
@@ -361,7 +366,7 @@ if __name__ == '__main__':
     print(mod1.dtypes)  # For initial data type inspection
 
     # --- FEATURES SELECTION ---
-    # feature = ['HN72h', 'TH01G', 'Tmin120h']
+    # feature = ['HN72h', 'HSnum']
     feature = [
         'N', 'V', 'TaG', 'TminG', 'TmaxG', 'HSnum',
         'HNnum', 'TH01G', 'TH03G', 'PR', 'HSdiff24h', 'HSdiff48h', 'HSdiff72h',
@@ -386,6 +391,27 @@ if __name__ == '__main__':
     # X = mod1_clean.drop(columns=['Stagione', 'AvalDay'])
     X = mod1_clean[feature]
     y = mod1_clean['AvalDay']
+
+    # --- Plot example for 2 features classification ----
+    #
+    # # Confirm columns in mod1_clean
+    # print(mod1_clean.columns)
+    # df = mod1_clean
+    # # Check for NaNs in specific columns and data types
+    # print(df[['HSnum', 'HN72h', 'AvalDay']].isna().sum())
+    # # Ensure categorical/int data for hue
+    # df['AvalDay'] = df['AvalDay'].astype(int)
+
+    # # Plot with Seaborn
+    # plt.figure(figsize=(10, 6))
+    # # Edgecolor changed to 'w' for white, or remove if not needed
+    # sns.scatterplot(data=df, x='HSnum', y='HN72h', hue='AvalDay',
+    #                 palette='coolwarm', s=60, edgecolor='w', alpha=0.5)
+    # plt.title('Scatter Plot of Features with Avalanche Day Classification')
+    # plt.xlabel('HSnum')
+    # plt.ylabel('HN72h')
+    # plt.legend(title='AvalDay', loc='upper right')
+    # plt.show()
 
     # --- SPLIT TRAIN AND TEST ---
 
@@ -461,9 +487,32 @@ if __name__ == '__main__':
     results_df = pd.DataFrame(results_list)
     print(results_df)
 
+    save_outputfile(results_df, common_path /
+                    'under_oversampling_comparison.csv')
+
     # ---------------------------------------------------------------
     # --- a) DEVELOP SVM FOR NearMiss UNDERSAMPLING ---
     # ---------------------------------------------------------------
+    # # Plot training data
+
+    # print(mod1_clean.columns)
+    # df = pd.concat([X_nm_train, y_nm_train], axis=1)
+    # # Check for NaNs in specific columns and data types
+    # print(df[['HSnum', 'HN72h', 'AvalDay']].isna().sum())
+    # # Ensure categorical/int data for hue
+    # df['AvalDay'] = df['AvalDay'].astype(int)
+
+    # # Plot with Seaborn
+    # plt.figure(figsize=(10, 6))
+    # # Edgecolor changed to 'w' for white, or remove if not needed
+    # sns.scatterplot(data=df, x='HSnum', y='HN72h', hue='AvalDay',
+    #                 palette='coolwarm', s=60, edgecolor='w', alpha=1)
+    # plt.title(
+    #     'Training Data: scatterplot of Features with Avalanche Day Classification')
+    # plt.xlabel('HSnum')
+    # plt.ylabel('HN72h')
+    # plt.legend(title='AvalDay', loc='upper right')
+    # plt.show()
 
     classifier_nm = develop_SVM(
         X_nm_train, y_nm_train, X_nm_test, y_nm_test, res_nm)
@@ -502,11 +551,55 @@ if __name__ == '__main__':
     X_train_new, X_test_new, y_train_new, y_test_new = train_test_split(
         X_nm_new, y_nm_new, test_size=0.25, random_state=42)
 
+    # df = pd.concat([X_train_new, y_train_new], axis=1)
+    # # Check for NaNs in specific columns and data types
+    # print(df[['HSnum', 'HN72h', 'AvalDay']].isna().sum())
+    # # Ensure categorical/int data for hue
+    # df['AvalDay'] = df['AvalDay'].astype(int)
+
+    # # Plot with Seaborn
+    # plt.figure(figsize=(10, 6))
+    # # Edgecolor changed to 'w' for white, or remove if not needed
+    # sns.scatterplot(data=df, x='HSnum', y='HN72h', hue='AvalDay',
+    #                 palette='coolwarm', s=60, edgecolor='w', alpha=1)
+    # plt.title('Training data after scaling')
+    # plt.xlabel('HSnum')
+    # plt.ylabel('HN72h')
+    # plt.legend(title='AvalDay', loc='upper right')
+    # plt.show()
+
     res_nm_new = train_and_evaluate_svm(
         X_train_new, y_train_new, X_test_new, y_test_new)
 
+    res_nm_new_list = []
+
+    # Add each result to the list with the sampling method as an identifier
+    res_nm_new_list.append(
+        {'Run': '1', **res_nm_new})
+
     classifier_nm_new = develop_SVM(
         X_train_new, y_train_new, X_test_new, y_test_new, res_nm_new)
+
+    # Calculate evaluation metrics
+    y_predict = classifier_nm_new.predict(X_test_new)
+    accuracy = accuracy_score(y_test_new, y_predict)
+    precision = precision_score(y_test_new, y_predict, average='macro')
+    recall = recall_score(y_test_new, y_predict, average='macro')
+    f1 = f1_score(y_test_new, y_predict, average='macro')
+
+    res_2 = {
+        'accuracy': accuracy,
+        'precision': precision,
+        'recall': recall,
+        'f1': f1,
+        'best_params': {'C': classifier_nm_new.C, 'gamma': classifier_nm_new.gamma}
+    }
+
+    res_nm_new_list.append(
+        {'Run': '2', **res_2})
+    res_nm_new_df = pd.DataFrame(res_nm_new_list)
+
+    save_outputfile(res_nm_new_df, common_path / 'nearmiss_result.csv')
 
     feature_importance_df = permutation_ranking(
         classifier_nm_new, X_test_new, y_test_new)
