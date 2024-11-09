@@ -7,20 +7,17 @@ Created on Wed Oct 30 15:24:26 2024
 
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
 import pandas as pd
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import Counter
-from sklearn.datasets import make_classification
 from sklearn.model_selection import train_test_split
 from imblearn.under_sampling import RandomUnderSampler, NearMiss
 from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN, SVMSMOTE
 from imblearn.combine import SMOTETomek
 from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score, roc_curve, auc
 from sklearn.model_selection import GridSearchCV
-from sklearn import datasets
 from sklearn import svm
 from sklearn.metrics import confusion_matrix
 from sklearn.feature_selection import RFE
