@@ -178,7 +178,8 @@ def train_and_evaluate_svm(X, y, X_test, y_test):
     # Tuning SVM hyperparameters
     param_grid = {'C': [0.01, 0.1, 1, 10, 100, 1000],
                   'gamma': [10, 1, 0.1, 0.01, 0.001, 0.0001]}
-    grid = GridSearchCV(svm.SVC(kernel='rbf'), param_grid, verbose=3)
+    grid = GridSearchCV(svm.SVC(kernel='rbf'), param_grid,
+                        scoring='f1_macro', verbose=3)
 
     # Fit GridSearchCV with X and y
     grid.fit(X, y)
@@ -273,7 +274,8 @@ def develop_SVM(X_train, y_train, X_test, y_test, res_nm):
 
     # Tuning SVM hyperparameters with GridSearchCV
     param_grid = {'C': C_range, 'gamma': gamma_range}
-    grid = GridSearchCV(svm.SVC(kernel='rbf'), param_grid, verbose=3)
+    grid = GridSearchCV(svm.SVC(kernel='rbf'), param_grid,
+                        cv=10, scoring='f1_macro', verbose=3)
     grid.fit(X_train, y_train)
 
     print(f'Best parameters: {grid.best_params_}')
@@ -305,7 +307,15 @@ def develop_SVM(X_train, y_train, X_test, y_test, res_nm):
 
     # Compute ROC curve and ROC area
     plot_roc_curve(X_test, y_test, clf)
-    return out
+
+    res = {
+        'accuracy': accuracy,
+        'precision': precision,
+        'recall': recall,
+        'f1': f1,
+        'best_params': grid.best_params_
+    }
+    return out, res
 
 
 def permutation_ranking(classifier, X_test, y_test):
@@ -338,6 +348,33 @@ def permutation_ranking(classifier, X_test, y_test):
     return feature_importance_df
 
 
+def test_features_config(mod1, feature):
+    feature_plus = feature + ['AvalDay']
+
+    mod1_clean = mod1[feature_plus]
+    mod1_clean = mod1_clean.dropna()
+
+    # Extract target and features from dataframe
+    X = mod1_clean[feature]
+    y = mod1_clean['AvalDay']
+
+    # Undersampling using NearMiss method
+    X_nm, y_nm = undersampling_nearmiss(X, y)
+
+    # Split train and test
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_nm, y_nm, test_size=0.25, random_state=42)
+
+    # First Cross Validation and performance evaluation
+    result_1iter = train_and_evaluate_svm(X_train, y_train, X_test, y_test)
+
+    # Second Cross Validation and model training
+    classifier, result_2iter = develop_SVM(
+        X_train, y_train, X_test, y_test, result_1iter)
+
+    return classifier, result_2iter
+
+
 def save_outputfile(df, output_filepath):
     """Save the mod1_features dataframe to a CSV file."""
     df.to_csv(output_filepath, index=True, sep=';', na_rep='NaN')
@@ -363,22 +400,25 @@ if __name__ == '__main__':
     print(mod1.dtypes)  # For initial data type inspection
 
     # --- FEATURES SELECTION ---
-    # feature = ['HN72h', 'HSnum']
+    # feature = ['HN_3d', 'HSnum']
     feature = [
-        'N', 'V', 'TaG', 'TminG', 'TmaxG', 'HSnum',
-        'HNnum', 'TH01G', 'TH03G', 'PR', 'HSdiff24h', 'HSdiff48h', 'HSdiff72h',
-        'HSdiff120h', 'HN48h', 'HN72h', 'HN120h', 'DaysSinceLastSnow',
-        'Tmin48h', 'Tmax48h', 'Tmin72h', 'Tmax72h', 'Tmin120h', 'Tmax120h',
-        'Tdelta24h', 'Tdelta48h', 'Tdelta72h', 'Tdelta120h', 'DeltaTa24h',
-        'DeltaTa48h', 'DeltaTa72h', 'DeltaTa120h', 'DeltaTmin24h',
-        'DeltaTmin48h', 'DeltaTmin72h', 'DeltaTmin120h', 'DeltaTmax24h',
-        'DeltaTmax48h', 'DeltaTmax72h', 'DeltaTmax120h', 'Tavg', 'DegreeDays',
-        'CumulativeDegreeDays48h', 'CumulativeDegreeDays72h',
-        'CumulativeDegreeDays120h', 'SWEnew', 'SWE_cumulative', 'Penetration_ratio', 'WetSnow1', 'WetSnow2',
-        'T_gradient', 'TSNOW_diff24h', 'TSNOW_diff48h', 'TSNOW_diff72h',
-        'TSNOW_diff120h', 'WetSnowIndex', 'WetSnow_ConsecDays', 'MFcrust',
-        'NewCrust', 'CrustDays', 'AvalDay48h', 'AvalDay72h',
-        'AvalDay120h'
+        'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+        'HNnum', 'TH01G', 'TH03G', 'PR', 'HS_delta_1d', 'HS_delta_2d',
+        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+        'TempAmplitude_3d', 'TempAmplitude_5d', 'Ta_delta_1d', 'Ta_delta_2d',
+        'Ta_delta_3d', 'Ta_delta_5d', 'Tmin_delta_1d', 'Tmin_delta_2d',
+        'Tmin_delta_3d', 'Tmin_delta_5d', 'Tmax_delta_1d', 'Tmax_delta_2d',
+        'Tmax_delta_3d', 'Tmax_delta_5d', 'T_mean', 'DegreeDays_Pos',
+        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+        'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
+        'FreshSWE', 'SeasonalSWE_cum', 'Precip_24h', 'Precip_48h', 'Precip_72h',
+        'Precip_120h', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
+        'TempGrad_HS', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
+        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
+        'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
     ]
 
     feature_plus = feature + ['AvalDay']
@@ -651,6 +691,42 @@ if __name__ == '__main__':
     # feature_importance_df = permutation_ranking(
     #     classifier_sm_new, X_test_new, y_test_new)
 
+    # ---------------------------------------------------------------
+    # --- c) TEST DIFFERENT CONFIGURATION OF  ---
+    # ---------------------------------------------------------------
 
-# if __name__ == '__main__':
-#     main()
+    # feature = [
+    #     'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+    #     'HNnum', 'TH01G', 'TH03G', 'PR', 'HS_delta_1d', 'HS_delta_2d',
+    #     'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+    #     'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+    #     'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+    #     'TempAmplitude_3d', 'TempAmplitude_5d', 'Ta_delta_1d', 'Ta_delta_2d',
+    #     'Ta_delta_3d', 'Ta_delta_5d', 'Tmin_delta_1d', 'Tmin_delta_2d',
+    #     'Tmin_delta_3d', 'Tmin_delta_5d', 'Tmax_delta_1d', 'Tmax_delta_2d',
+    #     'Tmax_delta_3d', 'Tmax_delta_5d', 'T_mean', 'DegreeDays_Pos',
+    #     'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+    #     'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
+    #     'FreshSWE', 'SeasonalSWE_cum', 'Precip_24h', 'Precip_48h', 'Precip_72h',
+    #     'Precip_120h', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
+    #     'TempGrad_HS', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+    #     'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
+    #     'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
+    #     'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
+    # ]
+
+    # Evaluate snow height (HN) over the last 3 days as predictor
+    f1 = ['HN_3d']
+    res1 = test_features_config(mod1, f1)
+
+    # Evaluate snow height (HN_3d) and current snow height (HSnum) as predictors
+    f2 = ['HN_3d', 'HSnum']
+    res2 = test_features_config(mod1, f2)
+
+    # Evaluate snow height (HN_3d), current snow height (HSnum),
+    # and temperature change (Tsnow_delta_3d) as predictors
+    f3 = ['HN_3d', 'HSnum', 'AvalDay_3d']
+    res3 = test_features_config(mod1, f3)
+
+    # if __name__ == '__main__':
+    #     main()
