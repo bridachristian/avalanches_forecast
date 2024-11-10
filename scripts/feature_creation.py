@@ -27,37 +27,21 @@ def load_data(filepath):
 
 def calculate_snow_height_differences(df):
     """Calculate snow height differences over different periods."""
-    df['HSdiff24h'] = df['HSnum'].diff(periods=1)
-    df['HSdiff48h'] = df['HSnum'].diff(periods=2)
-    df['HSdiff72h'] = df['HSnum'].diff(periods=3)
-    df['HSdiff120h'] = df['HSnum'].diff(periods=5)
+    df['HS_delta_1d'] = df['HSnum'].diff(periods=1)
+    df['HS_delta_2d'] = df['HSnum'].diff(periods=2)
+    df['HS_delta_3d'] = df['HSnum'].diff(periods=3)
+    df['HS_delta_5d'] = df['HSnum'].diff(periods=5)
     return df
 
 
 def calculate_new_snow(df):
     """Calculate cumulative new snow metrics over different periods."""
-    df['HN48h'] = df['HNnum'].rolling(window=2).sum()
-    df['HN72h'] = df['HNnum'].rolling(window=3).sum()
-    df['HN120h'] = df['HNnum'].rolling(window=5).sum()
-
-    # df['NewSnowIndex'] = np.where(df['HNnum'] > 6, 1, 0)
-    # df['NewSnowIndex'] = np.where(
-    #     df['HNnum'].isna(), np.nan, df['NewSnowIndex'])
-
-    # df['NewSnow_5cm'] = np.where((df['HNnum'] >= 5) & (df['HNnum'] < 15), 1, 0)
-    # df['NewSnow_15cm'] = np.where(
-    #     (df['HNnum'] >= 15) & (df['HNnum'] < 30), 1, 0)
-    # df['NewSnow_30cm'] = np.where(
-    #     (df['HNnum'] >= 30) & (df['HNnum'] < 50), 1, 0)
-    # df['NewSnow_50cm'] = np.where((df['HNnum'] >= 50), 1, 0)
-
-    # df['3dNewSnow_10cm'] = np.where(
-    #     (df['HN72h'] >= 10) & (df['HN72h'] < 30), 1, 0)
-    # df['3dNewSnow_30cm'] = np.where(
-    #     (df['HN72h'] >= 30) & (df['HN72h'] < 60), 1, 0)
-    # df['3dNewSnow_60cm'] = np.where(
-    #     (df['HN72h'] >= 60) & (df['HN72h'] < 100), 1, 0)
-    # df['3dNewSnow_100cm'] = np.where((df['HN72h'] >= 100), 1, 0)
+    df['HN_2d'] = df['HNnum'].rolling(
+        window=2).sum()  # Cumulative snowfall over 2 days
+    # Cumulative snowfall over 3 days
+    df['HN_3d'] = df['HNnum'].rolling(window=3).sum()
+    # Cumulative snowfall over 5 days
+    df['HN_5d'] = df['HNnum'].rolling(window=5).sum()
 
     # Calculate days since last snowfall (where HNnum > 1)
     df['DaysSinceLastSnow'] = (df['HNnum'] <= 1).astype(
@@ -68,156 +52,183 @@ def calculate_new_snow(df):
 
 def calculate_temperature(df):
     """Calculate minimum, maximum temperatures and their differences over different periods."""
-    # Minimum/maximum temperatures in the last 1,2,3,5 days
-    df['Tmin48h'] = df['TminG'].rolling(window=2).min()
-    df['Tmax48h'] = df['TmaxG'].rolling(window=2).max()
-    df['Tmin72h'] = df['TminG'].rolling(window=3).min()
-    df['Tmax72h'] = df['TmaxG'].rolling(window=3).max()
-    df['Tmin120h'] = df['TminG'].rolling(window=5).min()
-    df['Tmax120h'] = df['TmaxG'].rolling(window=5).max()
+    # Minimum/maximum temperatures in the last 2, 3, 5 days
+    df['Tmin_2d'] = df['TminG'].rolling(
+        window=2).min()  # Min temperature over 2 days
+    df['Tmax_2d'] = df['TmaxG'].rolling(
+        window=2).max()  # Max temperature over 2 days
+    df['Tmin_3d'] = df['TminG'].rolling(
+        window=3).min()  # Min temperature over 3 days
+    df['Tmax_3d'] = df['TmaxG'].rolling(
+        window=3).max()  # Max temperature over 3 days
+    df['Tmin_5d'] = df['TminG'].rolling(
+        window=5).min()  # Min temperature over 5 days
+    df['Tmax_5d'] = df['TmaxG'].rolling(
+        window=5).max()  # Max temperature over 5 days
 
-    # Temperature amplitude
-    df['Tdelta24h'] = df['TmaxG'] - df['TminG']
-    df['Tdelta48h'] = df['Tmax48h'] - df['Tmin48h']
-    df['Tdelta72h'] = df['Tmax72h'] - df['Tmin72h']
-    df['Tdelta120h'] = df['Tmax120h'] - df['Tmin120h']
+    # Temperature amplitude (difference between max and min temperatures)
+    df['TempAmplitude_1d'] = df['TmaxG'] - \
+        df['TminG']               # Amplitude for today
+    df['TempAmplitude_2d'] = df['Tmax_2d'] - \
+        df['Tmin_2d']   # Amplitude over 2 days
+    df['TempAmplitude_3d'] = df['Tmax_3d'] - \
+        df['Tmin_3d']   # Amplitude over 3 days
+    df['TempAmplitude_5d'] = df['Tmax_5d'] - \
+        df['Tmin_5d']   # Amplitude over 5 days
 
     # Difference of TaG between today and previous days
-    df['DeltaTa24h'] = df['TaG'].diff(periods=1)
-    df['DeltaTa48h'] = df['TaG'].diff(periods=2)
-    df['DeltaTa72h'] = df['TaG'].diff(periods=3)
-    df['DeltaTa120h'] = df['TaG'].diff(periods=5)
+    df['Ta_delta_1d'] = df['TaG'].diff(periods=1)
+    df['Ta_delta_2d'] = df['TaG'].diff(periods=2)
+    df['Ta_delta_3d'] = df['TaG'].diff(periods=3)
+    df['Ta_delta_5d'] = df['TaG'].diff(periods=5)
 
     # Difference of TminG between today and previous days
-    df['DeltaTmin24h'] = df['TminG'].diff(periods=1)
-    df['DeltaTmin48h'] = df['TminG'].diff(periods=2)
-    df['DeltaTmin72h'] = df['TminG'].diff(periods=3)
-    df['DeltaTmin120h'] = df['TminG'].diff(periods=5)
+    df['Tmin_delta_1d'] = df['TminG'].diff(periods=1)
+    df['Tmin_delta_2d'] = df['TminG'].diff(periods=2)
+    df['Tmin_delta_3d'] = df['TminG'].diff(periods=3)
+    df['Tmin_delta_5d'] = df['TminG'].diff(periods=5)
 
     # Difference of TmaxG between today and previous days
-    df['DeltaTmax24h'] = df['TmaxG'].diff(periods=1)
-    df['DeltaTmax48h'] = df['TmaxG'].diff(periods=2)
-    df['DeltaTmax72h'] = df['TmaxG'].diff(periods=3)
-    df['DeltaTmax120h'] = df['TmaxG'].diff(periods=5)
+    df['Tmax_delta_1d'] = df['TmaxG'].diff(periods=1)
+    df['Tmax_delta_2d'] = df['TmaxG'].diff(periods=2)
+    df['Tmax_delta_3d'] = df['TmaxG'].diff(periods=3)
+    df['Tmax_delta_5d'] = df['TmaxG'].diff(periods=5)
 
     return df
 
 
 def calculate_degreedays(df):
     # Calculate the daily mean temperature
-    df['Tavg'] = (df['TmaxG'] + df['TminG']) / 2
+    df['T_mean'] = (df['TmaxG'] + df['TminG']) / 2
 
-    # Calculate degree days, but only for days where Tmax > 0
-    df['DegreeDays'] = np.where(df['Tavg'] > 0, df['Tavg'], 0)
+    # Calculate positive degree days (only when T_mean > 0)
+    df['DegreeDays_Pos'] = np.where(df['T_mean'] > 0, df['T_mean'], 0)
 
-    # If you need cumulative degree days:
-    df['CumulativeDegreeDays48h'] = df['DegreeDays'].rolling(window=2).sum()
-    df['CumulativeDegreeDays72h'] = df['DegreeDays'].rolling(window=3).sum()
-    df['CumulativeDegreeDays120h'] = df['DegreeDays'].rolling(window=5).sum()
+    # Calculate cumulative degree days over different periods
+    df['DegreeDays_cumsum_2d'] = df['DegreeDays_Pos'].rolling(window=2).sum()
+    df['DegreeDays_cumsum_3d'] = df['DegreeDays_Pos'].rolling(window=3).sum()
+    df['DegreeDays_cumsum_5d'] = df['DegreeDays_Pos'].rolling(window=5).sum()
+
     return df
 
 
 def calculate_snow_temperature(df):
-    df['TSNOW_diff24h'] = df['TH01G'].diff(periods=1)
-    df['TSNOW_diff48h'] = df['TH01G'].diff(periods=2)
-    df['TSNOW_diff72h'] = df['TH01G'].diff(periods=3)
-    df['TSNOW_diff120h'] = df['TH01G'].diff(periods=5)
+    df['Tsnow_delta_1d'] = df['TH01G'].diff(periods=1)
+    df['Tsnow_delta_2d'] = df['TH01G'].diff(periods=2)
+    df['Tsnow_delta_3d'] = df['TH01G'].diff(periods=3)
+    df['Tsnow_delta_5d'] = df['TH01G'].diff(periods=5)
 
-    df['ColdSnow'] = np.where((df['TH01G'] < -10), 1, 0)
-    df['WarmSnow'] = np.where((df['TH01G'] >= -10) & (df['TH01G'] < -2), 1, 0)
-    df['WetSnow'] = np.where((df['TH01G'] >= -2) & (df['TH01G'] <= 0), 1, 0)
+    # Categorize snow types based on temperature
+    df['SnowType_Cold'] = np.where(df['TH01G'] < -10, 1, 0)
+    df['SnowType_Warm'] = np.where(
+        (df['TH01G'] >= -10) & (df['TH01G'] < -2), 1, 0)
+    df['SnowType_Wet'] = np.where(
+        (df['TH01G'] >= -2) & (df['TH01G'] <= 0), 1, 0)
 
-    # Condensed WetSnow index
-    df['WetSnowIndex'] = np.where(df['TH01G'] < -10, 0,  # Cold Snow
-                                  np.where((df['TH01G'] >= -10) & (df['TH01G'] < -2), 1,  # Warm Snow
-                                           np.where((df['TH01G'] >= -2) & (df['TH01G'] <= 0), 2,  # Wet Snow
-                                                    -1))  # Invalid condition (optional)
-                                  )
+    # Condensed snow condition index
+    df['SnowConditionIndex'] = np.where(
+        df['TH01G'] < -10, 0,  # Cold Snow
+        np.where((df['TH01G'] >= -10) & (df['TH01G'] < -2), 1,  # Warm Snow
+                 np.where((df['TH01G'] >= -2) & (df['TH01G'] <= 0), 2,  # Wet Snow
+                          -1))  # Invalid condition (optional)
+    )
 
     # Count consecutive days of wet snow
-    df['WetSnow_ConsecDays'] = (
-        df['WetSnow'].groupby((df['WetSnow'] != df['WetSnow'].shift()).cumsum()).cumsum())
+    df['ConsecWetSnowDays'] = (
+        df['SnowType_Wet'].groupby(
+            (df['SnowType_Wet'] != df['SnowType_Wet'].shift()).cumsum()).cumsum()
+    )
 
     # Zero out non-wet days in the consecutive count column for clarity
-    df['WetSnow_ConsecDays'] = np.where(
-        df['WetSnow'] == 1, df['WetSnow_ConsecDays'], 0)
+    df['ConsecWetSnowDays'] = np.where(
+        df['SnowType_Wet'] == 1, df['ConsecWetSnowDays'], 0)
 
-    df = df.drop(columns=['ColdSnow', 'WarmSnow', 'WetSnow'])
+    # Drop intermediate snow type columns
+    df = df.drop(columns=['SnowType_Cold', 'SnowType_Warm', 'SnowType_Wet'])
 
     return df
 
 
 def calculate_wind_snow_drift(df):
     """Calculate snow drift based on wind strength (VQ1)."""
-    df['SnowDrift'] = df['VQ1'].map({0: 0, 1: 1, 2: 2, 3: 3, 4: 0})
-    df['SnowDrift48h'] = df['SnowDrift'].rolling(window=2).sum()
-    df['SnowDrift72h'] = df['SnowDrift'].rolling(window=3).sum()
-    df['SnowDrift120h'] = df['SnowDrift'].rolling(window=5).sum()
+    df['SnowDrift_1d'] = df['VQ1'].map({0: 0, 1: 1, 2: 2, 3: 3, 4: 0})
+    df['SnowDrift_2d'] = df['SnowDrift_1d'].rolling(window=2).sum()
+    df['SnowDrift_3d'] = df['SnowDrift_1d'].rolling(window=3).sum()
+    df['SnowDrift_5d'] = df['SnowDrift_1d'].rolling(window=5).sum()
 
     return df
 
 
 def calculate_swe(df):
-    """Calculate snow water equivalent (SWE) and cumulative precipitation sums."""
-    df['rho_adjusted'] = np.where(df['HNnum'] < 6, 100, df['rho'])
-    df['rho_adjusted'] = np.where(df['HNnum'] == 0, 0, df['rho_adjusted'])
+    # Adjusted snow density based on conditions
+    df['rho_adj'] = np.where(df['HNnum'] < 6, 100, df['rho'])
+    df['rho_adj'] = np.where(df['HNnum'] == 0, 0, df['rho_adj'])
 
-    df['SWEnew'] = df['HNnum'] * df['rho_adjusted'] / 100
-    df['SWE_cumulative'] = df.groupby('Stagione')['SWEnew'].cumsum()
+    # Calculate fresh snow water equivalent (FreshSWE)
+    df['FreshSWE'] = df['HNnum'] * df['rho_adj'] / 100
+    df['SeasonalSWE_cum'] = df.groupby('Stagione')['FreshSWE'].cumsum()
 
     # Precipitation sums over different periods
-    df['PSUM24h'] = df['SWEnew']
-    df['PSUM48h'] = df['SWEnew'].rolling(window=2).sum()
-    df['PSUM72h'] = df['SWEnew'].rolling(window=3).sum()
-    df['PSUM120h'] = df['SWEnew'].rolling(window=5).sum()
+    df['Precip_24h'] = df['FreshSWE']  # Instantaneous precipitation (FreshSWE)
+    df['Precip_48h'] = df['FreshSWE'].rolling(
+        window=2).sum()  # Cumulative for 48h
+    df['Precip_72h'] = df['FreshSWE'].rolling(
+        window=3).sum()  # Cumulative for 72h
+    df['Precip_120h'] = df['FreshSWE'].rolling(
+        window=5).sum()  # Cumulative for 120h
 
-    df = df.drop(columns=['rho_adjusted'])
+    df = df.drop(columns=['rho_adj'])
 
     return df
 
 
 def calculate_wet_snow(df):
-    """Calculate wet snow presence based on CS (critical snow surface)."""
-    df['WetSnow1'] = np.where(df['CS'] >= 20, 1, 0)
-    df['WetSnow1'] = np.where(df['CS'].isna(), np.nan, df['WetSnow1'])
+    # Wet snow presence based on CS (Critical Snow Surface)
+    df['WetSnow_CS'] = np.where(df['CS'] >= 20, 1, 0)
+    df['WetSnow_CS'] = np.where(df['CS'].isna(), np.nan, df['WetSnow_CS'])
 
-    df['WetSnow2'] = np.where(df['TH01G'] >= -2, 1, 0)
-    df['WetSnow2'] = np.where(df['TH01G'].isna(), np.nan, df['WetSnow2'])
+    # Wet snow presence based on temperature (TH01G)
+    df['WetSnow_Temperature'] = np.where(df['TH01G'] >= -2, 1, 0)
+    df['WetSnow_Temperature'] = np.where(
+        df['TH01G'].isna(), np.nan, df['WetSnow_Temperature'])
 
     return df
 
 
 def calculate_temperature_gradient(df):
-    """Calculate the temperature gradient based on the snow height."""
-    df['T_gradient'] = abs(df['TH01G']) / (df['HSnum'] - 10)
-    df['T_gradient'] = np.where(
-        df['T_gradient'] == np.inf, np.nan, df['T_gradient'])
+    # Calculate the temperature gradient based on snow height
+    df['TempGrad_HS'] = abs(df['TH01G']) / (df['HSnum'] - 10)
+    df['TempGrad_HS'] = np.where(
+        df['TempGrad_HS'] == np.inf, np.nan, df['TempGrad_HS'])
     return df
 
 
 def calculate_LooseSnow_avalanches(df):
-    df['LooseSnowAval'] = np.where(
+    df['LooseSnowAval_Type'] = np.where(
         (df['L1'] >= 1) & (df['L2'].isin([3, 4])), 1, 0)
-    df['LooseSnowAval'] = np.where(
-        df['L1'].isna(), np.nan, df['LooseSnowAval'])
+    df['LooseSnowAval_Type'] = np.where(
+        df['L1'].isna(), np.nan, df['LooseSnowAval_Type'])
     return df
 
 
 def calculate_MFcrust(df):
-    # Identify MF crust presence
-    df['MFcrust'] = np.where(df['CS'].isin([12, 13, 22, 23]), 1, 0)
-    df['MFcrust'] = np.where(df['CS'].isna(), np.nan, df['MFcrust'])
+   # Identify MF crust presence
+    df['MF_Crust_Present'] = np.where(df['CS'].isin([12, 13, 22, 23]), 1, 0)
+    df['MF_Crust_Present'] = np.where(
+        df['CS'].isna(), np.nan, df['MF_Crust_Present'])
 
-    df['MFcrust'] = df['MFcrust'].ffill()
+    # Forward fill to ensure continuity
+    df['MF_Crust_Present'] = df['MF_Crust_Present'].ffill()
 
-    # Check for new crusts - Here, we assume a new crust is indicated by a transition from 0 to 1
-    df['NewCrust'] = df['MFcrust'].diff().fillna(
-        0).where(df['MFcrust'] == 1, 0)
+    # Check for new MF crust (transition from 0 to 1)
+    df['New_MF_Crust'] = df['MF_Crust_Present'].diff().fillna(
+        0).where(df['MF_Crust_Present'] == 1, 0)
 
     # Count consecutive days with crust
-    df['CrustDays'] = (df['MFcrust'].cumsum(
-    ) - df['MFcrust'].cumsum().where(df['MFcrust'] == 0).ffill().fillna(0))
+    df['ConsecCrustDays'] = (df['MF_Crust_Present'].cumsum() -
+                             df['MF_Crust_Present'].cumsum().where(df['MF_Crust_Present'] == 0).ffill().fillna(0))
 
+    # Drop the 'CS' column as it's no longer needed
     df = df.drop(columns=['CS'])
 
     return df
@@ -232,13 +243,13 @@ def calculate_penetration(df):
 
 def calculate_avalanche_days(df):
     """Calculate avalanche occurrence and moving averages."""
-    df['AvalDay'] = np.where(df['L1'] >= 1, 1, df['L1'])
-    df['AvalDay'] = np.where((df['AvalDay'] == 1) & (
-        df['L2'].isin([1, 2, 5, 6])) & (df['VQ1'] >= 1), 0, df['AvalDay'])
+    df['AvalDay_1d'] = np.where(df['L1'] >= 1, 1, df['L1'])
+    df['AvalDay_1d'] = np.where((df['AvalDay_1d'] == 1) & (
+        df['L2'].isin([1, 2, 5, 6])) & (df['VQ1'] >= 1), 0, df['AvalDay_1d'])
 
-    df['AvalDay48h'] = df['AvalDay'].shift(1).rolling(window=1).mean()
-    df['AvalDay72h'] = df['AvalDay'].shift(1).rolling(window=2).mean()
-    df['AvalDay120h'] = df['AvalDay'].shift(1).rolling(window=4).mean()
+    df['AvalDay_2d'] = df['AvalDay_1d'].shift(1).rolling(window=1).mean()
+    df['AvalDay_3d'] = df['AvalDay_1d'].shift(1).rolling(window=2).mean()
+    df['AvalDay_5d'] = df['AvalDay_1d'].shift(1).rolling(window=4).mean()
     return df
 
 
