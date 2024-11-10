@@ -243,13 +243,13 @@ def calculate_penetration(df):
 
 def calculate_avalanche_days(df):
     """Calculate avalanche occurrence and moving averages."""
-    df['AvalDay_1d'] = np.where(df['L1'] >= 1, 1, df['L1'])
-    df['AvalDay_1d'] = np.where((df['AvalDay_1d'] == 1) & (
-        df['L2'].isin([1, 2, 5, 6])) & (df['VQ1'] >= 1), 0, df['AvalDay_1d'])
+    df['AvalDay'] = np.where(df['L1'] >= 1, 1, df['L1'])
+    df['AvalDay'] = np.where((df['AvalDay'] == 1) & (
+        df['L2'].isin([1, 2, 5, 6])) & (df['VQ1'] >= 1), 0, df['AvalDay'])
 
-    df['AvalDay_2d'] = df['AvalDay_1d'].shift(1).rolling(window=1).mean()
-    df['AvalDay_3d'] = df['AvalDay_1d'].shift(1).rolling(window=2).mean()
-    df['AvalDay_5d'] = df['AvalDay_1d'].shift(1).rolling(window=4).mean()
+    df['AvalDay_2d'] = df['AvalDay'].shift(1).rolling(window=1).mean()
+    df['AvalDay_3d'] = df['AvalDay'].shift(1).rolling(window=2).mean()
+    df['AvalDay_5d'] = df['AvalDay'].shift(1).rolling(window=4).mean()
     return df
 
 
