@@ -25,6 +25,36 @@ def load_data(filepath):
     return mod1
 
 
+def calculate_day_of_season(df, season_start_date='12-01'):
+    """
+    Calculate the day of the season (starting from a given season start date, e.g., 1st December).
+
+    Parameters:
+    - df: DataFrame containing a column with date information (e.g., 'Date' in format YYYY-MM-DD).
+    - season_start_date: The start date of the season in 'MM-DD' format (default is '12-01').
+
+    Returns:
+    - DataFrame with an additional 'DayOfSeason' column.
+    """
+
+    # Ensure the index is a DatetimeIndex
+    if not isinstance(df.index, pd.DatetimeIndex):
+        df.index = pd.to_datetime(df.index)
+
+    # Calculate season start for each year
+    season_start_year = df.index.to_series().apply(
+        lambda x: x.year if x.month >= 12 else x.year - 1
+    )
+    season_start = pd.to_datetime(
+        season_start_year.astype(str) + '-' + season_start_date
+    )
+
+    # Calculate the day of the season
+    df['DayOfSeason'] = (df.index - season_start).dt.days + 1
+
+    return df
+
+
 def calculate_snow_height_differences(df):
     """Calculate snow height differences over different periods."""
     df['HS_delta_1d'] = df['HSnum'].diff(periods=1)
@@ -278,8 +308,11 @@ def main():
     # --- NEW FEATURES CREATION ---
 
     # Add new variables to the dataset
+    mod1 = calculate_day_of_season(mod1, season_start_date='12-01')
     mod1_features = mod1[['Stagione', 'N', 'V', 'VQ1', 'VQ2', 'TaG', 'TminG',
                           'TmaxG', 'HSnum', 'HNnum', 'rho', 'TH01G', 'TH03G', 'PR', 'CS', 'B', 'L1', 'L2']]
+    mod1_features = calculate_day_of_season(
+        mod1_features, season_start_date='12-01')
     mod1_features = calculate_snow_height_differences(mod1_features)
     mod1_features = calculate_new_snow(mod1_features)
     mod1_features = calculate_temperature(mod1_features)
