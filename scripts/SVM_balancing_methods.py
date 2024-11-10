@@ -403,7 +403,7 @@ if __name__ == '__main__':
     # feature = ['HN_3d', 'HSnum']
     feature = [
         'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
-        'HNnum', 'TH01G', 'TH03G', 'PR', 'HS_delta_1d', 'HS_delta_2d',
+        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
         'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
         'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
         'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
@@ -697,7 +697,7 @@ if __name__ == '__main__':
 
     # feature = [
     #     'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
-    #     'HNnum', 'TH01G', 'TH03G', 'PR', 'HS_delta_1d', 'HS_delta_2d',
+    #     'HNnum', 'TH01G', 'TH03G', 'PR', DayOfSeason, 'HS_delta_1d', 'HS_delta_2d',
     #     'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
     #     'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
     #     'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
@@ -724,8 +724,8 @@ if __name__ == '__main__':
     res2 = test_features_config(mod1, f2)
 
     # Evaluate snow height (HN_3d), current snow height (HSnum),
-    # and temperature change (Tsnow_delta_3d) as predictors
-    f3 = ['HN_3d', 'HSnum', 'AvalDay_3d']
+    # and avalanche activity (AvalDay_2d) as predictors
+    f3 = ['HN_3d', 'HSnum', 'PR']
     res3 = test_features_config(mod1, f3)
 
     # if __name__ == '__main__':
