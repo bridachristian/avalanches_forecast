@@ -209,8 +209,8 @@ def train_and_evaluate_svm(X, y, X_test, y_test):
     print(f'F1: {f1}')
 
     return {
-        'accuracy': accuracy,
         'precision': precision,
+        'accuracy': accuracy,
         'recall': recall,
         'f1': f1,
         'best_params': grid.best_params_
@@ -309,8 +309,8 @@ def develop_SVM(X_train, y_train, X_test, y_test, res_nm):
     plot_roc_curve(X_test, y_test, clf)
 
     res = {
-        'accuracy': accuracy,
         'precision': precision,
+        'accuracy': accuracy,
         'recall': recall,
         'f1': f1,
         'best_params': grid.best_params_
@@ -625,8 +625,8 @@ if __name__ == '__main__':
     f1 = f1_score(y_test_new, y_predict, average='macro')
 
     res_2 = {
-        'accuracy': accuracy,
         'precision': precision,
+        'accuracy': accuracy,
         'recall': recall,
         'f1': f1,
         'best_params': {'C': classifier_nm_new.C, 'gamma': classifier_nm_new.gamma}
@@ -695,25 +695,25 @@ if __name__ == '__main__':
     # --- c) TEST DIFFERENT CONFIGURATION OF  ---
     # ---------------------------------------------------------------
 
-    # feature = [
-    #     'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
-    #     'HNnum', 'TH01G', 'TH03G', 'PR', DayOfSeason, 'HS_delta_1d', 'HS_delta_2d',
-    #     'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
-    #     'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-    #     'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-    #     'TempAmplitude_3d', 'TempAmplitude_5d', 'Ta_delta_1d', 'Ta_delta_2d',
-    #     'Ta_delta_3d', 'Ta_delta_5d', 'Tmin_delta_1d', 'Tmin_delta_2d',
-    #     'Tmin_delta_3d', 'Tmin_delta_5d', 'Tmax_delta_1d', 'Tmax_delta_2d',
-    #     'Tmax_delta_3d', 'Tmax_delta_5d', 'T_mean', 'DegreeDays_Pos',
-    #     'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-    #     'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
-    #     'FreshSWE', 'SeasonalSWE_cum', 'Precip_24h', 'Precip_48h', 'Precip_72h',
-    #     'Precip_120h', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
-    #     'TempGrad_HS', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-    #     'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
-    #     'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
-    #     'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
-    # ]
+    candidate_features = [
+        'N', 'V',  'TaG', 'TminG', 'TmaxG',
+        'HNnum', 'TH01G', 'TH03G', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
+        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_5d',
+        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+        'TempAmplitude_3d', 'TempAmplitude_5d', 'Ta_delta_1d', 'Ta_delta_2d',
+        'Ta_delta_3d', 'Ta_delta_5d', 'Tmin_delta_1d', 'Tmin_delta_2d',
+        'Tmin_delta_3d', 'Tmin_delta_5d', 'Tmax_delta_1d', 'Tmax_delta_2d',
+        'Tmax_delta_3d', 'Tmax_delta_5d', 'T_mean', 'DegreeDays_Pos',
+        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+        'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
+        'FreshSWE', 'SeasonalSWE_cum', 'Precip_24h', 'Precip_48h', 'Precip_72h',
+        'Precip_120h', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
+        'TempGrad_HS', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
+        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
+        'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
+    ]
 
     # Evaluate snow height (HN) over the last 3 days as predictor
     f1 = ['HN_3d']
@@ -723,10 +723,54 @@ if __name__ == '__main__':
     f2 = ['HN_3d', 'HSnum']
     res2 = test_features_config(mod1, f2)
 
-    # Evaluate snow height (HN_3d), current snow height (HSnum),
-    # and avalanche activity (AvalDay_2d) as predictors
+    # Evaluate a combination of snow metrics as predictors:
+    # - `HN_3d`: Total new snow height accumulated over the last 3 days, indicating recent snowfall
+    # - `HSnum`: Current snowpack height, representing the total snow depth at the time
+    # - `PR`: Penetration, a measure of snow resistance (indicator of snowpack strength)
     f3 = ['HN_3d', 'HSnum', 'PR']
     res3 = test_features_config(mod1, f3)
+
+    f4 = ['HN_3d', 'HSnum', 'PR']
+    res4 = test_features_config(mod1, f4)
+
+    # Base predictors
+    base_predictors = ['HN_3d', 'HSnum', 'PR']
+
+    # Initialize results dictionary
+    results = {}
+
+    # Loop through each candidate feature and test its performance
+    for feature in candidate_features:
+        # Define the current set of features to evaluate
+        current_features = base_predictors + [feature]
+
+        # Evaluate the model with the selected features
+        result = test_features_config(mod1, current_features)
+
+        # Store the result in the dictionary
+        results[feature] = result
+
+        # Print the evaluated feature and the result
+        # print(f"Evaluated Feature: {feature}, Result: {result}")
+
+    # Identify the best-performing feature based on the evaluation metric
+    # Assuming higher is better; adjust based on metric
+    # Extract the feature with the maximum precision
+    best_feature_by_precision = max(
+        results, key=lambda x: results[x][1]['precision'])
+    max_precision_value = results[best_feature_by_precision][1]['precision']
+
+    print(
+        f"Best Feature: {best_feature_by_precision}, Best Result: {max_precision_value}")
+
+    data = []
+    for key, (model, metrics) in results.items():
+        row = {'model': model, 'name': key}
+        row.update(metrics)  # Merge the performance metrics
+        data.append(row)
+
+    # Create the DataFrame
+    df = pd.DataFrame(data)
 
     # if __name__ == '__main__':
     #     main()
