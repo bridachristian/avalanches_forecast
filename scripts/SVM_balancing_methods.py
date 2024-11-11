@@ -772,5 +772,7 @@ if __name__ == '__main__':
     # Create the DataFrame
     df = pd.DataFrame(data)
 
+    save_outputfile(df, common_path / 'precision_features.csv')
+
     # if __name__ == '__main__':
     #     main()
