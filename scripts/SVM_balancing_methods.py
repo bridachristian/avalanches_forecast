@@ -413,8 +413,8 @@ if __name__ == '__main__':
         'Tmax_delta_3d', 'Tmax_delta_5d', 'T_mean', 'DegreeDays_Pos',
         'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
         'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
-        'FreshSWE', 'SeasonalSWE_cum', 'Precip_24h', 'Precip_48h', 'Precip_72h',
-        'Precip_120h', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
+        'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
+        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
         'TempGrad_HS', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
         'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
         'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
@@ -707,8 +707,8 @@ if __name__ == '__main__':
         'Tmax_delta_3d', 'Tmax_delta_5d', 'T_mean', 'DegreeDays_Pos',
         'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
         'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
-        'FreshSWE', 'SeasonalSWE_cum', 'Precip_24h', 'Precip_48h', 'Precip_72h',
-        'Precip_120h', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
+        'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
+        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
         'TempGrad_HS', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
         'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
         'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
@@ -716,7 +716,7 @@ if __name__ == '__main__':
     ]
 
     # Evaluate snow height (HN) over the last 3 days as predictor
-    f1 = ['HN_3d']
+    f1 = ['HSnum']
     res1 = test_features_config(mod1, f1)
 
     # Evaluate snow height (HN_3d) and current snow height (HSnum) as predictors
@@ -730,11 +730,29 @@ if __name__ == '__main__':
     f3 = ['HN_3d', 'HSnum', 'PR']
     res3 = test_features_config(mod1, f3)
 
-    f4 = ['HN_3d', 'HSnum', 'PR']
+    # Evaluate a combination of snow metrics as predictors for model performance:
+    # - `HN_3d`: Total new snow height accumulated over the last 3 days, indicating recent snowfall and its potential impact on snowpack stability.
+    # - `HSnum`: Current snowpack height, representing the total depth of snow at the time of measurement, which is crucial for understanding the overall snow accumulation in a given area.
+    # - `PR`: Penetration, a measure of snow resistance (indicator of snowpack strength)
+    # - `HN_5d`: Total new snow height accumulated over the last 5 days, capturing medium-term snow accumulation trends and helping to account for sustained snowfall events.
+    f4 = ['HN_3d', 'HSnum', 'PR', 'HN_5d']
     res4 = test_features_config(mod1, f4)
 
+    # Evaluate a combination of snow metrics as predictors for model performance:
+    f5 = ['HN_3d', 'HSnum', 'PR', 'HN_5d', 'Precip_5d']
+    res5 = test_features_config(mod1, f5)
+
+    # Evaluate a combination of snow metrics as predictors for model performance:
+    f6 = ['HN_3d', 'HSnum', 'PR', 'HN_5d', 'Precip_5d', 'Precip_3d']
+    res6 = test_features_config(mod1, f6)
+
+    # Evaluate a combination of snow metrics as predictors for model performance:
+    f7 = ['HN_3d', 'HSnum', 'PR', 'HN_5d',
+          'Precip_5d', 'Precip_3d', 'TH03G']
+    res7 = test_features_config(mod1, f7)
+
     # Base predictors
-    base_predictors = ['HN_3d', 'HSnum', 'PR']
+    base_predictors = ['HSnum']
 
     # Initialize results dictionary
     results = {}
