@@ -199,12 +199,12 @@ def calculate_swe(df):
     df['SeasonalSWE_cum'] = df.groupby('Stagione')['FreshSWE'].cumsum()
 
     # Precipitation sums over different periods
-    df['Precip_24h'] = df['FreshSWE']  # Instantaneous precipitation (FreshSWE)
-    df['Precip_48h'] = df['FreshSWE'].rolling(
+    df['Precip_1d'] = df['FreshSWE']  # Instantaneous precipitation (FreshSWE)
+    df['Precip_2d'] = df['FreshSWE'].rolling(
         window=2).sum()  # Cumulative for 48h
-    df['Precip_72h'] = df['FreshSWE'].rolling(
+    df['Precip_3d'] = df['FreshSWE'].rolling(
         window=3).sum()  # Cumulative for 72h
-    df['Precip_120h'] = df['FreshSWE'].rolling(
+    df['Precip_5d'] = df['FreshSWE'].rolling(
         window=5).sum()  # Cumulative for 120h
 
     df = df.drop(columns=['rho_adj'])
