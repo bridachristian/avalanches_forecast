@@ -696,7 +696,7 @@ if __name__ == '__main__':
     # ---------------------------------------------------------------
 
     candidate_features = [
-        'N', 'V',  'TaG', 'TminG', 'TmaxG',
+        'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
         'HNnum', 'TH01G', 'TH03G', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
         'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_5d',
         'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
@@ -714,6 +714,48 @@ if __name__ == '__main__':
         'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
         'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
     ]
+
+    # Base predictors
+    base_predictors = ['HSnum']
+
+    # Initialize results dictionary
+    results = {}
+
+    # Loop through each candidate feature and test its performance
+    for feature in candidate_features:
+        # Define the current set of features to evaluate
+        # current_features = base_predictors + [feature]
+        current_features = base_predictors + [feature]
+
+        # Evaluate the model with the selected features
+        result = test_features_config(mod1, current_features)
+
+        # Store the result in the dictionary
+        results[feature] = result
+
+        # Print the evaluated feature and the result
+        # print(f"Evaluated Feature: {feature}, Result: {result}")
+
+    # Identify the best-performing feature based on the evaluation metric
+    # Assuming higher is better; adjust based on metric
+    # Extract the feature with the maximum precision
+    best_feature_by_precision = max(
+        results, key=lambda x: results[x][1]['precision'])
+    max_precision_value = results[best_feature_by_precision][1]['precision']
+
+    print(
+        f"Best Feature: {best_feature_by_precision}, Best Result: {max_precision_value}")
+
+    data = []
+    for key, (model, metrics) in results.items():
+        row = {'model': model, 'name': key}
+        row.update(metrics)  # Merge the performance metrics
+        data.append(row)
+
+    # Create the DataFrame
+    df = pd.DataFrame(data)
+
+    save_outputfile(df, common_path / 'precision_features.csv')
 
     # Evaluate snow height (HN) over the last 3 days as predictor
     f1 = ['HSnum']
@@ -750,47 +792,6 @@ if __name__ == '__main__':
     f7 = ['HN_3d', 'HSnum', 'PR', 'HN_5d',
           'Precip_5d', 'Precip_3d', 'TH03G']
     res7 = test_features_config(mod1, f7)
-
-    # Base predictors
-    base_predictors = ['HSnum']
-
-    # Initialize results dictionary
-    results = {}
-
-    # Loop through each candidate feature and test its performance
-    for feature in candidate_features:
-        # Define the current set of features to evaluate
-        current_features = base_predictors + [feature]
-
-        # Evaluate the model with the selected features
-        result = test_features_config(mod1, current_features)
-
-        # Store the result in the dictionary
-        results[feature] = result
-
-        # Print the evaluated feature and the result
-        # print(f"Evaluated Feature: {feature}, Result: {result}")
-
-    # Identify the best-performing feature based on the evaluation metric
-    # Assuming higher is better; adjust based on metric
-    # Extract the feature with the maximum precision
-    best_feature_by_precision = max(
-        results, key=lambda x: results[x][1]['precision'])
-    max_precision_value = results[best_feature_by_precision][1]['precision']
-
-    print(
-        f"Best Feature: {best_feature_by_precision}, Best Result: {max_precision_value}")
-
-    data = []
-    for key, (model, metrics) in results.items():
-        row = {'model': model, 'name': key}
-        row.update(metrics)  # Merge the performance metrics
-        data.append(row)
-
-    # Create the DataFrame
-    df = pd.DataFrame(data)
-
-    save_outputfile(df, common_path / 'precision_features.csv')
 
     # if __name__ == '__main__':
     #     main()
