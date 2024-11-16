@@ -191,7 +191,7 @@ def train_and_evaluate_svm(X, y, X_test, y_test):
     clf = svm.SVC(kernel='rbf', C=grid.best_params_[
                   'C'], gamma=grid.best_params_['gamma'])
 
-    scores = cross_val_score(clf, X_train, y_train, cv=5)
+    scores = cross_val_score(clf, X, y, cv=5)
 
     print("Average Cross-Validation Score:", scores.mean())
     print("Standard Deviation of Scores:", scores.std())
@@ -201,10 +201,8 @@ def train_and_evaluate_svm(X, y, X_test, y_test):
     test_accuracy = clf.score(X_test, y_test)
     print("Test Set Accuracy:", test_accuracy)
 
-    from sklearn.model_selection import learning_curve
-
     train_sizes, train_scores, val_scores = learning_curve(
-        clf, X_train, y_train, cv=10)
+        clf, X, y, cv=10)
     train_mean = train_scores.mean(axis=1)
     val_mean = val_scores.mean(axis=1)
 
@@ -890,7 +888,9 @@ if __name__ == '__main__':
 
     save_outputfile(df_res, common_path / 'config_snowload_features.csv')
 
-    # RESULTS: the best configuration based on Recall it the number 9 (or 10)
+    # RESULTS: the best configuration based on Recall is:
+    # f9: HSnum, HNnum, HN_2d, HN_3d, HN_5d,
+    #     Precip_1d, Precip_2d, Precip_3d, Precip_5d
 
     # ....... 2. SNOW LOAD DUE WIND DRIFT ...........................
 
@@ -947,33 +947,117 @@ if __name__ == '__main__':
 
     save_outputfile(df_res_wd, common_path / 'config_snowdrift_features.csv')
 
-    # Evaluate a combination of snow metrics as predictors:
-    # - `HN_3d`: Total new snow height accumulated over the last 3 days, indicating recent snowfall
-    # - `HSnum`: Current snowpack height, representing the total snow depth at the time
-    # - `PR`: Penetration, a measure of snow resistance (indicator of snowpack strength)
-    f3 = ['HSnum', 'HN_3d', 'PR']
-    res3 = test_features_config(mod1, f3)
+    # RESULTS: the wind drift does not provide improvements to the model.
 
-    # Evaluate a combination of snow metrics as predictors for model performance:
-    # - `HN_3d`: Total new snow height accumulated over the last 3 days, indicating recent snowfall and its potential impact on snowpack stability.
-    # - `HSnum`: Current snowpack height, representing the total depth of snow at the time of measurement, which is crucial for understanding the overall snow accumulation in a given area.
-    # - `PR`: Penetration, a measure of snow resistance (indicator of snowpack strength)
-    # - `HN_5d`: Total new snow height accumulated over the last 5 days, capturing medium-term snow accumulation trends and helping to account for sustained snowfall events.
-    f4 = ['HN_3d', 'HSnum', 'PR', 'HN_5d']
-    res4 = test_features_config(mod1, f4)
+    # ....... 3. PAST AVALANCHE ACTIVITY ...........................
 
-    # Evaluate a combination of snow metrics as predictors for model performance:
-    f5 = ['HN_3d', 'HSnum', 'PR', 'HN_5d', 'Precip_5d']
-    res5 = test_features_config(mod1, f5)
+    a10 = f9 + ['AvalDay_2d']
+    res_a10 = test_features_config(mod1, a10)
 
-    # Evaluate a combination of snow metrics as predictors for model performance:
-    f6 = ['HN_3d', 'HSnum', 'PR', 'HN_5d', 'Precip_5d', 'Precip_3d']
-    res6 = test_features_config(mod1, f6)
+    a11 = a10 + ['AvalDay_3d']
+    res_a11 = test_features_config(mod1, a11)
 
-    # Evaluate a combination of snow metrics as predictors for model performance:
-    f7 = ['HN_3d', 'HSnum', 'PR', 'HN_5d',
-          'Precip_5d', 'Precip_3d', 'TH03G']
-    res7 = test_features_config(mod1, f7)
+    a12 = a11 + ['AvalDay_5d']
+    res_a12 = test_features_config(mod1, a12)
+
+    results_features = [res9, res_a10, res_a11, res_a12]
+
+    # Extract the metrics and create a DataFrame
+    data_res = []
+    for i, res in enumerate(results_features, 1):
+        feature_set = ', '.join(res[0])  # Combine feature names as a string
+        metrics = res[2]
+        data_res.append({
+            # 'Configuration': f"res{i}: {feature_set}",
+            'Configuration': f"conf.{i}",
+            'Features': f"{feature_set}",
+            'Precision': metrics['precision'],
+            'Accuracy': metrics['accuracy'],
+            'Recall': metrics['recall'],
+            'F1': metrics['f1']
+        })
+
+    # Create the DataFrame
+    df_res_av_act = pd.DataFrame(data_res)
+
+    # Plotting a line plot for precision
+    plt.figure(figsize=(8, 5))
+    plt.plot(df_res_av_act['Configuration'], df_res_av_act['Accuracy'],
+             marker='d', linestyle=':', label='Accuracy')
+    plt.plot(df_res_av_act['Configuration'], df_res_av_act['Recall'],
+             marker='o', linestyle='-', label='Recall')
+    plt.title('Scores for Snow Drift features in different configuration')
+    plt.xlabel('Feature Configuration')
+    plt.ylabel('Precision Score')
+    plt.ylim(0, 1)
+    plt.xticks(rotation=45)
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+    save_outputfile(df_res_av_act, common_path /
+                    'config_avalanche_activity_features.csv')
+
+    # RESULTS: the best configuration based on Recall is
+    # a12: HSnum, HNnum, HN_2d, HN_3d, HN_5d,
+    #      Precip_1d, Precip_2d, Precip_3d, Precip_5d,
+    #      AvalDay_2d, AvalDay_3d, AvalDay_5d
+
+    # ....... 4. SNOW TEMPERATURE AS  ...........................
+
+    ts13 = a12 + ['TH01G']
+    res_ts13 = test_features_config(mod1, ts13)
+
+    ts14 = ts13 + ['Tsnow_delta_1d']
+    res_ts14 = test_features_config(mod1, ts14)
+
+    ts15 = ts14 + ['Tsnow_delta_2d']
+    res_ts15 = test_features_config(mod1, ts15)
+
+    ts16 = ts15 + ['Tsnow_delta_3d']
+    res_ts16 = test_features_config(mod1, ts16)
+
+    ts17 = ts16 + ['Tsnow_delta_5d']
+    res_ts17 = test_features_config(mod1, ts17)
+
+    results_features = [res_a12, res_ts14,
+                        res_ts15, res_ts15, res_ts16, res_ts17]
+
+    # Extract the metrics and create a DataFrame
+    data_res = []
+    for i, res in enumerate(results_features, 1):
+        feature_set = ', '.join(res[0])  # Combine feature names as a string
+        metrics = res[2]
+        data_res.append({
+            # 'Configuration': f"res{i}: {feature_set}",
+            'Configuration': f"conf.{i}",
+            'Features': f"{feature_set}",
+            'Precision': metrics['precision'],
+            'Accuracy': metrics['accuracy'],
+            'Recall': metrics['recall'],
+            'F1': metrics['f1']
+        })
+
+    # Create the DataFrame
+    df_res_ts = pd.DataFrame(data_res)
+
+    # Plotting a line plot for precision
+    plt.figure(figsize=(8, 5))
+    plt.plot(df_res_ts['Configuration'], df_res_ts['Accuracy'],
+             marker='d', linestyle=':', label='Accuracy')
+    plt.plot(df_res_ts['Configuration'], df_res_ts['Recall'],
+             marker='o', linestyle='-', label='Recall')
+    plt.title('Scores for Snow Drift features in different configuration')
+    plt.xlabel('Feature Configuration')
+    plt.ylabel('Precision Score')
+    plt.ylim(0, 1)
+    plt.xticks(rotation=45)
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+    save_outputfile(df_res_ts, common_path /
+                    'config_snowtemp_features.csv')
 
     # if __name__ == '__main__':
     #     main()
