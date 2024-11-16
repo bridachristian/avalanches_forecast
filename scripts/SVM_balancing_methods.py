@@ -170,53 +170,97 @@ def oversampling_svmsmote(X, y):
     return X_res, y_res
 
 
-def train_and_evaluate_svm(X, y, X_test, y_test):
-    # --- CREATE SVM MODEL ---
-    clf = svm.SVC(kernel='rbf')
+def cross_validate_svm(X, y, param_grid, cv=5, scoring='recall'):
+    """
+    Performs hyperparameter tuning and cross-validation for an SVM model.
 
-    # Training SVM model
-    clf.fit(X, y)
+    Parameters:
+        X (array-like): Training data features.
+        y (array-like): Training data labels.
+        param_grid (dict): Dictionary with parameters names (`C` and `gamma`) as keys and lists of parameter settings to try as values.
+        cv (int): Number of cross-validation folds (default is 5).
+        scoring (str): Scoring metric for GridSearchCV (default is 'f1_macro').
 
-    # Tuning SVM hyperparameters
-    param_grid = {'C': [0.01, 0.1, 1, 10, 100, 1000],
-                  'gamma': [10, 1, 0.1, 0.01, 0.001, 0.0001]}
+    Returns:
+        dict: Contains the best parameters, cross-validation scores, and the best model.
+    """
+    # Initialize GridSearchCV for hyperparameter tuning
     grid = GridSearchCV(svm.SVC(kernel='rbf'), param_grid,
-                        scoring='f1_macro', verbose=3)
-
-    # Fit GridSearchCV with X and y
+                        cv=cv, scoring=scoring, verbose=3)
     grid.fit(X, y)
-    print(f'Best parameters: {grid.best_params_}')
 
-    # Creating new SVM model with the best parameters
-    clf = svm.SVC(kernel='rbf', C=grid.best_params_[
-                  'C'], gamma=grid.best_params_['gamma'])
+    # Extract the best parameters and model
+    best_params = grid.best_params_
+    best_model = grid.best_estimator_
 
-    scores = cross_val_score(clf, X, y, cv=5)
+    # Perform cross-validation using the best model
+    cv_scores = cross_val_score(best_model, X, y, cv=cv, scoring=scoring)
+    print("Best Parameters:", best_params)
+    print("Average Cross-Validation Score:", cv_scores.mean())
+    print("Standard Deviation of Scores:", cv_scores.std())
 
-    print("Average Cross-Validation Score:", scores.mean())
-    print("Standard Deviation of Scores:", scores.std())
+    # Return the best model and evaluation metrics
+    return {
+        'best_model': best_model,
+        'best_params': best_params,
+        'cv_mean_score': cv_scores.mean(),
+        'cv_std_score': cv_scores.std()
+    }
 
-    clf.fit(X, y)
 
-    test_accuracy = clf.score(X_test, y_test)
-    print("Test Set Accuracy:", test_accuracy)
+def plot_learning_curve(clf, X, y, cv=5):
+    """
+    Plots the learning curve for the given classifier.
 
-    train_sizes, train_scores, val_scores = learning_curve(
-        clf, X, y, cv=10)
+    Parameters:
+    - clf: Trained classifier (e.g., SVM model)
+    - X: Feature data
+    - y: Target labels
+    - cv: Number of cross-validation folds (default is 10)
+
+    Returns:
+    - None (displays a plot)
+    """
+    # Compute learning curve
+    train_sizes, train_scores, val_scores = learning_curve(clf, X, y, cv=cv)
+
+    # Calculate mean and standard deviation of training and validation scores
     train_mean = train_scores.mean(axis=1)
     val_mean = val_scores.mean(axis=1)
 
+    # Plot the learning curve
     plt.plot(train_sizes, train_mean, label="Training Score")
     plt.plot(train_sizes, val_mean, label="Validation Score")
     plt.xlabel("Training Set Size")
     plt.ylabel("Score")
-    plt.ylim(0.5, 1)
+    plt.ylim(0, 1)
     plt.legend()
+    plt.title("Learning Curve for SVM")
     plt.show()
 
-    # Training new SVM model
-    # clf.fit(X, y)
-    # Ensure y_test is a DataFrame or a 2D array with one row per sample
+
+def train_and_evaluate_svm(X, y, X_test, y_test, param_grid, cv=5):
+
+    # 1. CROSS VALIDATION: find the best C and gamma parameters
+
+    # param_grid = {'C': [0.01, 0.1, 1, 10, 100, 1000],
+    #               'gamma': [10, 1, 0.1, 0.01, 0.001, 0.0001]}
+
+    cv_results = cross_validate_svm(
+        X, y, param_grid, cv, scoring='recall')
+
+    # 2. CREATE THE CLASSIFIER WITH THE BEST C AND gamma
+
+    clf = svm.SVC(
+        kernel='rbf', C=cv_results['best_params']['C'], gamma=cv_results['best_params']['gamma'])
+    clf.fit(X, y)
+
+    # 3. EVALUATE GOODNESS OF PREDICTION USING LEARNING CURVE
+
+    plot_learning_curve(clf, X, y, cv)
+
+    # 4. EVALUATE THE PERFORMANCHE OF THE MODEL
+
     # Predicting on the test data
     y_pred = clf.predict(X_test)
 
@@ -237,7 +281,7 @@ def train_and_evaluate_svm(X, y, X_test, y_test):
         'accuracy': accuracy,
         'precision': precision,
         'f1': f1,
-        'best_params': grid.best_params_
+        'best_params': cv_results['best_params']
     }
 
 
@@ -411,11 +455,28 @@ def test_features_config(mod1, feature):
         X_nm, y_nm, test_size=0.25, random_state=42)
 
     # First Cross Validation and performance evaluation
-    result_1iter = train_and_evaluate_svm(X_train, y_train, X_test, y_test)
+    param_grid = {'C': [0.01, 0.1, 1, 10, 100, 1000],
+                  'gamma': [10, 1, 0.1, 0.01, 0.001, 0.0001]}
+    result_1iter = train_and_evaluate_svm(
+        X_train, y_train, X_test, y_test, param_grid, cv=5)
+
+    # Second Cross Validation and performance evaluation
+    best_params = result_1iter['best_params']
+    param_grid1 = {'C': np.linspace(best_params['C']*0.1, best_params['C']*10, 10),
+                   'gamma': np.linspace(best_params['gamma']*0.1, best_params['gamma']*10, 10)}
+    result_2iter = train_and_evaluate_svm(
+        X_train, y_train, X_test, y_test, param_grid1, cv=5)
+
+    # Third Cross Validation and performance evaluation
+    best_params2 = result_2iter['best_params']
+    param_grid2 = {'C': np.linspace(best_params2['C']*0.5, best_params2['C']*2, 10),
+                   'gamma': np.linspace(best_params2['gamma']*0.5, best_params2['gamma']*2, 10)}
+    result_3iter = train_and_evaluate_svm(
+        X_train, y_train, X_test, y_test, param_grid2, cv=5)
 
     # Second Cross Validation and model training
-    classifier, result_2iter = develop_SVM(
-        X_train, y_train, X_test, y_test, result_1iter)
+    classifier, result_4iter = develop_SVM(
+        X_train, y_train, X_test, y_test, result_3iter)
 
     return feature, classifier, result_2iter
 
@@ -785,14 +846,14 @@ if __name__ == '__main__':
     # Assuming higher is better; adjust based on metric
     # Extract the feature with the maximum precision
     best_feature = max(
-        results, key=lambda x: results[x][1]['recall'])
-    max_value = results[best_feature][1]['recall']
+        results, key=lambda x: results[x][2]['recall'])
+    max_value = results[best_feature][2]['recall']
 
     print(
         f"Best Feature: {best_feature}, Best Result: {max_value}")
 
     data = []
-    for key, (model, metrics) in results.items():
+    for key, (feature, model, metrics) in results.items():
         row = {'model': model, 'name': key}
         row.update(metrics)  # Merge the performance metrics
         data.append(row)
