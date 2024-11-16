@@ -772,7 +772,7 @@ if __name__ == '__main__':
     for feature in candidate_features:
         # Define the current set of features to evaluate
         # current_features = base_predictors + [feature]
-        current_features = base_predictors + [feature]
+        current_features = [feature]
 
         # Evaluate the model with the selected features
         result = test_features_config(mod1, current_features)
@@ -786,12 +786,12 @@ if __name__ == '__main__':
     # Identify the best-performing feature based on the evaluation metric
     # Assuming higher is better; adjust based on metric
     # Extract the feature with the maximum precision
-    best_feature_by_precision = max(
-        results, key=lambda x: results[x][1]['precision'])
-    max_precision_value = results[best_feature_by_precision][1]['precision']
+    best_feature = max(
+        results, key=lambda x: results[x][1]['recall'])
+    max_value = results[best_feature][1]['recall']
 
     print(
-        f"Best Feature: {best_feature_by_precision}, Best Result: {max_precision_value}")
+        f"Best Feature: {best_feature}, Best Result: {max_value}")
 
     data = []
     for key, (model, metrics) in results.items():
@@ -808,48 +808,50 @@ if __name__ == '__main__':
     # TEST FEATURES PERFORMANCE
     # -------------------------------------------------------
 
-    # Evaluate snow height (HN) over the last 3 days as predictor
+    # ....... 1. SNOW LOAD DUE SNOWFALL ...........................
+
     f1 = ['HSnum']
     res1 = test_features_config(mod1, f1)
 
-    # Evaluate snow height (HN_3d) and current snow height (HSnum) as predictors
     f2 = ['HSnum', 'HNnum']
     res2 = test_features_config(mod1, f2)
 
-    # Evaluate snow height (HN_3d) and current snow height (HSnum) as predictors
     f3 = ['HSnum', 'HNnum', 'HN_2d']
     res3 = test_features_config(mod1, f3)
 
-    # Evaluate snow height (HN_3d) and current snow height (HSnum) as predictors
     f4 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d']
     res4 = test_features_config(mod1, f4)
 
-    # Evaluate snow height (HN_3d) and current snow height (HSnum) as predictors
     f5 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d', 'HN_5d']
     res5 = test_features_config(mod1, f5)
 
-    # Evaluate snow height (HN_3d) and current snow height (HSnum) as predictors
     f6 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d', 'HN_5d', 'Precip_1d']
     res6 = test_features_config(mod1, f6)
 
-    # Evaluate snow height (HN_3d) and current snow height (HSnum) as predictors
     f7 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d',
           'HN_5d', 'Precip_1d', 'Precip_2d']
     res7 = test_features_config(mod1, f7)
 
-    # Evaluate snow height (HN_3d) and current snow height (HSnum) as predictors
     f8 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d', 'HN_5d',
           'Precip_1d', 'Precip_2d', 'Precip_3d']
     res8 = test_features_config(mod1, f8)
 
-    # Evaluate snow height (HN_3d) and current snow height (HSnum) as predictors
     f9 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d', 'HN_5d',
           'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d']
     res9 = test_features_config(mod1, f9)
 
+    f10 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d', 'HN_5d',
+           'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d', 'FreshSWE']
+    res10 = test_features_config(mod1, f10)
+
+    f11 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d', 'HN_5d',
+           'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d', 'FreshSWE', 'SeasonalSWE_cum']
+    res11 = test_features_config(mod1, f11)
+
     # PLOTS
     # Combine the results into a list
-    results_features = [res1, res2, res3, res4, res5, res6, res7, res8, res9]
+    results_features = [res1, res2, res3, res4,
+                        res5, res6, res7, res8, res9, res10, res11]
 
     # Extract the metrics and create a DataFrame
     data_res = []
@@ -877,9 +879,9 @@ if __name__ == '__main__':
     #          marker='s', linestyle='--', color='green', label='Recall')
     plt.plot(df_res['Configuration'], df_res['Accuracy'],
              marker='d', linestyle=':', label='Accuracy')
-    plt.plot(df_res['Configuration'], df_res['Precision'],
-             marker='o', linestyle='-', label='Precision')
-    plt.title('Precision Score for Different Feature Configurations')
+    plt.plot(df_res['Configuration'], df_res['Recall'],
+             marker='o', linestyle='-', label='Recall')
+    plt.title('Scores for Snowfall features in different configuration')
     plt.xlabel('Feature Configuration')
     plt.ylabel('Precision Score')
     plt.ylim(0, 1)
@@ -887,6 +889,65 @@ if __name__ == '__main__':
     plt.grid(True)
     plt.legend()
     plt.show()
+
+    save_outputfile(df_res, common_path / 'config_snowload_features.csv')
+
+    # ....... 2. SNOW LOAD DUE WIND DRIFT ...........................
+
+    wd4 = ['HSnum', 'HNnum', 'HN_2d', 'SnowDrift_1d']
+    res_wd4 = test_features_config(mod1, wd4)
+
+    wd5 = ['HSnum', 'HNnum', 'HN_2d', 'SnowDrift_1d', 'SnowDrift_2d']
+    res_wd5 = test_features_config(mod1, wd5)
+
+    wd6 = ['HSnum', 'HNnum', 'HN_2d', 'SnowDrift_1d',
+           'SnowDrift_2d', 'SnowDrift_3d']
+    res_wd6 = test_features_config(mod1, wd6)
+
+    wd7 = ['HSnum', 'HNnum', 'HN_2d', 'SnowDrift_1d',
+           'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d']
+    res_wd7 = test_features_config(mod1, wd7)
+
+    results_features = [res3, res_wd4, res_wd5, res_wd6, res_wd7]
+
+    # Extract the metrics and create a DataFrame
+    data_res = []
+    for i, res in enumerate(results_features, 1):
+        feature_set = ', '.join(res[0])  # Combine feature names as a string
+        metrics = res[2]
+        data_res.append({
+            # 'Configuration': f"res{i}: {feature_set}",
+            'Configuration': f"conf.{i}",
+            'Features': f"{feature_set}",
+            'Precision': metrics['precision'],
+            'Accuracy': metrics['accuracy'],
+            'Recall': metrics['recall'],
+            'F1': metrics['f1']
+        })
+
+    # Create the DataFrame
+    df_res_wd = pd.DataFrame(data_res)
+
+    # Plotting a line plot for precision
+    plt.figure(figsize=(8, 5))
+    # plt.plot(df_res['Configuration'], df_res['F1'],
+    #          marker='x', linestyle='-.', color='red', label='F1 Score')
+    # plt.plot(df_res['Configuration'], df_res['Recall'],
+    #          marker='s', linestyle='--', color='green', label='Recall')
+    plt.plot(df_res['Configuration'], df_res['Accuracy'],
+             marker='d', linestyle=':', label='Accuracy')
+    plt.plot(df_res['Configuration'], df_res['Recall'],
+             marker='o', linestyle='-', label='Recall')
+    plt.title('Scores for Snow Drift features in different configuration')
+    plt.xlabel('Feature Configuration')
+    plt.ylabel('Precision Score')
+    plt.ylim(0, 1)
+    plt.xticks(rotation=45)
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+    save_outputfile(df_res_wd, common_path / 'config_snowdrift_features.csv')
 
     # Evaluate a combination of snow metrics as predictors:
     # - `HN_3d`: Total new snow height accumulated over the last 3 days, indicating recent snowfall
