@@ -235,9 +235,9 @@ def train_and_evaluate_svm(X, y, X_test, y_test):
     print(f'F1: {f1}')
 
     return {
-        'precision': precision,
-        'accuracy': accuracy,
         'recall': recall,
+        'accuracy': accuracy,
+        'precision': precision,
         'f1': f1,
         'best_params': grid.best_params_
     }
@@ -801,6 +801,7 @@ if __name__ == '__main__':
 
     # Create the DataFrame
     df = pd.DataFrame(data)
+    df = df.sort_values(by='recall', ascending=False)
 
     save_outputfile(df, common_path / 'precision_features.csv')
 
@@ -813,39 +814,34 @@ if __name__ == '__main__':
     f1 = ['HSnum']
     res1 = test_features_config(mod1, f1)
 
-    f2 = ['HSnum', 'HNnum']
+    f2 = f1 + ['HNnum']
     res2 = test_features_config(mod1, f2)
 
-    f3 = ['HSnum', 'HNnum', 'HN_2d']
+    f3 = f2 + ['HN_2d']
     res3 = test_features_config(mod1, f3)
 
-    f4 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d']
+    f4 = f3 + ['HN_3d']
     res4 = test_features_config(mod1, f4)
 
-    f5 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d', 'HN_5d']
+    f5 = f4 + ['HN_5d']
     res5 = test_features_config(mod1, f5)
 
-    f6 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d', 'HN_5d', 'Precip_1d']
+    f6 = f5 + ['Precip_1d']
     res6 = test_features_config(mod1, f6)
 
-    f7 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d',
-          'HN_5d', 'Precip_1d', 'Precip_2d']
+    f7 = f6 + ['Precip_2d']
     res7 = test_features_config(mod1, f7)
 
-    f8 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d', 'HN_5d',
-          'Precip_1d', 'Precip_2d', 'Precip_3d']
+    f8 = f7 + ['Precip_3d']
     res8 = test_features_config(mod1, f8)
 
-    f9 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d', 'HN_5d',
-          'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d']
+    f9 = f8 + ['Precip_5d']
     res9 = test_features_config(mod1, f9)
 
-    f10 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d', 'HN_5d',
-           'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d', 'FreshSWE']
+    f10 = f9 + ['FreshSWE']
     res10 = test_features_config(mod1, f10)
 
-    f11 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d', 'HN_5d',
-           'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d', 'FreshSWE', 'SeasonalSWE_cum']
+    f11 = f10 + ['SeasonalSWE_cum']
     res11 = test_features_config(mod1, f11)
 
     # PLOTS
@@ -890,22 +886,24 @@ if __name__ == '__main__':
     plt.legend()
     plt.show()
 
+    df_res = df_res.sort_values(by='Recall', ascending=False)
+
     save_outputfile(df_res, common_path / 'config_snowload_features.csv')
+
+    # RESULTS: the best configuration based on Recall it the number 9 (or 10)
 
     # ....... 2. SNOW LOAD DUE WIND DRIFT ...........................
 
-    wd4 = ['HSnum', 'HNnum', 'HN_2d', 'SnowDrift_1d']
+    wd4 = f9 + ['SnowDrift_1d']
     res_wd4 = test_features_config(mod1, wd4)
 
-    wd5 = ['HSnum', 'HNnum', 'HN_2d', 'SnowDrift_1d', 'SnowDrift_2d']
+    wd5 = wd4 + ['SnowDrift_2d']
     res_wd5 = test_features_config(mod1, wd5)
 
-    wd6 = ['HSnum', 'HNnum', 'HN_2d', 'SnowDrift_1d',
-           'SnowDrift_2d', 'SnowDrift_3d']
+    wd6 = wd5 + ['SnowDrift_3d']
     res_wd6 = test_features_config(mod1, wd6)
 
-    wd7 = ['HSnum', 'HNnum', 'HN_2d', 'SnowDrift_1d',
-           'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d']
+    wd7 = wd6 + ['SnowDrift_5d']
     res_wd7 = test_features_config(mod1, wd7)
 
     results_features = [res3, res_wd4, res_wd5, res_wd6, res_wd7]
@@ -934,9 +932,9 @@ if __name__ == '__main__':
     #          marker='x', linestyle='-.', color='red', label='F1 Score')
     # plt.plot(df_res['Configuration'], df_res['Recall'],
     #          marker='s', linestyle='--', color='green', label='Recall')
-    plt.plot(df_res['Configuration'], df_res['Accuracy'],
+    plt.plot(df_res_wd['Configuration'], df_res_wd['Accuracy'],
              marker='d', linestyle=':', label='Accuracy')
-    plt.plot(df_res['Configuration'], df_res['Recall'],
+    plt.plot(df_res_wd['Configuration'], df_res_wd['Recall'],
              marker='o', linestyle='-', label='Recall')
     plt.title('Scores for Snow Drift features in different configuration')
     plt.xlabel('Feature Configuration')
