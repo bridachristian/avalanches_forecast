@@ -22,6 +22,8 @@ from sklearn import svm
 from sklearn.metrics import confusion_matrix
 from sklearn.feature_selection import RFE
 from sklearn.inspection import permutation_importance
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import learning_curve
 
 
 def load_data(filepath):
@@ -189,9 +191,33 @@ def train_and_evaluate_svm(X, y, X_test, y_test):
     clf = svm.SVC(kernel='rbf', C=grid.best_params_[
                   'C'], gamma=grid.best_params_['gamma'])
 
-    # Training new SVM model
+    scores = cross_val_score(clf, X_train, y_train, cv=5)
+
+    print("Average Cross-Validation Score:", scores.mean())
+    print("Standard Deviation of Scores:", scores.std())
+
     clf.fit(X, y)
 
+    test_accuracy = clf.score(X_test, y_test)
+    print("Test Set Accuracy:", test_accuracy)
+
+    from sklearn.model_selection import learning_curve
+
+    train_sizes, train_scores, val_scores = learning_curve(
+        clf, X_train, y_train, cv=10)
+    train_mean = train_scores.mean(axis=1)
+    val_mean = val_scores.mean(axis=1)
+
+    plt.plot(train_sizes, train_mean, label="Training Score")
+    plt.plot(train_sizes, val_mean, label="Validation Score")
+    plt.xlabel("Training Set Size")
+    plt.ylabel("Score")
+    plt.ylim(0.5, 1)
+    plt.legend()
+    plt.show()
+
+    # Training new SVM model
+    # clf.fit(X, y)
     # Ensure y_test is a DataFrame or a 2D array with one row per sample
     # Predicting on the test data
     y_pred = clf.predict(X_test)
@@ -284,8 +310,29 @@ def develop_SVM(X_train, y_train, X_test, y_test, res_nm):
     clf = svm.SVC(kernel='rbf', C=grid.best_params_[
         'C'], gamma=grid.best_params_['gamma'])
 
+    scores = cross_val_score(clf, X_train, y_train, cv=10)
+
+    print("Average Cross-Validation Score:", scores.mean())
+    print("Standard Deviation of Scores:", scores.std())
+
     # Training the new SVM model
     out = clf.fit(X_train, y_train)
+
+    test_accuracy = out.score(X_test, y_test)
+    print("Test Set Accuracy:", test_accuracy)
+
+    train_sizes, train_scores, val_scores = learning_curve(
+        out, X_train, y_train, cv=10)
+    train_mean = train_scores.mean(axis=1)
+    val_mean = val_scores.mean(axis=1)
+
+    plt.plot(train_sizes, train_mean, label="Training Score", color='red')
+    plt.plot(train_sizes, val_mean, label="Validation Score", color='green')
+    plt.xlabel("Training Set Size")
+    plt.ylabel("Score")
+    plt.ylim(0.5, 1)
+    plt.legend()
+    plt.show()
 
     # Predicting on the test data
     y_pred = clf.predict(X_test)
@@ -372,7 +419,7 @@ def test_features_config(mod1, feature):
     classifier, result_2iter = develop_SVM(
         X_train, y_train, X_test, y_test, result_1iter)
 
-    return classifier, result_2iter
+    return feature, classifier, result_2iter
 
 
 def save_outputfile(df, output_filepath):
@@ -757,19 +804,95 @@ if __name__ == '__main__':
 
     save_outputfile(df, common_path / 'precision_features.csv')
 
+    # -------------------------------------------------------
+    # TEST FEATURES PERFORMANCE
+    # -------------------------------------------------------
+
     # Evaluate snow height (HN) over the last 3 days as predictor
     f1 = ['HSnum']
     res1 = test_features_config(mod1, f1)
 
     # Evaluate snow height (HN_3d) and current snow height (HSnum) as predictors
-    f2 = ['HN_3d', 'HSnum']
+    f2 = ['HSnum', 'HNnum']
     res2 = test_features_config(mod1, f2)
+
+    # Evaluate snow height (HN_3d) and current snow height (HSnum) as predictors
+    f3 = ['HSnum', 'HNnum', 'HN_2d']
+    res3 = test_features_config(mod1, f3)
+
+    # Evaluate snow height (HN_3d) and current snow height (HSnum) as predictors
+    f4 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d']
+    res4 = test_features_config(mod1, f4)
+
+    # Evaluate snow height (HN_3d) and current snow height (HSnum) as predictors
+    f5 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d', 'HN_5d']
+    res5 = test_features_config(mod1, f5)
+
+    # Evaluate snow height (HN_3d) and current snow height (HSnum) as predictors
+    f6 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d', 'HN_5d', 'Precip_1d']
+    res6 = test_features_config(mod1, f6)
+
+    # Evaluate snow height (HN_3d) and current snow height (HSnum) as predictors
+    f7 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d',
+          'HN_5d', 'Precip_1d', 'Precip_2d']
+    res7 = test_features_config(mod1, f7)
+
+    # Evaluate snow height (HN_3d) and current snow height (HSnum) as predictors
+    f8 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d', 'HN_5d',
+          'Precip_1d', 'Precip_2d', 'Precip_3d']
+    res8 = test_features_config(mod1, f8)
+
+    # Evaluate snow height (HN_3d) and current snow height (HSnum) as predictors
+    f9 = ['HSnum', 'HNnum', 'HN_2d', 'HN_3d', 'HN_5d',
+          'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d']
+    res9 = test_features_config(mod1, f9)
+
+    # PLOTS
+    # Combine the results into a list
+    results_features = [res1, res2, res3, res4, res5, res6, res7, res8, res9]
+
+    # Extract the metrics and create a DataFrame
+    data_res = []
+    for i, res in enumerate(results_features, 1):
+        feature_set = ', '.join(res[0])  # Combine feature names as a string
+        metrics = res[2]
+        data_res.append({
+            # 'Configuration': f"res{i}: {feature_set}",
+            'Configuration': f"conf.{i}",
+            'Features': f"{feature_set}",
+            'Precision': metrics['precision'],
+            'Accuracy': metrics['accuracy'],
+            'Recall': metrics['recall'],
+            'F1': metrics['f1']
+        })
+
+    # Create the DataFrame
+    df_res = pd.DataFrame(data_res)
+
+    # Plotting a line plot for precision
+    plt.figure(figsize=(8, 5))
+    # plt.plot(df_res['Configuration'], df_res['F1'],
+    #          marker='x', linestyle='-.', color='red', label='F1 Score')
+    # plt.plot(df_res['Configuration'], df_res['Recall'],
+    #          marker='s', linestyle='--', color='green', label='Recall')
+    plt.plot(df_res['Configuration'], df_res['Accuracy'],
+             marker='d', linestyle=':', label='Accuracy')
+    plt.plot(df_res['Configuration'], df_res['Precision'],
+             marker='o', linestyle='-', label='Precision')
+    plt.title('Precision Score for Different Feature Configurations')
+    plt.xlabel('Feature Configuration')
+    plt.ylabel('Precision Score')
+    plt.ylim(0, 1)
+    plt.xticks(rotation=45)
+    plt.grid(True)
+    plt.legend()
+    plt.show()
 
     # Evaluate a combination of snow metrics as predictors:
     # - `HN_3d`: Total new snow height accumulated over the last 3 days, indicating recent snowfall
     # - `HSnum`: Current snowpack height, representing the total snow depth at the time
     # - `PR`: Penetration, a measure of snow resistance (indicator of snowpack strength)
-    f3 = ['HN_3d', 'HSnum', 'PR']
+    f3 = ['HSnum', 'HN_3d', 'PR']
     res3 = test_features_config(mod1, f3)
 
     # Evaluate a combination of snow metrics as predictors for model performance:
