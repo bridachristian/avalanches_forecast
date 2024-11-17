@@ -12,7 +12,7 @@ from scripts.svm.undersampling_methods import undersampling_random, undersamplin
 from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
 
 
-def cross_validate_svm(X, y, param_grid, cv=5, scoring='f1'):
+def cross_validate_svm(X, y, param_grid, cv=5, scoring='f1_macro'):
     """
     Performs hyperparameter tuning and cross-validation for an SVM model.
 
@@ -78,7 +78,7 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, cv=5):
     from scripts.svm.evaluation import plot_learning_curve
 
     # 1. Hyperparameter Tuning: Cross-validation to find the best C and gamma
-    cv_results = cross_validate_svm(X, y, param_grid, cv, scoring='f1')
+    cv_results = cross_validate_svm(X, y, param_grid, cv, scoring='f1_macro')
 
     # 2. Train the SVM Classifier with Best Hyperparameters
     clf = svm.SVC(
