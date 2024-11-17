@@ -239,43 +239,59 @@ def plot_learning_curve(clf, X, y, cv=5):
     plt.show()
 
 
-def train_and_evaluate_svm(X, y, X_test, y_test, param_grid, cv=5):
+def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, cv=5):
+    '''
+    Performs hyperparameter tuning, training, and evaluation of an SVM classifier.
 
-    # 1. CROSS VALIDATION: find the best C and gamma parameters
+    Parameters
+    ----------
+    X : array-like
+        Training data features.
+    y : array-like
+        Training data labels.
+    X_test : array-like
+        Test data features.
+    y_test : array-like
+        Test data labels.
+    param_grid : dict
+        Grid of 'C' and 'gamma' values for hyperparameter tuning.
+    cv : int, optional
+        Number of cross-validation folds. Default is 5.
 
-    # param_grid = {'C': [0.01, 0.1, 1, 10, 100, 1000],
-    #               'gamma': [10, 1, 0.1, 0.01, 0.001, 0.0001]}
+    Returns
+    -------
+    dict
+        A dictionary containing evaluation metrics (accuracy, precision, recall, F1 score)
+        and the best hyperparameters (C, gamma) found during tuning.
+    '''
 
-    cv_results = cross_validate_svm(
-        X, y, param_grid, cv, scoring='recall')
+    # 1. Hyperparameter Tuning: Cross-validation to find the best C and gamma
+    cv_results = cross_validate_svm(X, y, param_grid, cv, scoring='recall')
 
-    # 2. CREATE THE CLASSIFIER WITH THE BEST C AND gamma
-
+    # 2. Train the SVM Classifier with Best Hyperparameters
     clf = svm.SVC(
         kernel='rbf', C=cv_results['best_params']['C'], gamma=cv_results['best_params']['gamma'])
     clf.fit(X, y)
 
-    # 3. EVALUATE GOODNESS OF PREDICTION USING LEARNING CURVE
-
+    # 3. Evaluate Training Performance with a Learning Curve
     plot_learning_curve(clf, X, y, cv)
 
-    # 4. EVALUATE THE PERFORMANCHE OF THE MODEL
-
-    # Predicting on the test data
+    # 4. Evaluate Test Set Performance
     y_pred = clf.predict(X_test)
 
     # Calculate evaluation metrics
     accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred, average='macro')
-    recall = recall_score(y_test, y_pred, average='macro')
-    f1 = f1_score(y_test, y_pred, average='macro')
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
 
-    # Print the evaluation metrics
-    print(f'Accuracy: {accuracy}')
-    print(f'Precision: {precision}')
-    print(f'Recall: {recall}')
-    print(f'F1: {f1}')
+    # Print evaluation metrics
+    print(f'Accuracy: {accuracy:.4f}')
+    print(f'Precision: {precision:.4f}')
+    print(f'Recall: {recall:.4f}')
+    print(f'F1: {f1:.4f}')
 
+    # Return results as a dictionary
     return {
         'recall': recall,
         'accuracy': accuracy,
@@ -322,71 +338,80 @@ def plot_roc_curve(X_test, y_test, clf):
     plt.show()
 
 
-def develop_SVM(X_train, y_train, X_test, y_test, res_nm):
-    # Create SVM classifier
-    clf = svm.SVC(kernel='rbf')
+def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params):
+    '''
+    Train and evaluate an SVM model using the best hyperparameters.
 
-    # Training initial SVM model
-    clf.fit(X_train, y_train)
+    This function takes in training and test datasets along with the optimal 
+    hyperparameters (C and gamma) to train an SVM model with an RBF kernel. 
+    It performs cross-validation on the training set, evaluates performance 
+    on the test set, and computes key performance metrics such as accuracy, 
+    precision, recall, and F1 score. It also visualizes the learning curve, 
+    confusion matrix, and ROC curve for the trained model.
 
-    print("Training class distribution:", Counter(y_train))
-    print("Testing class distribution:", Counter(y_test))
+    Parameters
+    ----------
+    X_train : array-like, shape (n_samples, n_features)
+        The training input samples.
 
-    # Get the best parameters from the res_nm results
-    C_value = res_nm['best_params']['C']
-    gamma_value = res_nm['best_params']['gamma']
+    y_train : array-like, shape (n_samples,)
+        The target values for training.
 
-    # Create a range for C and gamma
-    C_range = np.linspace(C_value * 0.5, C_value * 1.5, 21)
-    gamma_range = np.linspace(gamma_value * 0.5, gamma_value * 1.5, 21)
+    X_test : array-like, shape (n_samples, n_features)
+        The test input samples.
 
-    # Tuning SVM hyperparameters with GridSearchCV
-    param_grid = {'C': C_range, 'gamma': gamma_range}
-    grid = GridSearchCV(svm.SVC(kernel='rbf'), param_grid,
-                        cv=10, scoring='f1_macro', verbose=3)
-    grid.fit(X_train, y_train)
+    y_test : array-like, shape (n_samples,)
+        The true target values for the test set.
 
-    print(f'Best parameters: {grid.best_params_}')
+    best_params : dict
+        A dictionary containing the best hyperparameters for the SVM model. 
+        Expected keys are:
+            - 'C': Regularization parameter (float)
+            - 'gamma': Kernel coefficient (float)
+
+    Returns
+    -------
+    model : object
+        The trained SVM model (fitted estimator).
+
+    metrics : dict
+        A dictionary containing the evaluation metrics:
+            - 'accuracy': Test set accuracy (float)
+            - 'precision': Test set precision (float)
+            - 'recall': Test set recall (float)
+            - 'f1': Test set F1 score (float)
+            - 'best_params': Best hyperparameters used in the model (dict)
+    '''
 
     # Creating new SVM model with the best parameters
-    clf = svm.SVC(kernel='rbf', C=grid.best_params_[
-        'C'], gamma=grid.best_params_['gamma'])
+    clf = svm.SVC(kernel='rbf', C=best_params['C'], gamma=best_params['gamma'])
 
+    # Cross-validation on the training set
     scores = cross_val_score(clf, X_train, y_train, cv=10)
-
     print("Average Cross-Validation Score:", scores.mean())
     print("Standard Deviation of Scores:", scores.std())
 
     # Training the new SVM model
-    out = clf.fit(X_train, y_train)
+    model = clf.fit(X_train, y_train)
 
-    test_accuracy = out.score(X_test, y_test)
+    # Test set evaluation
+    test_accuracy = model.score(X_test, y_test)
     print("Test Set Accuracy:", test_accuracy)
 
-    train_sizes, train_scores, val_scores = learning_curve(
-        out, X_train, y_train, cv=10)
-    train_mean = train_scores.mean(axis=1)
-    val_mean = val_scores.mean(axis=1)
-
-    plt.plot(train_sizes, train_mean, label="Training Score", color='red')
-    plt.plot(train_sizes, val_mean, label="Validation Score", color='green')
-    plt.xlabel("Training Set Size")
-    plt.ylabel("Score")
-    plt.ylim(0.5, 1)
-    plt.legend()
-    plt.show()
+    # Evaluate Training Performance with a Learning Curve
+    plot_learning_curve(clf, X_train, y_train, cv=10)
 
     # Predicting on the test data
-    y_pred = clf.predict(X_test)
+    y_pred = model.predict(X_test)
 
     # Create confusion matrix
     cm = plot_confusion_matrix(y_test, y_pred)
 
     # Calculate evaluation metrics
     accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred, average='macro')
-    recall = recall_score(y_test, y_pred, average='macro')
-    f1 = f1_score(y_test, y_pred, average='macro')
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
 
     # Print the evaluation metrics
     print(f'Accuracy: {accuracy:.4f}')
@@ -394,17 +419,19 @@ def develop_SVM(X_train, y_train, X_test, y_test, res_nm):
     print(f'Recall: {recall:.4f}')
     print(f'F1: {f1:.4f}')
 
-    # Compute ROC curve and ROC area
+    # Compute and plot the ROC curve
     plot_roc_curve(X_test, y_test, clf)
 
-    res = {
+    # Return model and performance metrics
+    metrics = {
         'precision': precision,
         'accuracy': accuracy,
         'recall': recall,
         'f1': f1,
-        'best_params': grid.best_params_
+        'best_params': best_params
     }
-    return out, res
+
+    return model, metrics
 
 
 def permutation_ranking(classifier, X_test, y_test):
@@ -437,48 +464,108 @@ def permutation_ranking(classifier, X_test, y_test):
     return feature_importance_df
 
 
-def test_features_config(mod1, feature):
-    feature_plus = feature + ['AvalDay']
+def get_adjacent_values(arr, best_value):
+    idx = np.where(np.isclose(arr, best_value))[0][0]
+    # Get previous, current, and next values safely
+    prev_value = arr[idx - 1] if idx > 0 else arr[idx]
+    next_value = arr[idx + 1] if idx < len(arr) - 1 else arr[idx]
+    return prev_value, arr[idx], next_value
 
-    mod1_clean = mod1[feature_plus]
-    mod1_clean = mod1_clean.dropna()
 
-    # Extract target and features from dataframe
-    X = mod1_clean[feature]
-    y = mod1_clean['AvalDay']
+def evaluate_svm_with_feature_selection(data, feature_list):
+    """
+    Evaluates an SVM model using iterative cross-validation and hyperparameter tuning
+    for a given feature configuration. This function performs three stages of grid search
+    to find the best C and gamma parameters, and then trains and evaluates the model.
 
-    # Undersampling using NearMiss method
-    X_nm, y_nm = undersampling_nearmiss(X, y)
+    Parameters
+    ----------
+    data : pandas.DataFrame
+        The input DataFrame containing features and the target variable 'AvalDay'.
+    feature_list : list
+        A list of feature column names to be used for training the model.
 
-    # Split train and test
+    Returns
+    -------
+    feature_list : list
+        The input list of features used for training the model.
+    classifier : sklearn.svm.SVC
+        The trained SVM classifier with the best parameters.
+    results : dict
+        A dictionary containing evaluation metrics of the trained model including:
+        - 'accuracy'
+        - 'precision'
+        - 'recall'
+        - 'f1'
+        - 'best_params': Best C and gamma values from the final cross-validation.
+    """
+
+    # Add target variable to the feature list
+    feature_with_target = feature_list + ['AvalDay']
+
+    # Data preprocessing: filter relevant features and drop missing values
+    clean_data = data[feature_with_target].dropna()
+
+    # Extract features and target variable
+    X = clean_data[feature_list]
+    y = clean_data['AvalDay']
+
+    # Step 1: Apply NearMiss undersampling to balance the dataset
+    X_resampled, y_resampled = undersampling_nearmiss(X, y)
+
+    # Step 2: Split the data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(
-        X_nm, y_nm, test_size=0.25, random_state=42)
+        X_resampled, y_resampled, test_size=0.25, random_state=42)
 
-    # First Cross Validation and performance evaluation
-    param_grid = {'C': [0.01, 0.1, 1, 10, 100, 1000],
-                  'gamma': [10, 1, 0.1, 0.01, 0.001, 0.0001]}
-    result_1iter = train_and_evaluate_svm(
-        X_train, y_train, X_test, y_test, param_grid, cv=5)
+    # Step 3: Initial broad search for hyperparameters C and gamma
+    initial_param_grid = {
+        'C': [0.01, 0.1, 1, 10, 100, 1000],
+        'gamma': [10, 1, 0.1, 0.01, 0.001, 0.0001]
+    }
+    result_1iter = tune_train_evaluate_svm(
+        X_train, y_train, X_test, y_test, initial_param_grid, cv=5
+    )
 
-    # Second Cross Validation and performance evaluation
+    # Step 4: Refining the search space based on the best parameters from the first iteration
     best_params = result_1iter['best_params']
-    param_grid1 = {'C': np.linspace(best_params['C']*0.1, best_params['C']*10, 10),
-                   'gamma': np.linspace(best_params['gamma']*0.1, best_params['gamma']*10, 10)}
-    result_2iter = train_and_evaluate_svm(
-        X_train, y_train, X_test, y_test, param_grid1, cv=5)
+    refined_C_range = np.linspace(
+        best_params['C'] * 0.1, best_params['C'] * 10, 20)
+    refined_gamma_range = np.linspace(
+        best_params['gamma'] * 0.1, best_params['gamma'] * 10, 20)
 
-    # Third Cross Validation and performance evaluation
+    refined_param_grid = {
+        'C': refined_C_range,
+        'gamma': refined_gamma_range
+    }
+    result_2iter = tune_train_evaluate_svm(
+        X_train, y_train, X_test, y_test, refined_param_grid, cv=10
+    )
+
+    # Step 5: Fine-tuning around the best parameters found in the second iteration
     best_params2 = result_2iter['best_params']
-    param_grid2 = {'C': np.linspace(best_params2['C']*0.5, best_params2['C']*2, 10),
-                   'gamma': np.linspace(best_params2['gamma']*0.5, best_params2['gamma']*2, 10)}
-    result_3iter = train_and_evaluate_svm(
-        X_train, y_train, X_test, y_test, param_grid2, cv=5)
+    C_adj_values = get_adjacent_values(
+        refined_param_grid['C'], best_params2['C'])
+    gamma_adj_values = get_adjacent_values(
+        refined_param_grid['gamma'], best_params2['gamma'])
 
-    # Second Cross Validation and model training
-    classifier, result_4iter = develop_SVM(
-        X_train, y_train, X_test, y_test, result_3iter)
+    final_C_range = np.linspace(C_adj_values[0], C_adj_values[-1], 20)
+    final_gamma_range = np.linspace(
+        gamma_adj_values[0], gamma_adj_values[-1], 20)
 
-    return feature, classifier, result_2iter
+    final_param_grid = {
+        'C': final_C_range,
+        'gamma': final_gamma_range
+    }
+    result_3iter = tune_train_evaluate_svm(
+        X_train, y_train, X_test, y_test, final_param_grid, cv=10
+    )
+
+    # Step 6: Train the final model with the best hyperparameters and evaluate it
+    classifier, evaluation_metrics = train_evaluate_final_svm(
+        X_train, y_train, X_test, y_test, result_3iter['best_params']
+    )
+
+    return feature_list, classifier, evaluation_metrics
 
 
 def save_outputfile(df, output_filepath):
@@ -581,32 +668,32 @@ if __name__ == '__main__':
     # 1. Random undersampling
     X_rand_train, X_rand_test, y_rand_train, y_rand_test = train_test_split(
         X_rand, y_rand, test_size=0.25, random_state=42)
-    res_rand = train_and_evaluate_svm(
+    res_rand = tune_train_evaluate_svm(
         X_rand_train, y_rand_train, X_rand_test, y_rand_test)
 
     # 2. Random undersampling N days before
     X_rand_10d_train, X_rand_10d_test, y_rand_10d_train, y_rand_10d_test = train_test_split(
         X_rand_10d, y_rand_10d, test_size=0.25, random_state=42)
-    res_rand_10d = train_and_evaluate_svm(
+    res_rand_10d = tune_train_evaluate_svm(
         X_rand_10d_train, y_rand_10d_train, X_rand_10d_test, y_rand_10d_test)
 
     # 3. Nearmiss undersampling
     X_nm_train, X_nm_test, y_nm_train, y_nm_test = train_test_split(
         X_nm, y_nm, test_size=0.25, random_state=42)
-    res_nm = train_and_evaluate_svm(
+    res_nm = tune_train_evaluate_svm(
         X_nm_train, y_nm_train, X_nm_test, y_nm_test)
 
     # 4. Random oversampling
-    res_ros = train_and_evaluate_svm(X_ros, y_ros, X_test, y_test)
+    res_ros = tune_train_evaluate_svm(X_ros, y_ros, X_test, y_test)
 
     # 5. SMOTE oversampling
-    res_sm = train_and_evaluate_svm(X_sm, y_sm, X_test, y_test)
+    res_sm = tune_train_evaluate_svm(X_sm, y_sm, X_test, y_test)
 
     # 6. adasyn oversampling
-    res_adas = train_and_evaluate_svm(X_adas, y_adas, X_test, y_test)
+    res_adas = tune_train_evaluate_svm(X_adas, y_adas, X_test, y_test)
 
     # 7. SVMSMOTE oversampling
-    res_svmsm = train_and_evaluate_svm(X_svmsm, y_svmsm, X_test, y_test)
+    res_svmsm = tune_train_evaluate_svm(X_svmsm, y_svmsm, X_test, y_test)
 
     # --- STORE RESULTS IN A DATAFRAME ---
 
@@ -657,7 +744,7 @@ if __name__ == '__main__':
     # plt.legend(title='AvalDay', loc='upper right')
     # plt.show()
 
-    classifier_nm = develop_SVM(
+    classifier_nm = train_evaluate_final_svm(
         X_nm_train, y_nm_train, X_nm_test, y_nm_test, res_nm)
 
     # --- PERMUTATION IMPORTANCE FEATURE SELECTION ---
@@ -711,7 +798,7 @@ if __name__ == '__main__':
     # plt.legend(title='AvalDay', loc='upper right')
     # plt.show()
 
-    res_nm_new = train_and_evaluate_svm(
+    res_nm_new = tune_train_evaluate_svm(
         X_train_new, y_train_new, X_test_new, y_test_new)
 
     res_nm_new_list = []
@@ -720,15 +807,15 @@ if __name__ == '__main__':
     res_nm_new_list.append(
         {'Run': '1', **res_nm_new})
 
-    classifier_nm_new = develop_SVM(
+    classifier_nm_new = train_evaluate_final_svm(
         X_train_new, y_train_new, X_test_new, y_test_new, res_nm_new)
 
     # Calculate evaluation metrics
     y_predict = classifier_nm_new.predict(X_test_new)
     accuracy = accuracy_score(y_test_new, y_predict)
-    precision = precision_score(y_test_new, y_predict, average='macro')
-    recall = recall_score(y_test_new, y_predict, average='macro')
-    f1 = f1_score(y_test_new, y_predict, average='macro')
+    precision = precision_score(y_test_new, y_predict)
+    recall = recall_score(y_test_new, y_predict)
+    f1 = f1_score(y_test_new, y_predict)
 
     res_2 = {
         'precision': precision,
@@ -751,7 +838,7 @@ if __name__ == '__main__':
     # # --- b) DEVELOP SVM FOR SMOTE OVERSAMPLING ---
     # # ---------------------------------------------------------------
 
-    # classifier_sm = develop_SVM(
+    # classifier_sm = train_evaluate_final_svm(
     #     X_sm, y_sm, X_test, y_test, res_sm)
 
     # # --- PERMUTATION IMPORTANCE FEATURE SELECTION ---
@@ -791,7 +878,7 @@ if __name__ == '__main__':
     # res_sm_new = train_and_evaluate_svm(
     #     X_sm_new, y_sm_new, X_test_new, y_test_new)
 
-    # classifier_sm_new = develop_SVM(
+    # classifier_sm_new = train_evaluate_final_svm(
     #     X_sm_new, y_sm_new, X_test_new, y_test_new, res_sm_new)
 
     # feature_importance_df = permutation_ranking(
@@ -834,7 +921,7 @@ if __name__ == '__main__':
         current_features = [feature]
 
         # Evaluate the model with the selected features
-        result = test_features_config(mod1, current_features)
+        result = evaluate_svm_with_feature_selection(mod1, current_features)
 
         # Store the result in the dictionary
         results[feature] = result
@@ -871,37 +958,37 @@ if __name__ == '__main__':
     # ....... 1. SNOW LOAD DUE SNOWFALL ...........................
 
     f1 = ['HSnum']
-    res1 = test_features_config(mod1, f1)
+    res1 = evaluate_svm_with_feature_selection(mod1, f1)
 
     f2 = f1 + ['HNnum']
-    res2 = test_features_config(mod1, f2)
+    res2 = evaluate_svm_with_feature_selection(mod1, f2)
 
     f3 = f2 + ['HN_2d']
-    res3 = test_features_config(mod1, f3)
+    res3 = evaluate_svm_with_feature_selection(mod1, f3)
 
     f4 = f3 + ['HN_3d']
-    res4 = test_features_config(mod1, f4)
+    res4 = evaluate_svm_with_feature_selection(mod1, f4)
 
     f5 = f4 + ['HN_5d']
-    res5 = test_features_config(mod1, f5)
+    res5 = evaluate_svm_with_feature_selection(mod1, f5)
 
     f6 = f5 + ['Precip_1d']
-    res6 = test_features_config(mod1, f6)
+    res6 = evaluate_svm_with_feature_selection(mod1, f6)
 
     f7 = f6 + ['Precip_2d']
-    res7 = test_features_config(mod1, f7)
+    res7 = evaluate_svm_with_feature_selection(mod1, f7)
 
     f8 = f7 + ['Precip_3d']
-    res8 = test_features_config(mod1, f8)
+    res8 = evaluate_svm_with_feature_selection(mod1, f8)
 
     f9 = f8 + ['Precip_5d']
-    res9 = test_features_config(mod1, f9)
+    res9 = evaluate_svm_with_feature_selection(mod1, f9)
 
     f10 = f9 + ['FreshSWE']
-    res10 = test_features_config(mod1, f10)
+    res10 = evaluate_svm_with_feature_selection(mod1, f10)
 
     f11 = f10 + ['SeasonalSWE_cum']
-    res11 = test_features_config(mod1, f11)
+    res11 = evaluate_svm_with_feature_selection(mod1, f11)
 
     # PLOTS
     # Combine the results into a list
@@ -956,16 +1043,16 @@ if __name__ == '__main__':
     # ....... 2. SNOW LOAD DUE WIND DRIFT ...........................
 
     wd4 = f9 + ['SnowDrift_1d']
-    res_wd4 = test_features_config(mod1, wd4)
+    res_wd4 = evaluate_svm_with_feature_selection(mod1, wd4)
 
     wd5 = wd4 + ['SnowDrift_2d']
-    res_wd5 = test_features_config(mod1, wd5)
+    res_wd5 = evaluate_svm_with_feature_selection(mod1, wd5)
 
     wd6 = wd5 + ['SnowDrift_3d']
-    res_wd6 = test_features_config(mod1, wd6)
+    res_wd6 = evaluate_svm_with_feature_selection(mod1, wd6)
 
     wd7 = wd6 + ['SnowDrift_5d']
-    res_wd7 = test_features_config(mod1, wd7)
+    res_wd7 = evaluate_svm_with_feature_selection(mod1, wd7)
 
     results_features = [res3, res_wd4, res_wd5, res_wd6, res_wd7]
 
@@ -1013,13 +1100,13 @@ if __name__ == '__main__':
     # ....... 3. PAST AVALANCHE ACTIVITY ...........................
 
     a10 = f9 + ['AvalDay_2d']
-    res_a10 = test_features_config(mod1, a10)
+    res_a10 = evaluate_svm_with_feature_selection(mod1, a10)
 
     a11 = a10 + ['AvalDay_3d']
-    res_a11 = test_features_config(mod1, a11)
+    res_a11 = evaluate_svm_with_feature_selection(mod1, a11)
 
     a12 = a11 + ['AvalDay_5d']
-    res_a12 = test_features_config(mod1, a12)
+    res_a12 = evaluate_svm_with_feature_selection(mod1, a12)
 
     results_features = [res9, res_a10, res_a11, res_a12]
 
@@ -1067,19 +1154,19 @@ if __name__ == '__main__':
     # ....... 4. SNOW TEMPERATURE AS  ...........................
 
     ts13 = a12 + ['TH01G']
-    res_ts13 = test_features_config(mod1, ts13)
+    res_ts13 = evaluate_svm_with_feature_selection(mod1, ts13)
 
     ts14 = ts13 + ['Tsnow_delta_1d']
-    res_ts14 = test_features_config(mod1, ts14)
+    res_ts14 = evaluate_svm_with_feature_selection(mod1, ts14)
 
     ts15 = ts14 + ['Tsnow_delta_2d']
-    res_ts15 = test_features_config(mod1, ts15)
+    res_ts15 = evaluate_svm_with_feature_selection(mod1, ts15)
 
     ts16 = ts15 + ['Tsnow_delta_3d']
-    res_ts16 = test_features_config(mod1, ts16)
+    res_ts16 = evaluate_svm_with_feature_selection(mod1, ts16)
 
     ts17 = ts16 + ['Tsnow_delta_5d']
-    res_ts17 = test_features_config(mod1, ts17)
+    res_ts17 = evaluate_svm_with_feature_selection(mod1, ts17)
 
     results_features = [res_a12, res_ts14,
                         res_ts15, res_ts15, res_ts16, res_ts17]
