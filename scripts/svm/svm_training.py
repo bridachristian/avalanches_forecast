@@ -11,8 +11,9 @@ from scripts.svm.data_loading import load_data
 from scripts.svm.undersampling_methods import undersampling_random, undersampling_random_timelimited, undersampling_nearmiss
 from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
 from scripts.svm.evaluation import (plot_learning_curve, plot_confusion_matrix,
-                         plot_roc_curve, permutation_ranking, evaluate_svm_with_feature_selection)
+                                    plot_roc_curve, permutation_ranking, evaluate_svm_with_feature_selection)
 from scripts.svm.utils import get_adjacent_values, save_outputfile
+
 
 def cross_validate_svm(X, y, param_grid, cv=5, scoring='f1'):
     """
@@ -50,31 +51,32 @@ def cross_validate_svm(X, y, param_grid, cv=5, scoring='f1'):
         'cv_mean_score': cv_scores.mean(),
         'cv_std_score': cv_scores.std()
     }
-    
- def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, cv=5):
+
+
+def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, cv=5):
     '''
     Performs hyperparameter tuning, training, and evaluation of an SVM classifier.
 
     Parameters
     ----------
     X : array-like
-        Training data features.
+    Training data features.
     y : array-like
-        Training data labels.
+    Training data labels.
     X_test : array-like
-        Test data features.
+    Test data features.
     y_test : array-like
-        Test data labels.
+    Test data labels.
     param_grid : dict
-        Grid of 'C' and 'gamma' values for hyperparameter tuning.
+    Grid of 'C' and 'gamma' values for hyperparameter tuning.
     cv : int, optional
-        Number of cross-validation folds. Default is 5.
+    Number of cross-validation folds. Default is 5.
 
     Returns
     -------
     dict
-        A dictionary containing evaluation metrics (accuracy, precision, recall, F1 score)
-        and the best hyperparameters (C, gamma) found during tuning.
+    A dictionary containing evaluation metrics (accuracy, precision, recall, F1 score)
+    and the best hyperparameters (C, gamma) found during tuning.
     '''
 
     # 1. Hyperparameter Tuning: Cross-validation to find the best C and gamma
@@ -111,7 +113,8 @@ def cross_validate_svm(X, y, param_grid, cv=5, scoring='f1'):
         'f1': f1,
         'best_params': cv_results['best_params']
     }
-    
+
+
 def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params):
     '''
     Train and evaluate an SVM model using the best hyperparameters.
@@ -206,4 +209,3 @@ def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params):
     }
 
     return model, metrics
-    
