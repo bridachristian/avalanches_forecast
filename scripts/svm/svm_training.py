@@ -93,9 +93,9 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, cv=5):
 
     # Calculate evaluation metrics
     accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred, average='macro')
+    recall = recall_score(y_test, y_pred, average='macro')
+    f1 = f1_score(y_test, y_pred, average='macro')
 
     # Print evaluation metrics
     print(f'Accuracy: {accuracy:.4f}')
@@ -185,9 +185,9 @@ def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params):
 
     # Calculate evaluation metrics
     accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred, average='macro')
+    recall = recall_score(y_test, y_pred, average='macro')
+    f1 = f1_score(y_test, y_pred, average='macro')
 
     # Print the evaluation metrics
     print(f'Accuracy: {accuracy:.4f}')
