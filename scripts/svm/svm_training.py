@@ -10,9 +10,6 @@ from sklearn.inspection import permutation_importance
 from scripts.svm.data_loading import load_data
 from scripts.svm.undersampling_methods import undersampling_random, undersampling_random_timelimited, undersampling_nearmiss
 from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
-from scripts.svm.evaluation import (plot_learning_curve, plot_confusion_matrix,
-                                    plot_roc_curve, permutation_ranking, evaluate_svm_with_feature_selection)
-from scripts.svm.utils import get_adjacent_values, save_outputfile
 
 
 def cross_validate_svm(X, y, param_grid, cv=5, scoring='f1'):
@@ -78,6 +75,7 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, cv=5):
     A dictionary containing evaluation metrics (accuracy, precision, recall, F1 score)
     and the best hyperparameters (C, gamma) found during tuning.
     '''
+    from scripts.svm.evaluation import plot_learning_curve
 
     # 1. Hyperparameter Tuning: Cross-validation to find the best C and gamma
     cv_results = cross_validate_svm(X, y, param_grid, cv, scoring='f1')
@@ -159,6 +157,7 @@ def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params):
             - 'f1': Test set F1 score (float)
             - 'best_params': Best hyperparameters used in the model (dict)
     '''
+    from scripts.svm.svm_training import plot_learning_curve, plot_confusion_matrix, plot_confusion_matrix
 
     # Creating new SVM model with the best parameters
     clf = svm.SVC(kernel='rbf', C=best_params['C'], gamma=best_params['gamma'])
