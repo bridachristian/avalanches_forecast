@@ -388,7 +388,7 @@ def oversampling_svmsmote(X, y):
     return X_res, y_res
 
 
-def cross_validate_svm(X, y, param_grid, cv=5, scoring='recall'):
+def cross_validate_svm(X, y, param_grid, cv=5, scoring='f1'):
     """
     Performs hyperparameter tuning and cross-validation for an SVM model.
 
@@ -484,7 +484,7 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, cv=5):
     '''
 
     # 1. Hyperparameter Tuning: Cross-validation to find the best C and gamma
-    cv_results = cross_validate_svm(X, y, param_grid, cv, scoring='recall')
+    cv_results = cross_validate_svm(X, y, param_grid, cv, scoring='f1')
 
     # 2. Train the SVM Classifier with Best Hyperparameters
     clf = svm.SVC(
@@ -1000,36 +1000,43 @@ if __name__ == '__main__':
     X_svmsm, y_svmsm = oversampling_svmsmote(X_train, y_train)
 
     # --- CREATE SVM MODEL ---
+    param_grid = {
+        'C': [0.01, 0.1, 1, 10, 100, 1000],
+        'gamma': [10, 1, 0.1, 0.01, 0.001, 0.0001]
+    }
 
     # 1. Random undersampling
     X_rand_train, X_rand_test, y_rand_train, y_rand_test = train_test_split(
         X_rand, y_rand, test_size=0.25, random_state=42)
+
     res_rand = tune_train_evaluate_svm(
-        X_rand_train, y_rand_train, X_rand_test, y_rand_test)
+        X_rand_train, y_rand_train, X_rand_test, y_rand_test, param_grid)
 
     # 2. Random undersampling N days before
     X_rand_10d_train, X_rand_10d_test, y_rand_10d_train, y_rand_10d_test = train_test_split(
         X_rand_10d, y_rand_10d, test_size=0.25, random_state=42)
     res_rand_10d = tune_train_evaluate_svm(
-        X_rand_10d_train, y_rand_10d_train, X_rand_10d_test, y_rand_10d_test)
+        X_rand_10d_train, y_rand_10d_train, X_rand_10d_test, y_rand_10d_test, param_grid)
 
     # 3. Nearmiss undersampling
     X_nm_train, X_nm_test, y_nm_train, y_nm_test = train_test_split(
         X_nm, y_nm, test_size=0.25, random_state=42)
     res_nm = tune_train_evaluate_svm(
-        X_nm_train, y_nm_train, X_nm_test, y_nm_test)
+        X_nm_train, y_nm_train, X_nm_test, y_nm_test, param_grid)
 
     # 4. Random oversampling
-    res_ros = tune_train_evaluate_svm(X_ros, y_ros, X_test, y_test)
+    res_ros = tune_train_evaluate_svm(X_ros, y_ros, X_test, y_test, param_grid)
 
     # 5. SMOTE oversampling
-    res_sm = tune_train_evaluate_svm(X_sm, y_sm, X_test, y_test)
+    res_sm = tune_train_evaluate_svm(X_sm, y_sm, X_test, y_test, param_grid)
 
     # 6. adasyn oversampling
-    res_adas = tune_train_evaluate_svm(X_adas, y_adas, X_test, y_test)
+    res_adas = tune_train_evaluate_svm(
+        X_adas, y_adas, X_test, y_test, param_grid)
 
     # 7. SVMSMOTE oversampling
-    res_svmsm = tune_train_evaluate_svm(X_svmsm, y_svmsm, X_test, y_test)
+    res_svmsm = tune_train_evaluate_svm(
+        X_svmsm, y_svmsm, X_test, y_test, param_grid)
 
     # --- STORE RESULTS IN A DATAFRAME ---
 
@@ -1081,11 +1088,12 @@ if __name__ == '__main__':
     # plt.show()
 
     classifier_nm = train_evaluate_final_svm(
-        X_nm_train, y_nm_train, X_nm_test, y_nm_test, res_nm)
+        X_nm_train, y_nm_train, X_nm_test, y_nm_test, res_nm['best_params'])
 
     # --- PERMUTATION IMPORTANCE FEATURE SELECTION ---
 
-    feature_importance_df = permutation_ranking(classifier_nm, X_test, y_test)
+    feature_importance_df = permutation_ranking(
+        classifier_nm[0], X_test, y_test)
 
     # Filter the DataFrame to include only positive importance values
     positive_features = feature_importance_df[feature_importance_df['Importance_Mean'] > 0]
@@ -1105,10 +1113,10 @@ if __name__ == '__main__':
 
     # --- SCALING ---
 
-    scaler = StandardScaler()
-    X_new = pd.DataFrame(scaler.fit_transform(X_new),
-                         columns=X_new.columns,
-                         index=X_new.index)
+    # scaler = StandardScaler()
+    # X_new = pd.DataFrame(scaler.fit_transform(X_new),
+    #                      columns=X_new.columns,
+    #                      index=X_new.index)
 
     # --- SPLIT TRAIN AND TEST ---
 
@@ -1293,38 +1301,38 @@ if __name__ == '__main__':
 
     # ....... 1. SNOW LOAD DUE SNOWFALL ...........................
 
-    f1 = ['HSnum']
-    res1 = evaluate_svm_with_feature_selection(mod1, f1)
+    s1 = ['HSnum']
+    res1 = evaluate_svm_with_feature_selection(mod1, s1)
 
-    f2 = f1 + ['HNnum']
-    res2 = evaluate_svm_with_feature_selection(mod1, f2)
+    s2 = s1 + ['HNnum']
+    res2 = evaluate_svm_with_feature_selection(mod1, s2)
 
-    f3 = f2 + ['HN_2d']
-    res3 = evaluate_svm_with_feature_selection(mod1, f3)
+    s3 = s2 + ['HN_2d']
+    res3 = evaluate_svm_with_feature_selection(mod1, s3)
 
-    f4 = f3 + ['HN_3d']
-    res4 = evaluate_svm_with_feature_selection(mod1, f4)
+    s4 = s3 + ['HN_3d']
+    res4 = evaluate_svm_with_feature_selection(mod1, s4)
 
-    f5 = f4 + ['HN_5d']
-    res5 = evaluate_svm_with_feature_selection(mod1, f5)
+    s5 = s4 + ['HN_5d']
+    res5 = evaluate_svm_with_feature_selection(mod1, s5)
 
-    f6 = f5 + ['Precip_1d']
-    res6 = evaluate_svm_with_feature_selection(mod1, f6)
+    s6 = s5 + ['Precip_1d']
+    res6 = evaluate_svm_with_feature_selection(mod1, s6)
 
-    f7 = f6 + ['Precip_2d']
-    res7 = evaluate_svm_with_feature_selection(mod1, f7)
+    s7 = s6 + ['Precip_2d']
+    res7 = evaluate_svm_with_feature_selection(mod1, s7)
 
-    f8 = f7 + ['Precip_3d']
-    res8 = evaluate_svm_with_feature_selection(mod1, f8)
+    s8 = s7 + ['Precip_3d']
+    res8 = evaluate_svm_with_feature_selection(mod1, s8)
 
-    f9 = f8 + ['Precip_5d']
-    res9 = evaluate_svm_with_feature_selection(mod1, f9)
+    s9 = s8 + ['Precip_5d']
+    res9 = evaluate_svm_with_feature_selection(mod1, s9)
 
-    f10 = f9 + ['FreshSWE']
-    res10 = evaluate_svm_with_feature_selection(mod1, f10)
+    s10 = s9 + ['FreshSWE']
+    res10 = evaluate_svm_with_feature_selection(mod1, s10)
 
-    f11 = f10 + ['SeasonalSWE_cum']
-    res11 = evaluate_svm_with_feature_selection(mod1, f11)
+    s11 = s10 + ['SeasonalSWE_cum']
+    res11 = evaluate_svm_with_feature_selection(mod1, s11)
 
     # PLOTS
     # Combine the results into a list
@@ -1378,7 +1386,7 @@ if __name__ == '__main__':
 
     # ....... 2. SNOW LOAD DUE WIND DRIFT ...........................
 
-    wd4 = f9 + ['SnowDrift_1d']
+    wd4 = s9 + ['SnowDrift_1d']
     res_wd4 = evaluate_svm_with_feature_selection(mod1, wd4)
 
     wd5 = wd4 + ['SnowDrift_2d']
@@ -1435,7 +1443,7 @@ if __name__ == '__main__':
 
     # ....... 3. PAST AVALANCHE ACTIVITY ...........................
 
-    a10 = f9 + ['AvalDay_2d']
+    a10 = s9 + ['AvalDay_2d']
     res_a10 = evaluate_svm_with_feature_selection(mod1, a10)
 
     a11 = a10 + ['AvalDay_3d']
