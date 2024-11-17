@@ -17,6 +17,7 @@ from scripts.svm.oversampling_methods import oversampling_random, oversampling_s
 from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm, train_evaluate_final_svm
 from scripts.svm.utils import get_adjacent_values, save_outputfile
 
+
 def plot_learning_curve(clf, X, y, cv=5):
     """
     Plots the learning curve for the given classifier.
@@ -46,6 +47,7 @@ def plot_learning_curve(clf, X, y, cv=5):
     plt.legend()
     plt.title("Learning Curve for SVM")
     plt.show()
+
 
 def plot_confusion_matrix(y_test, y_pred):
     """
@@ -85,6 +87,7 @@ def plot_confusion_matrix(y_test, y_pred):
     plt.show()
 
     return cm
+
 
 def plot_roc_curve(X_test, y_test, clf):
     """
@@ -129,6 +132,7 @@ def plot_roc_curve(X_test, y_test, clf):
     plt.legend(loc="lower right")
     plt.grid()
     plt.show()
+
 
 def permutation_ranking(classifier, X_test, y_test):
     """
@@ -184,7 +188,8 @@ def permutation_ranking(classifier, X_test, y_test):
     plt.show()
 
     return feature_importance_df
-    
+
+
 def evaluate_svm_with_feature_selection(data, feature_list):
     """
     Evaluates an SVM model using iterative cross-validation and hyperparameter tuning
@@ -242,16 +247,16 @@ def evaluate_svm_with_feature_selection(data, feature_list):
     # Step 4: Refining the search space based on the best parameters from the first iteration
     best_params = result_1iter['best_params']
     refined_C_range = np.linspace(
-        best_params['C'] * 0.1, best_params['C'] * 10, 20)
+        best_params['C'] * 0.1, best_params['C'] * 10, 10)
     refined_gamma_range = np.linspace(
-        best_params['gamma'] * 0.1, best_params['gamma'] * 10, 20)
+        best_params['gamma'] * 0.1, best_params['gamma'] * 10, 10)
 
     refined_param_grid = {
         'C': refined_C_range,
         'gamma': refined_gamma_range
     }
     result_2iter = tune_train_evaluate_svm(
-        X_train, y_train, X_test, y_test, refined_param_grid, cv=10
+        X_train, y_train, X_test, y_test, refined_param_grid, cv=5
     )
 
     # Step 5: Fine-tuning around the best parameters found in the second iteration
@@ -261,16 +266,16 @@ def evaluate_svm_with_feature_selection(data, feature_list):
     gamma_adj_values = get_adjacent_values(
         refined_param_grid['gamma'], best_params2['gamma'])
 
-    final_C_range = np.linspace(C_adj_values[0], C_adj_values[-1], 20)
+    final_C_range = np.linspace(C_adj_values[0], C_adj_values[-1], 10)
     final_gamma_range = np.linspace(
-        gamma_adj_values[0], gamma_adj_values[-1], 20)
+        gamma_adj_values[0], gamma_adj_values[-1], 10)
 
     final_param_grid = {
         'C': final_C_range,
         'gamma': final_gamma_range
     }
     result_3iter = tune_train_evaluate_svm(
-        X_train, y_train, X_test, y_test, final_param_grid, cv=10
+        X_train, y_train, X_test, y_test, final_param_grid, cv=5
     )
 
     # Step 6: Train the final model with the best hyperparameters and evaluate it

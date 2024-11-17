@@ -157,7 +157,7 @@ def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params):
             - 'f1': Test set F1 score (float)
             - 'best_params': Best hyperparameters used in the model (dict)
     '''
-    from scripts.svm.svm_training import plot_learning_curve, plot_confusion_matrix, plot_confusion_matrix
+    from scripts.svm.evaluation import plot_learning_curve, plot_confusion_matrix, plot_confusion_matrix, plot_roc_curve
 
     # Creating new SVM model with the best parameters
     clf = svm.SVC(kernel='rbf', C=best_params['C'], gamma=best_params['gamma'])
