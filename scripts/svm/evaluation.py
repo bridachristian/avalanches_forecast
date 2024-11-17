@@ -11,11 +11,11 @@ from sklearn.metrics import (confusion_matrix, roc_curve, auc,
 from sklearn.inspection import permutation_importance
 from sklearn.model_selection import GridSearchCV
 from imblearn.under_sampling import RandomUnderSampler, NearMiss
-from .data_loading import load_data
-from .undersampling_methods import undersampling_random, undersampling_random_timelimited, undersampling_nearmiss
-from .oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
-from .svm_training import cross_validate_svm, tune_train_evaluate_svm, train_evaluate_final_svm
-from .utils import get_adjacent_values, save_outputfile
+from scripts.svm.data_loading import load_data
+from scripts.svm.undersampling_methods import undersampling_random, undersampling_random_timelimited, undersampling_nearmiss
+from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
+from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm, train_evaluate_final_svm
+from scripts.svm.utils import get_adjacent_values, save_outputfile
 
 def plot_learning_curve(clf, X, y, cv=5):
     """

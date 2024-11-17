@@ -7,12 +7,12 @@ from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_sc
 from sklearn.metrics import (accuracy_score, precision_score, recall_score,
                              f1_score, confusion_matrix, roc_curve, auc)
 from sklearn.inspection import permutation_importance
-from .data_loading import load_data
-from .undersampling_methods import undersampling_random, undersampling_random_timelimited, undersampling_nearmiss
-from .oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
-from .evaluation import (plot_learning_curve, plot_confusion_matrix,
+from scripts.svm.data_loading import load_data
+from scripts.svm.undersampling_methods import undersampling_random, undersampling_random_timelimited, undersampling_nearmiss
+from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
+from scripts.svm.evaluation import (plot_learning_curve, plot_confusion_matrix,
                          plot_roc_curve, permutation_ranking, evaluate_svm_with_feature_selection)
-from .utils import get_adjacent_values, save_outputfile
+from scripts.svm.utils import get_adjacent_values, save_outputfile
 
 def cross_validate_svm(X, y, param_grid, cv=5, scoring='f1'):
     """

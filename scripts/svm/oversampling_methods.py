@@ -2,12 +2,12 @@ import numpy as np
 import pandas as pd
 from collections import Counter
 from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN, SVMSMOTE
-from .data_loading import load_data
-from .undersampling_methods import undersampling_random, undersampling_random_timelimited, undersampling_nearmiss
-from .svm_training import cross_validate_svm, tune_train_evaluate_svm, train_evaluate_final_svm
-from .evaluation import (plot_learning_curve, plot_confusion_matrix,
+from scripts.svm.data_loading import load_data
+from scripts.svm.undersampling_methods import undersampling_random, undersampling_random_timelimited, undersampling_nearmiss
+from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm, train_evaluate_final_svm
+from scripts.svm.evaluation import (plot_learning_curve, plot_confusion_matrix,
                          plot_roc_curve, permutation_ranking, evaluate_svm_with_feature_selection)
-from .utils import get_adjacent_values, save_outputfile
+from scripts.svm.utils import get_adjacent_values, save_outputfile
 
 def oversampling_random(X, y):
     """
