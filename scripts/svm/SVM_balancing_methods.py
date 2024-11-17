@@ -487,12 +487,13 @@ if __name__ == '__main__':
     save_outputfile(df_res, common_path / 'config_snowload_features.csv')
 
     # RESULTS: the best configuration based on Recall is:
-    # f9: HSnum, HNnum, HN_2d, HN_3d, HN_5d,
-    #     Precip_1d, Precip_2d, Precip_3d, Precip_5d
+    # s11: HSnum, HNnum, HN_2d, HN_3d, HN_5d,
+    #      Precip_1d, Precip_2d, Precip_3d, Precip_5d,
+    #      FreshSWE, SeasonalSWE_cum
 
     # ....... 2. SNOW LOAD DUE WIND DRIFT ...........................
 
-    wd4 = s9 + ['SnowDrift_1d']
+    wd4 = s11 + ['SnowDrift_1d']
     res_wd4 = evaluate_svm_with_feature_selection(mod1, wd4)
 
     wd5 = wd4 + ['SnowDrift_2d']
@@ -549,7 +550,7 @@ if __name__ == '__main__':
 
     # ....... 3. PAST AVALANCHE ACTIVITY ...........................
 
-    a10 = s9 + ['AvalDay_2d']
+    a10 = s11 + ['AvalDay_2d']
     res_a10 = evaluate_svm_with_feature_selection(mod1, a10)
 
     a11 = a10 + ['AvalDay_3d']
@@ -558,7 +559,7 @@ if __name__ == '__main__':
     a12 = a11 + ['AvalDay_5d']
     res_a12 = evaluate_svm_with_feature_selection(mod1, a12)
 
-    results_features = [res9, res_a10, res_a11, res_a12]
+    results_features = [res11, res_a10, res_a11, res_a12]
 
     # Extract the metrics and create a DataFrame
     data_res = []
@@ -584,9 +585,9 @@ if __name__ == '__main__':
              marker='d', linestyle=':', label='Accuracy')
     plt.plot(df_res_av_act['Configuration'], df_res_av_act['Recall'],
              marker='o', linestyle='-', label='Recall')
-    plt.title('Scores for Snow Drift features in different configuration')
+    plt.title('Scores for Avalanche activity features in different configuration')
     plt.xlabel('Feature Configuration')
-    plt.ylabel('Precision Score')
+    plt.ylabel('Score')
     plt.ylim(0, 1)
     plt.xticks(rotation=45)
     plt.grid(True)
@@ -603,7 +604,7 @@ if __name__ == '__main__':
 
     # ....... 4. SNOW TEMPERATURE AS  ...........................
 
-    ts13 = a12 + ['TH01G']
+    ts13 = s11 + ['TH01G']
     res_ts13 = evaluate_svm_with_feature_selection(mod1, ts13)
 
     ts14 = ts13 + ['Tsnow_delta_1d']
@@ -618,7 +619,7 @@ if __name__ == '__main__':
     ts17 = ts16 + ['Tsnow_delta_5d']
     res_ts17 = evaluate_svm_with_feature_selection(mod1, ts17)
 
-    results_features = [res_a12, res_ts14,
+    results_features = [res11, res_ts14,
                         res_ts15, res_ts15, res_ts16, res_ts17]
 
     # Extract the metrics and create a DataFrame
