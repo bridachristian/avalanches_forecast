@@ -559,7 +559,7 @@ if __name__ == '__main__':
     a12 = a11 + ['AvalDay_5d']
     res_a12 = evaluate_svm_with_feature_selection(mod1, a12)
 
-    results_features = [res11, res_a10, res_a11, res_a12]
+    results_features = [res3, res_a10, res_a11, res_a12]
 
     # Extract the metrics and create a DataFrame
     data_res = []
@@ -602,9 +602,9 @@ if __name__ == '__main__':
     #      Precip_1d, Precip_2d, Precip_3d, Precip_5d,
     #      AvalDay_2d, AvalDay_3d, AvalDay_5d
 
-    # ....... 4. SNOW TEMPERATURE AS  ...........................
+    # ....... 4. SNOW TEMPERATURE  ...........................
 
-    ts13 = s11 + ['TH01G']
+    ts13 = s3 + ['TH01G']
     res_ts13 = evaluate_svm_with_feature_selection(mod1, ts13)
 
     ts14 = ts13 + ['Tsnow_delta_1d']
@@ -619,8 +619,122 @@ if __name__ == '__main__':
     ts17 = ts16 + ['Tsnow_delta_5d']
     res_ts17 = evaluate_svm_with_feature_selection(mod1, ts17)
 
-    results_features = [res11, res_ts14,
+    results_features = [res3, res_ts14,
                         res_ts15, res_ts15, res_ts16, res_ts17]
+
+    # Extract the metrics and create a DataFrame
+    data_res = []
+    for i, res in enumerate(results_features, 1):
+        feature_set = ', '.join(res[0])  # Combine feature names as a string
+        metrics = res[2]
+        data_res.append({
+            # 'Configuration': f"res{i}: {feature_set}",
+            'Configuration': f"conf.{i}",
+            'Features': f"{feature_set}",
+            'Precision': metrics['precision'],
+            'Accuracy': metrics['accuracy'],
+            'Recall': metrics['recall'],
+            'F1': metrics['f1']
+        })
+
+    # Create the DataFrame
+    df_res_ts = pd.DataFrame(data_res)
+
+    # Plotting a line plot for precision
+    plt.figure(figsize=(8, 5))
+    plt.plot(df_res_ts['Configuration'], df_res_ts['Accuracy'],
+             marker='d', linestyle=':', label='Accuracy')
+    plt.plot(df_res_ts['Configuration'], df_res_ts['Recall'],
+             marker='o', linestyle='-', label='Recall')
+    plt.title('Scores for Snow Temperature features in different configuration')
+    plt.xlabel('Feature Configuration')
+    plt.ylabel('Score')
+    plt.ylim(0, 1)
+    plt.xticks(rotation=45)
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+    save_outputfile(df_res_ts, common_path /
+                    'config_snowtemp_features.csv')
+
+    # ....... 5. WEAK LAYER DETECTION ...........................
+
+    pr1 = s3 + ['Penetration_ratio']
+    res_pr1 = evaluate_svm_with_feature_selection(mod1, pr1)
+
+    pr2 = s3 + ['PR']
+    res_pr2 = evaluate_svm_with_feature_selection(mod1, pr2)
+
+    pr3 = s3 + ['MF_Crust_Present']
+    res_pr3 = evaluate_svm_with_feature_selection(mod1, pr3)
+
+    pr4 = s3 + ['New_MF_Crust']
+    res_pr4 = evaluate_svm_with_feature_selection(mod1, pr4)
+
+    pr5 = s3 + ['New_MF_Crust']
+    res_pr5 = evaluate_svm_with_feature_selection(mod1, pr5)
+
+    pr6 = s3 + ['TempGrad_HS']
+    res_pr6 = evaluate_svm_with_feature_selection(mod1, pr6)
+
+    results_features = [res3, res_pr1, res_pr2,
+                        res_pr3, res_pr4, res_pr5, res_pr6]
+
+    # Extract the metrics and create a DataFrame
+    data_res = []
+    for i, res in enumerate(results_features, 1):
+        feature_set = ', '.join(res[0])  # Combine feature names as a string
+        metrics = res[2]
+        data_res.append({
+            # 'Configuration': f"res{i}: {feature_set}",
+            'Configuration': f"conf.{i}",
+            'Features': f"{feature_set}",
+            'Precision': metrics['precision'],
+            'Accuracy': metrics['accuracy'],
+            'Recall': metrics['recall'],
+            'F1': metrics['f1']
+        })
+
+    # Create the DataFrame
+    df_res_ts = pd.DataFrame(data_res)
+
+    # Plotting a line plot for precision
+    plt.figure(figsize=(8, 5))
+    plt.plot(df_res_ts['Configuration'], df_res_ts['Accuracy'],
+             marker='d', linestyle=':', label='Accuracy')
+    plt.plot(df_res_ts['Configuration'], df_res_ts['Recall'],
+             marker='o', linestyle='-', label='Recall')
+    plt.title('Scores for Weak Layer features in different configuration')
+    plt.xlabel('Feature Configuration')
+    plt.ylabel('Score')
+    plt.ylim(0, 1)
+    plt.xticks(rotation=45)
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+    save_outputfile(df_res_ts, common_path /
+                    'config_weaklayer_features.csv')
+
+    # ....... 6. AIR TEMPERATURE  ...........................
+
+    ta1 = s3 + ['TaG']
+    res_ta1 = evaluate_svm_with_feature_selection(mod1, ta1)
+
+    ta2 = s3 + ['TminG']
+    res_ta2 = evaluate_svm_with_feature_selection(mod1, ta2)
+
+    ta3 = s3 + ['TmaxG']
+    res_ta3 = evaluate_svm_with_feature_selection(mod1, ta3)
+
+    ta4 = s4 + ['T_mean']
+    res_ta4 = evaluate_svm_with_feature_selection(mod1, ta4)
+
+    ta1 = s3 + ['TaG']
+    res_ta1 = evaluate_svm_with_feature_selection(mod1, ta1)
+
+    results_features = [res3, res_ta1, res_ta2, res_ta3, res_ta4]
 
     # Extract the metrics and create a DataFrame
     data_res = []
