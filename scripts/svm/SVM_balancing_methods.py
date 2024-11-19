@@ -416,7 +416,7 @@ if __name__ == '__main__':
     s3 = s2 + ['HN_2d']
     res3 = evaluate_svm_with_feature_selection(mod1, s3)
 
-    s4 = s3 + ['HN_3d']
+    s4 = s2 + ['HN_3d']
     res4 = evaluate_svm_with_feature_selection(mod1, s4)
 
     s5 = s4 + ['HN_5d']
@@ -493,7 +493,7 @@ if __name__ == '__main__':
 
     # ....... 2. SNOW LOAD DUE WIND DRIFT ...........................
 
-    wd4 = s11 + ['SnowDrift_1d']
+    wd4 = s3 + ['SnowDrift_1d']
     res_wd4 = evaluate_svm_with_feature_selection(mod1, wd4)
 
     wd5 = wd4 + ['SnowDrift_2d']
@@ -550,7 +550,7 @@ if __name__ == '__main__':
 
     # ....... 3. PAST AVALANCHE ACTIVITY ...........................
 
-    a10 = s11 + ['AvalDay_2d']
+    a10 = s3 + ['AvalDay_2d']
     res_a10 = evaluate_svm_with_feature_selection(mod1, a10)
 
     a11 = a10 + ['AvalDay_3d']

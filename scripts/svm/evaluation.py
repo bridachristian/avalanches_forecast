@@ -266,16 +266,16 @@ def evaluate_svm_with_feature_selection(data, feature_list):
     gamma_adj_values = get_adjacent_values(
         refined_param_grid['gamma'], best_params2['gamma'])
 
-    final_C_range = np.linspace(C_adj_values[0], C_adj_values[-1], 10)
+    final_C_range = np.linspace(C_adj_values[0], C_adj_values[-1], 20)
     final_gamma_range = np.linspace(
-        gamma_adj_values[0], gamma_adj_values[-1], 10)
+        gamma_adj_values[0], gamma_adj_values[-1], 20)
 
     final_param_grid = {
         'C': final_C_range,
         'gamma': final_gamma_range
     }
     result_3iter = tune_train_evaluate_svm(
-        X_train, y_train, X_test, y_test, final_param_grid, cv=5
+        X_train, y_train, X_test, y_test, final_param_grid, cv=10
     )
 
     # Step 6: Train the final model with the best hyperparameters and evaluate it
