@@ -672,7 +672,7 @@ if __name__ == '__main__':
     pr4 = s3 + ['New_MF_Crust']
     res_pr4 = evaluate_svm_with_feature_selection(mod1, pr4)
 
-    pr5 = s3 + ['New_MF_Crust']
+    pr5 = s3 + ['ConsecCrustDays']
     res_pr5 = evaluate_svm_with_feature_selection(mod1, pr5)
 
     pr6 = s3 + ['TempGrad_HS']
@@ -770,7 +770,7 @@ if __name__ == '__main__':
     plt.show()
 
     save_outputfile(df_res_ts, common_path /
-                    'config_snowtemp_features.csv')
+                    'config_airtemp_features.csv')
 
     # if __name__ == '__main__':
     #     main()
