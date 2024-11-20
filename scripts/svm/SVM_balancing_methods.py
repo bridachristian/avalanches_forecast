@@ -717,6 +717,51 @@ if __name__ == '__main__':
     save_outputfile(df_res_ts, common_path /
                     'config_weaklayer_features.csv')
 
+    # ....... COMPARE RESULTS ...........................
+
+    results_features = [res1, res2, res3, res4, res5, res6,
+                        res7, res8, res9, res10, res11,
+                        res_wd4, res_wd5, res_wd6, res_wd7,
+                        res_a10, res_a11, res_a12,
+                        res_ts14, res_ts15, res_ts15, res_ts16, res_ts17,
+                        res_pr1, res_pr2, res_pr3, res_pr4, res_pr5, res_pr6]
+
+    # Extract the metrics and create a DataFrame
+    data_res = []
+    for i, res in enumerate(results_features, 1):
+        feature_set = ', '.join(res[0])  # Combine feature names as a string
+        metrics = res[2]
+        data_res.append({
+            # 'Configuration': f"res{i}: {feature_set}",
+            'Configuration': f"conf.{i}",
+            'Features': f"{feature_set}",
+            'Precision': metrics['precision'],
+            'Accuracy': metrics['accuracy'],
+            'Recall': metrics['recall'],
+            'F1': metrics['f1']
+        })
+
+    # Create the DataFrame
+    df_res_ts = pd.DataFrame(data_res)
+
+    # Plotting a line plot for precision
+    plt.figure(figsize=(8, 5))
+    plt.plot(df_res_ts['Configuration'], df_res_ts['Accuracy'],
+             marker='d', linestyle=':', label='Accuracy')
+    plt.plot(df_res_ts['Configuration'], df_res_ts['Recall'],
+             marker='o', linestyle='-', label='Recall')
+    plt.title('Scores for features in different configuration')
+    plt.xlabel('Feature Configuration')
+    plt.ylabel('Score')
+    plt.ylim(0, 1)
+    plt.xticks(rotation=45)
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+    save_outputfile(df_res_ts, common_path /
+                    'config_test_features.csv')
+
     # ....... 6. AIR TEMPERATURE  ...........................
 
     ta1 = s3 + ['TaG']
