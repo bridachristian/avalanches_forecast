@@ -18,6 +18,84 @@ from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm
 from scripts.svm.utils import get_adjacent_values, save_outputfile
 
 
+def plot_before_nearmiss(X, y, palette={0: "blue", 1: "red"}):
+    """
+    Creates a scatter plot after applying nearmiss undersampling, showing class 1 points in the foreground
+    and class 0 points in the background, with transparency applied.
+
+    Parameters:
+    - X: DataFrame, the input data with features.
+    - y: Series, the target labels (binary: 0 or 1).
+    - version: str, version of the undersampling technique.
+    - n_neighbors: int, number of neighbors used in the undersampling technique.
+    - palette: dict, custom color palette for class 0 and class 1 (default is blue for 0 and red for 1).
+    """
+
+    # Separate the points based on their class
+    class_1_points = X[y == 1]  # Points where class == 1
+    class_0_points = X[y == 0]  # Points where class == 0
+
+    # Create the jointplot
+    g = sns.jointplot(data=X, x='HSnum', y='HN_3d', hue=y, alpha=0,
+                      kind='scatter', marginal_kws={'fill': False}, palette=palette, legend=False)
+
+    # Plot class 1 first (foreground) with transparency
+    sns.scatterplot(x=class_1_points['HSnum'], y=class_1_points['HN_3d'], hue=y[y == 1],
+                    palette={1: "red"}, alpha=0.3, ax=g.ax_joint, legend=True)
+
+    # Plot class 0 second (background) with more transparency
+    sns.scatterplot(x=class_0_points['HSnum'], y=class_0_points['HN_3d'], hue=y[y == 0],
+                    palette={0: "blue"}, alpha=0.3, ax=g.ax_joint, legend=True)
+
+    # Add title and other layout adjustments
+    g.fig.suptitle(
+        f'Before Nearmiss Undersampling', fontsize=14)
+    g.fig.tight_layout()
+    g.fig.subplots_adjust(top=0.95)
+
+    # Show the plot
+    plt.show()
+
+
+def plot_after_nearmiss(X, y, version, n_neighbors, palette={0: "blue", 1: "red"}):
+    """
+    Creates a scatter plot after applying nearmiss undersampling, showing class 1 points in the foreground
+    and class 0 points in the background, with transparency applied.
+
+    Parameters:
+    - X: DataFrame, the input data with features.
+    - y: Series, the target labels (binary: 0 or 1).
+    - version: str, version of the undersampling technique.
+    - n_neighbors: int, number of neighbors used in the undersampling technique.
+    - palette: dict, custom color palette for class 0 and class 1 (default is blue for 0 and red for 1).
+    """
+
+    # Separate the points based on their class
+    class_1_points = X[y == 1]  # Points where class == 1
+    class_0_points = X[y == 0]  # Points where class == 0
+
+    # Create the jointplot
+    g = sns.jointplot(data=X, x='HSnum', y='HN_3d', hue=y, alpha=0,
+                      kind='scatter', marginal_kws={'fill': False}, palette=palette, legend=False)
+
+    # Plot class 1 first (foreground) with transparency
+    sns.scatterplot(x=class_1_points['HSnum'], y=class_1_points['HN_3d'], hue=y[y == 1],
+                    palette={1: "red"}, alpha=0.3, ax=g.ax_joint, legend=True)
+
+    # Plot class 0 second (background) with more transparency
+    sns.scatterplot(x=class_0_points['HSnum'], y=class_0_points['HN_3d'], hue=y[y == 0],
+                    palette={0: "blue"}, alpha=0.3, ax=g.ax_joint, legend=True)
+
+    # Add title and other layout adjustments
+    g.fig.suptitle(
+        f'After Nearmiss Undersampling: vers.{version}, n.neighbgurs: {n_neighbors}', fontsize=14)
+    g.fig.tight_layout()
+    g.fig.subplots_adjust(top=0.95)
+
+    # Show the plot
+    plt.show()
+
+
 def plot_learning_curve(clf, X, y, cv=5):
     """
     Plots the learning curve for the given classifier.
@@ -229,7 +307,8 @@ def evaluate_svm_with_feature_selection(data, feature_list):
     y = clean_data['AvalDay']
 
     # Step 1: Apply NearMiss undersampling to balance the dataset
-    X_resampled, y_resampled = undersampling_nearmiss(X, y)
+    X_resampled, y_resampled = undersampling_nearmiss(
+        X, y, version=2, n_neighbors=1)
 
     # Step 2: Split the data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(
