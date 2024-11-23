@@ -2,6 +2,10 @@ import numpy as np
 import pandas as pd
 from collections import Counter
 from imblearn.under_sampling import RandomUnderSampler, NearMiss
+import matplotlib.pyplot as plt
+from scripts.svm.evaluation import plot_before_nearmiss, plot_after_nearmiss
+import seaborn as sns
+
 
 def undersampling_random(X, y):
     """
@@ -112,7 +116,7 @@ def undersampling_random_timelimited(X, y, Ndays=10):
     return X_res, y_res
 
 
-def undersampling_nearmiss(X, y, version=1, n_neighbors=3):
+def undersampling_nearmiss(X, y, version=1, n_neighbors=1):
     """
     Perform undersampling using the NearMiss algorithm.
 
@@ -128,7 +132,7 @@ def undersampling_nearmiss(X, y, version=1, n_neighbors=3):
                        - version=1: Selects samples that are closest to the minority class.
                        - version=2: Selects samples farthest from the minority class.
                        - version=3: Selects samples that are closest to the k-th nearest neighbor 
-                         from the minority class (default is version 1).
+                         from the minority class.
         n_neighbors (int): The number of neighbors to use when selecting samples. 
                            The default is 3.
 
@@ -161,5 +165,67 @@ def undersampling_nearmiss(X, y, version=1, n_neighbors=3):
     # Display the class distribution after undersampling
     print("NearMiss: Original class distribution:", Counter(y))
     print("NearMiss: Resampled class distribution:", Counter(y_res))
+
+    counts_orig = Counter(y)
+    counts_nm = Counter(y_res)
+
+    plot_before_nearmiss(X, y, palette={0: "blue", 1: "red"})
+
+    # Show the plot
+    plt.show()
+
+    # Version 1, n_neighbors = 1
+    version = 1
+    n_neighbors = 1
+    nearmiss = NearMiss(version=version, n_neighbors=n_neighbors)
+    X_res, y_res = nearmiss.fit_resample(X, y)
+
+    plot_after_nearmiss(X_res, y_res, version, n_neighbors,
+                        palette={0: "blue", 1: "red"})
+
+    # Version 2, n_neighbors = 1
+    version = 2
+    n_neighbors = 1
+    nearmiss = NearMiss(version=version, n_neighbors=n_neighbors)
+    X_res, y_res = nearmiss.fit_resample(X, y)
+
+    plot_after_nearmiss(X_res, y_res, version, n_neighbors,
+                        palette={0: "blue", 1: "red"})
+
+    # Version 3, n_neighbors = 1
+    version = 3
+    n_neighbors = 1
+    nearmiss = NearMiss(version=version, n_neighbors=n_neighbors)
+    X_res, y_res = nearmiss.fit_resample(X, y)
+
+    plot_after_nearmiss(X_res, y_res, version, n_neighbors,
+                        palette={0: "blue", 1: "red"})
+
+    # Version 3, n_neighbors = 2
+    version = 3
+    n_neighbors = 2
+    nearmiss = NearMiss(version=version, n_neighbors=n_neighbors)
+    X_res, y_res = nearmiss.fit_resample(X, y)
+
+    plot_after_nearmiss(X_res, y_res, version, n_neighbors,
+                        palette={0: "blue", 1: "red"})
+
+    # Version 3, n_neighbors = 5
+    version = 3
+    n_neighbors = 5
+    nearmiss = NearMiss(version=version, n_neighbors=n_neighbors)
+    X_res, y_res = nearmiss.fit_resample(X, y)
+
+    plot_after_nearmiss(X_res, y_res, version, n_neighbors,
+                        palette={0: "blue", 1: "red"})
+
+    # Version 3, n_neighbors = 10
+    version = 3
+    n_neighbors = 10
+    nearmiss = NearMiss(version=version, n_neighbors=n_neighbors)
+    X_res, y_res = nearmiss.fit_resample(X, y)
+
+    plot_after_nearmiss(X_res, y_res, version, n_neighbors,
+                        palette={0: "blue", 1: "red"})
 
     return X_res, y_res
