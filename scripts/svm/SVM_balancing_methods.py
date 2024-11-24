@@ -24,6 +24,8 @@ if __name__ == '__main__':
         'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\MOD1_manipulation\\')
 
     filepath = common_path / 'mod1_newfeatures.csv'
+    results_path = Path(
+        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\SVM_results\\')
 
     # output_filepath = common_path / 'mod1_undersampling.csv'
     # output_filepath2 = common_path / 'mod1_oversampling.csv'
@@ -94,55 +96,72 @@ if __name__ == '__main__':
     print("Original class distribution training set:", Counter(y_train))
     print("Original class distribution test set:", Counter(y_test))
 
-    # --- UNDERSAMPLING ---
-    X_rand, y_rand = undersampling_random(X, y)
-    X_rand_10d, y_rand_10d = undersampling_random_timelimited(X, y, Ndays=10)
-    X_nm1, y_nm1 = undersampling_nearmiss(X, y, version=1)
-    X_nm2, y_nm2 = undersampling_nearmiss(X, y, version=2)
-    X_nm3, y_nm3 = undersampling_nearmiss(X, y, version=3)
-
-    # --- OVERSAMPLING ---
-    X_ros, y_ros = oversampling_random(X_train, y_train)
-    X_sm, y_sm = oversampling_smote(X_train, y_train)
-    X_adas, y_adas = oversampling_adasyn(X_train, y_train)
-    X_svmsm, y_svmsm = oversampling_svmsmote(X_train, y_train)
-
-    # --- CREATE SVM MODEL ---
+    # Tuning of parameter C and gamma for SVM classification
     param_grid = {
         'C': [0.01, 0.1, 1, 10, 100, 1000],
         'gamma': [10, 1, 0.1, 0.01, 0.001, 0.0001]
     }
 
-    # 1. Random undersampling
+    # --- UNDERSAMPLING ---
+
+    # ... 1. Random undersampling ...
+
+    X_rand, y_rand = undersampling_random(X, y)
+
     X_rand_train, X_rand_test, y_rand_train, y_rand_test = train_test_split(
         X_rand, y_rand, test_size=0.25, random_state=42)
 
     res_rand = tune_train_evaluate_svm(
         X_rand_train, y_rand_train, X_rand_test, y_rand_test, param_grid)
 
-    # 2. Random undersampling N days before
+    # ... 2. Random undersampling N days before ...
+
+    X_rand_10d, y_rand_10d = undersampling_random_timelimited(X, y, Ndays=10)
+
     X_rand_10d_train, X_rand_10d_test, y_rand_10d_train, y_rand_10d_test = train_test_split(
         X_rand_10d, y_rand_10d, test_size=0.25, random_state=42)
     res_rand_10d = tune_train_evaluate_svm(
         X_rand_10d_train, y_rand_10d_train, X_rand_10d_test, y_rand_10d_test, param_grid)
 
-    # 3. Nearmiss undersampling
-    X_nm_train, X_nm_test, y_nm_train, y_nm_test = train_test_split(
-        X_nm, y_nm, test_size=0.25, random_state=42)
-    res_nm = tune_train_evaluate_svm(
-        X_nm_train, y_nm_train, X_nm_test, y_nm_test, param_grid)
+    # ... 3. Nearmiss undersampling ...
 
-    # 4. Random oversampling
+    vers = [1, 2, 3]
+    n_neig = [1, 3, 5, 10]
+
+    # List to store results
+    res_list = []
+    for v in vers:
+        for n in n_neig:
+            X_nm, y_nm = undersampling_nearmiss(X, y, version=v, n_neighbors=n)
+
+            X_nm_train, X_nm_test, y_nm_train, y_nm_test = train_test_split(
+                X_nm, y_nm, test_size=0.25, random_state=42)
+            res_nm = tune_train_evaluate_svm(
+                X_nm_train, y_nm_train, X_nm_test, y_nm_test, param_grid)
+
+            res_list.append(
+                {'sampling_method': f'NearMiss_v{v}_nn{n}', **res_nm})
+
+    # --- OVERSAMPLING ---
+    # ... 4. Random oversampling ...
+
+    X_ros, y_ros = oversampling_random(X_train, y_train)
     res_ros = tune_train_evaluate_svm(X_ros, y_ros, X_test, y_test, param_grid)
 
-    # 5. SMOTE oversampling
+    # ... 5. SMOTE oversampling ...
+
+    X_sm, y_sm = oversampling_smote(X_train, y_train)
     res_sm = tune_train_evaluate_svm(X_sm, y_sm, X_test, y_test, param_grid)
 
-    # 6. adasyn oversampling
+    # 6. ADASYN oversampling
+
+    X_adas, y_adas = oversampling_adasyn(X_train, y_train)
     res_adas = tune_train_evaluate_svm(
         X_adas, y_adas, X_test, y_test, param_grid)
 
-    # 7. SVMSMOTE oversampling
+    # ... 7. SVMSMOTE oversampling ...
+
+    X_svmsm, y_svmsm = oversampling_svmsmote(X_train, y_train)
     res_svmsm = tune_train_evaluate_svm(
         X_svmsm, y_svmsm, X_test, y_test, param_grid)
 
@@ -150,25 +169,39 @@ if __name__ == '__main__':
 
     # List to store results
     results_list = []
+    final_results_list = []
 
     # Add each result to the list with the sampling method as an identifier
     results_list.append(
         {'sampling_method': 'Random_Undersampling', **res_rand})
     results_list.append(
         {'sampling_method': 'Random_Undersampling_10d', **res_rand_10d})
-    results_list.append(
-        {'sampling_method': 'Nearmiss_Undersampling', **res_nm})
-    results_list.append({'sampling_method': 'Random_Oversampling', **res_ros})
-    results_list.append({'sampling_method': 'SMOTE_Oversampling', **res_sm})
-    results_list.append({'sampling_method': 'ADASYN_Oversampling', **res_adas})
-    results_list.append(
+
+    for entry in results_list:
+        if isinstance(entry, list):  # Check if an entry is a nested list (like res_list)
+            # Add all elements of the list to the final results
+            final_results_list.extend(entry)
+        else:
+            # Add single dictionary entries directly
+            final_results_list.append(entry)
+
+    # Add res_list directly (in case it hasn't been already added to results_list)
+    final_results_list.extend(res_list)
+
+    final_results_list.append(
+        {'sampling_method': 'Random_Oversampling', **res_ros})
+    final_results_list.append(
+        {'sampling_method': 'SMOTE_Oversampling', **res_sm})
+    final_results_list.append(
+        {'sampling_method': 'ADASYN_Oversampling', **res_adas})
+    final_results_list.append(
         {'sampling_method': 'SVMSMOTE_Oversampling', **res_svmsm})
 
     # Convert list of dictionaries to a DataFrame
-    results_df = pd.DataFrame(results_list)
+    results_df = pd.DataFrame(final_results_list)
     print(results_df)
 
-    save_outputfile(results_df, common_path /
+    save_outputfile(results_df, results_path /
                     'under_oversampling_comparison.csv')
 
     # ---------------------------------------------------------------
