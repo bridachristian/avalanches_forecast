@@ -116,7 +116,7 @@ def undersampling_random_timelimited(X, y, Ndays=10):
     return X_res, y_res
 
 
-def undersampling_nearmiss(X, y, version=1, n_neighbors=1):
+def undersampling_nearmiss(X, y, version=1, n_neighbors=3):
     """
     Perform undersampling using the NearMiss algorithm.
 
@@ -151,6 +151,9 @@ def undersampling_nearmiss(X, y, version=1, n_neighbors=1):
     Example:
         X_res, y_res = undersampling_nearmiss(X, y, version=2, n_neighbors=5)
     """
+
+    plot_before_nearmiss(X, y, palette={0: "blue", 1: "red"})
+
     # Initialize the NearMiss object with the chosen version
     nearmiss = NearMiss(version=version, n_neighbors=n_neighbors)
 
@@ -169,60 +172,7 @@ def undersampling_nearmiss(X, y, version=1, n_neighbors=1):
     counts_orig = Counter(y)
     counts_nm = Counter(y_res)
 
-    plot_before_nearmiss(X, y, palette={0: "blue", 1: "red"})
-
-    # Version 1, n_neighbors = 1
-    # version = 1
-    # n_neighbors = 1
-    # nearmiss = NearMiss(version=version, n_neighbors=n_neighbors)
-    # X_res, y_res = nearmiss.fit_resample(X, y)
-
     plot_after_nearmiss(X_res, y_res, version, n_neighbors,
                         palette={0: "blue", 1: "red"})
-
-    # # Version 2, n_neighbors = 1
-    # version = 2
-    # n_neighbors = 1
-    # nearmiss = NearMiss(version=version, n_neighbors=n_neighbors)
-    # X_res, y_res = nearmiss.fit_resample(X, y)
-
-    # plot_after_nearmiss(X_res, y_res, version, n_neighbors,
-    #                     palette={0: "blue", 1: "red"})
-
-    # # Version 3, n_neighbors = 1
-    # version = 3
-    # n_neighbors = 1
-    # nearmiss = NearMiss(version=version, n_neighbors=n_neighbors)
-    # X_res, y_res = nearmiss.fit_resample(X, y)
-
-    # plot_after_nearmiss(X_res, y_res, version, n_neighbors,
-    #                     palette={0: "blue", 1: "red"})
-
-    # # Version 3, n_neighbors = 2
-    # version = 3
-    # n_neighbors = 2
-    # nearmiss = NearMiss(version=version, n_neighbors=n_neighbors)
-    # X_res, y_res = nearmiss.fit_resample(X, y)
-
-    # plot_after_nearmiss(X_res, y_res, version, n_neighbors,
-    #                     palette={0: "blue", 1: "red"})
-
-    # # Version 3, n_neighbors = 5
-    # version = 3
-    # n_neighbors = 5
-    # nearmiss = NearMiss(version=version, n_neighbors=n_neighbors)
-    # X_res, y_res = nearmiss.fit_resample(X, y)
-
-    # plot_after_nearmiss(X_res, y_res, version, n_neighbors,
-    #                     palette={0: "blue", 1: "red"})
-
-    # # Version 3, n_neighbors = 10
-    # version = 3
-    # n_neighbors = 10
-    # nearmiss = NearMiss(version=version, n_neighbors=n_neighbors)
-    # X_res, y_res = nearmiss.fit_resample(X, y)
-
-    # plot_after_nearmiss(X_res, y_res, version, n_neighbors,
-    #                     palette={0: "blue", 1: "red"})
 
     return X_res, y_res

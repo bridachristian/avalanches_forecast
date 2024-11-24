@@ -12,7 +12,8 @@ from scripts.svm.undersampling_methods import undersampling_random, undersamplin
 from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
 from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm, train_evaluate_final_svm
 from scripts.svm.evaluation import (plot_learning_curve, plot_confusion_matrix,
-                                    plot_roc_curve, permutation_ranking, evaluate_svm_with_feature_selection)
+                                    plot_roc_curve, permutation_ranking, evaluate_svm_with_feature_selection,
+                                    plot_before_nearmiss, plot_after_nearmiss)
 from scripts.svm.utils import save_outputfile, get_adjacent_values
 
 
@@ -35,26 +36,26 @@ if __name__ == '__main__':
     print(mod1.dtypes)  # For initial data type inspection
 
     # --- FEATURES SELECTION ---
-    # feature = ['HN_3d', 'HSnum']
-    feature = [
-        'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
-        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
-        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
-        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-        'TempAmplitude_3d', 'TempAmplitude_5d', 'Ta_delta_1d', 'Ta_delta_2d',
-        'Ta_delta_3d', 'Ta_delta_5d', 'Tmin_delta_1d', 'Tmin_delta_2d',
-        'Tmin_delta_3d', 'Tmin_delta_5d', 'Tmax_delta_1d', 'Tmax_delta_2d',
-        'Tmax_delta_3d', 'Tmax_delta_5d', 'T_mean', 'DegreeDays_Pos',
-        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-        'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
-        'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
-        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
-        'TempGrad_HS', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
-        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
-        'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
-    ]
+    feature = ['HN_3d', 'HSnum']
+    # feature = [
+    #     'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+    #     'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
+    #     'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+    #     'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+    #     'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+    #     'TempAmplitude_3d', 'TempAmplitude_5d', 'Ta_delta_1d', 'Ta_delta_2d',
+    #     'Ta_delta_3d', 'Ta_delta_5d', 'Tmin_delta_1d', 'Tmin_delta_2d',
+    #     'Tmin_delta_3d', 'Tmin_delta_5d', 'Tmax_delta_1d', 'Tmax_delta_2d',
+    #     'Tmax_delta_3d', 'Tmax_delta_5d', 'T_mean', 'DegreeDays_Pos',
+    #     'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+    #     'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
+    #     'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
+    #     'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
+    #     'TempGrad_HS', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+    #     'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
+    #     'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
+    #     'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
+    # ]
 
     feature_plus = feature + ['AvalDay']
     mod1_clean = mod1[feature_plus]
@@ -97,7 +98,9 @@ if __name__ == '__main__':
     # --- UNDERSAMPLING ---
     X_rand, y_rand = undersampling_random(X, y)
     X_rand_10d, y_rand_10d = undersampling_random_timelimited(X, y, Ndays=10)
-    X_nm, y_nm = undersampling_nearmiss(X, y)
+    X_nm1, y_nm1 = undersampling_nearmiss(X, y, version=1)
+    X_nm2, y_nm2 = undersampling_nearmiss(X, y, version=2)
+    X_nm3, y_nm3 = undersampling_nearmiss(X, y, version=3)
 
     # --- OVERSAMPLING ---
     X_ros, y_ros = oversampling_random(X_train, y_train)
