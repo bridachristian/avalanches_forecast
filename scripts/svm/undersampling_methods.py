@@ -3,8 +3,8 @@ import pandas as pd
 from collections import Counter
 from imblearn.under_sampling import RandomUnderSampler, NearMiss
 import matplotlib.pyplot as plt
-# from scripts.svm.evaluation import plot_before_nearmiss, plot_after_nearmiss
-import seaborn as sns
+
+from scripts.svm.utils import plot_scatter_original, plot_scatter_under_over_sampling
 
 
 def undersampling_random(X, y):
@@ -29,6 +29,8 @@ def undersampling_random(X, y):
         - The original and resampled class distributions are printed using the Counter class 
           from the collections module.
     """
+    sampling_method = 'Random Undersampling'
+
     # Apply random undersampling
     rus = RandomUnderSampler(random_state=42)
     X_res, y_res = rus.fit_resample(X, y)
@@ -36,6 +38,17 @@ def undersampling_random(X, y):
     # Check the new class distribution
     print("Original class distribution:", Counter(y))
     print("Resampled class distribution:", Counter(y_res))
+
+    if X.shape[1] == 2:
+        plot_scatter_original(X, y,
+                              title=f'Original Distribution before {sampling_method}',
+                              palette={0: "blue", 1: "red"})
+
+        plot_scatter_under_over_sampling(X_res, y_res,
+                                         title=f'{sampling_method}',
+                                         palette={0: "blue", 1: "red"})
+    else:
+        print("Skipping scatter plot: X does not have exactly 2 features.")
 
     return X_res, y_res
 
@@ -73,6 +86,8 @@ def undersampling_random_timelimited(X, y, Ndays=10):
     Example:
         X_res, y_res = undersampling_random_timelimited(X, y, Ndays=10)
     """
+
+    sampling_method = f'Random time-limited {Ndays} days Undersampling'
     # Convert y to a DataFrame to retain the index
     y_df = pd.DataFrame(y).copy()
     y_df.columns = ['AvalDay']
@@ -113,6 +128,17 @@ def undersampling_random_timelimited(X, y, Ndays=10):
     print("Original class distribution:", Counter(y))
     print("Resampled class distribution:", Counter(y_res))
 
+    if X.shape[1] == 2:
+        plot_scatter_original(X, y,
+                              title=f'Original Distribution before {sampling_method}',
+                              palette={0: "blue", 1: "red"})
+
+        plot_scatter_under_over_sampling(X_res, y_res,
+                                         title=f'{sampling_method}',
+                                         palette={0: "blue", 1: "red"})
+    else:
+        print("Skipping scatter plot: X does not have exactly 2 features.")
+
     return X_res, y_res
 
 
@@ -151,8 +177,7 @@ def undersampling_nearmiss(X, y, version=1, n_neighbors=3):
     Example:
         X_res, y_res = undersampling_nearmiss(X, y, version=2, n_neighbors=5)
     """
-
-    plot_before_nearmiss(X, y, palette={0: "blue", 1: "red"})
+    sampling_method = 'NearMiss Undersampling'
 
     # Initialize the NearMiss object with the chosen version
     nearmiss = NearMiss(version=version, n_neighbors=n_neighbors)
@@ -172,88 +197,15 @@ def undersampling_nearmiss(X, y, version=1, n_neighbors=3):
     counts_orig = Counter(y)
     counts_nm = Counter(y_res)
 
-    plot_after_nearmiss(X_res, y_res, version, n_neighbors,
-                        palette={0: "blue", 1: "red"})
+    if X.shape[1] == 2:
+        plot_scatter_original(X, y,
+                              title=f'Original Distribution before {sampling_method}',
+                              palette={0: "blue", 1: "red"})
+
+        plot_scatter_under_over_sampling(X_res, y_res,
+                                         title=f'{sampling_method}: vers.{version}, n.neighbgurs: {n_neighbors}',
+                                         palette={0: "blue", 1: "red"})
+    else:
+        print("Skipping scatter plot: X does not have exactly 2 features.")
 
     return X_res, y_res
-
-
-def plot_before_nearmiss(X, y, palette={0: "blue", 1: "red"}):
-    """
-    Creates a scatter plot after applying nearmiss undersampling, showing class 1 points in the foreground
-    and class 0 points in the background, with transparency applied.
-
-    Parameters:
-    - X: DataFrame, the input data with features.
-    - y: Series, the target labels (binary: 0 or 1).
-    - version: str, version of the undersampling technique.
-    - n_neighbors: int, number of neighbors used in the undersampling technique.
-    - palette: dict, custom color palette for class 0 and class 1 (default is blue for 0 and red for 1).
-    """
-
-    # Separate the points based on their class
-    class_1_points = X[y == 1]  # Points where class == 1
-    class_0_points = X[y == 0]  # Points where class == 0
-
-    colnames = X.columns
-    # Create the jointplot
-    g = sns.jointplot(data=X, x=colnames[0], y=colnames[1], hue=y, alpha=0,
-                      kind='scatter', marginal_kws={'fill': False}, palette=palette, legend=False)
-
-    # Plot class 1 first (foreground) with transparency
-    sns.scatterplot(x=class_1_points.iloc[:, 0], y=class_1_points.iloc[:, 1], hue=y[y == 1],
-                    palette={1: "red"}, alpha=0.3, ax=g.ax_joint, legend=True)
-
-    # Plot class 0 second (background) with more transparency
-    sns.scatterplot(x=class_0_points.iloc[:, 0], y=class_0_points.iloc[:, 1], hue=y[y == 0],
-                    palette={0: "blue"}, alpha=0.3, ax=g.ax_joint, legend=True)
-
-    # Add title and other layout adjustments
-    g.fig.suptitle(
-        f'Before Nearmiss Undersampling', fontsize=14)
-    g.fig.tight_layout()
-    g.fig.subplots_adjust(top=0.95)
-
-    # Show the plot
-    plt.show()
-
-
-def plot_after_nearmiss(X, y, version, n_neighbors, palette={0: "blue", 1: "red"}):
-    """
-    Creates a scatter plot after applying nearmiss undersampling, showing class 1 points in the foreground
-    and class 0 points in the background, with transparency applied.
-
-    Parameters:
-    - X: DataFrame, the input data with features.
-    - y: Series, the target labels (binary: 0 or 1).
-    - version: str, version of the undersampling technique.
-    - n_neighbors: int, number of neighbors used in the undersampling technique.
-    - palette: dict, custom color palette for class 0 and class 1 (default is blue for 0 and red for 1).
-    """
-
-    colnames = X.columns
-
-    # Separate the points based on their class
-    class_1_points = X[y == 1]  # Points where class == 1
-    class_0_points = X[y == 0]  # Points where class == 0
-
-    # Create the jointplot
-    g = sns.jointplot(data=X, x=colnames[0], y=colnames[1], hue=y, alpha=0,
-                      kind='scatter', marginal_kws={'fill': False}, palette=palette, legend=False)
-
-    # Plot class 1 first (foreground) with transparency
-    sns.scatterplot(x=class_1_points.iloc[:, 0], y=class_1_points.iloc[:, 1], hue=y[y == 1],
-                    palette={1: "red"}, alpha=0.3, ax=g.ax_joint, legend=True)
-
-    # Plot class 0 second (background) with more transparency
-    sns.scatterplot(x=class_0_points.iloc[:, 0], y=class_0_points.iloc[:, 1], hue=y[y == 0],
-                    palette={0: "blue"}, alpha=0.3, ax=g.ax_joint, legend=True)
-
-    # Add title and other layout adjustments
-    g.fig.suptitle(
-        f'After Nearmiss Undersampling: vers.{version}, n.neighbgurs: {n_neighbors}', fontsize=14)
-    g.fig.tight_layout()
-    g.fig.subplots_adjust(top=0.95)
-
-    # Show the plot
-    plt.show()

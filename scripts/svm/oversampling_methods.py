@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from collections import Counter
 from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN, SVMSMOTE
+from scripts.svm.utils import plot_scatter_original, plot_scatter_under_over_sampling
 
 
 def oversampling_random(X, y):
@@ -32,6 +33,7 @@ def oversampling_random(X, y):
     Example:
         X_res, y_res = oversampling_random(X, y)
     """
+    sampling_method = 'Random Oversampling'
     # Initialize the RandomOverSampler object
     ros = RandomOverSampler(random_state=42)
 
@@ -41,6 +43,17 @@ def oversampling_random(X, y):
     # Display the class distribution before and after oversampling
     print("RandomOverSampler: Original class distribution:", Counter(y))
     print("RandomOverSampler: Resampled class distribution:", Counter(y_res))
+
+    if X.shape[1] == 2:
+        plot_scatter_original(X, y,
+                              title=f'Original Distribution before {sampling_method}',
+                              palette={0: "blue", 1: "red"})
+
+        plot_scatter_under_over_sampling(X_res, y_res,
+                                         title=f'{sampling_method}',
+                                         palette={0: "blue", 1: "red"})
+    else:
+        print("Skipping scatter plot: X does not have exactly 2 features.")
 
     return X_res, y_res
 
@@ -74,6 +87,8 @@ def oversampling_smote(X, y):
     Example:
         X_res, y_res = oversampling_smote(X, y)
     """
+    sampling_method = 'SMOTE Oversampling'
+
     # Initialize the SMOTE object
     smote = SMOTE(sampling_strategy='minority', random_state=42)
 
@@ -83,6 +98,17 @@ def oversampling_smote(X, y):
     # Display the class distribution before and after SMOTE
     print("SMOTE: Original class distribution:", Counter(y))
     print("SMOTE: Resampled class distribution:", Counter(y_res))
+
+    if X.shape[1] == 2:
+        plot_scatter_original(X, y,
+                              title=f'Original Distribution before {sampling_method}',
+                              palette={0: "blue", 1: "red"})
+
+        plot_scatter_under_over_sampling(X_res, y_res,
+                                         title=f'{sampling_method}',
+                                         palette={0: "blue", 1: "red"})
+    else:
+        print("Skipping scatter plot: X does not have exactly 2 features.")
 
     return X_res, y_res
 
@@ -115,6 +141,9 @@ def oversampling_adasyn(X, y):
     Example:
         X_res, y_res = oversampling_adasyn(X, y)
     """
+
+    sampling_method = 'ADASYN Oversampling'
+
     # Initialize the ADASYN object
     adasyn = ADASYN(sampling_strategy='minority', random_state=42)
 
@@ -124,6 +153,17 @@ def oversampling_adasyn(X, y):
     # Display the class distribution before and after ADASYN
     print("ADASYN: Original class distribution:", Counter(y))
     print("ADASYN: Resampled class distribution:", Counter(y_res))
+
+    if X.shape[1] == 2:
+        plot_scatter_original(X, y,
+                              title=f'Original Distribution before {sampling_method}',
+                              palette={0: "blue", 1: "red"})
+
+        plot_scatter_under_over_sampling(X_res, y_res,
+                                         title=f'{sampling_method}',
+                                         palette={0: "blue", 1: "red"})
+    else:
+        print("Skipping scatter plot: X does not have exactly 2 features.")
 
     return X_res, y_res
 
@@ -155,6 +195,8 @@ def oversampling_svmsmote(X, y):
     Example:
         X_res, y_res = oversampling_svmsmote(X, y)
     """
+
+    sampling_method = 'SVMSMOTE Oversampling'
     # Initialize the SVMSMOTE object
     svmsmote = SVMSMOTE(sampling_strategy='minority', random_state=42)
 
@@ -164,5 +206,16 @@ def oversampling_svmsmote(X, y):
     # Display the class distribution before and after SVMSMOTE
     print("SVMSMOTE: Original class distribution:", Counter(y))
     print("SVMSMOTE: Resampled class distribution:", Counter(y_res))
+
+    if X.shape[1] == 2:
+        plot_scatter_original(X, y,
+                              title=f'Original Distribution before {sampling_method}',
+                              palette={0: "blue", 1: "red"})
+
+        plot_scatter_under_over_sampling(X_res, y_res,
+                                         title=f'{sampling_method}',
+                                         palette={0: "blue", 1: "red"})
+    else:
+        print("Skipping scatter plot: X does not have exactly 2 features.")
 
     return X_res, y_res
