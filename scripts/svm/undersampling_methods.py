@@ -3,7 +3,7 @@ import pandas as pd
 from collections import Counter
 from imblearn.under_sampling import RandomUnderSampler, NearMiss
 import matplotlib.pyplot as plt
-from scripts.svm.evaluation import plot_before_nearmiss, plot_after_nearmiss
+# from scripts.svm.evaluation import plot_before_nearmiss, plot_after_nearmiss
 import seaborn as sns
 
 
@@ -176,3 +176,84 @@ def undersampling_nearmiss(X, y, version=1, n_neighbors=3):
                         palette={0: "blue", 1: "red"})
 
     return X_res, y_res
+
+
+def plot_before_nearmiss(X, y, palette={0: "blue", 1: "red"}):
+    """
+    Creates a scatter plot after applying nearmiss undersampling, showing class 1 points in the foreground
+    and class 0 points in the background, with transparency applied.
+
+    Parameters:
+    - X: DataFrame, the input data with features.
+    - y: Series, the target labels (binary: 0 or 1).
+    - version: str, version of the undersampling technique.
+    - n_neighbors: int, number of neighbors used in the undersampling technique.
+    - palette: dict, custom color palette for class 0 and class 1 (default is blue for 0 and red for 1).
+    """
+
+    # Separate the points based on their class
+    class_1_points = X[y == 1]  # Points where class == 1
+    class_0_points = X[y == 0]  # Points where class == 0
+
+    colnames = X.columns
+    # Create the jointplot
+    g = sns.jointplot(data=X, x=colnames[0], y=colnames[1], hue=y, alpha=0,
+                      kind='scatter', marginal_kws={'fill': False}, palette=palette, legend=False)
+
+    # Plot class 1 first (foreground) with transparency
+    sns.scatterplot(x=class_1_points.iloc[:, 0], y=class_1_points.iloc[:, 1], hue=y[y == 1],
+                    palette={1: "red"}, alpha=0.3, ax=g.ax_joint, legend=True)
+
+    # Plot class 0 second (background) with more transparency
+    sns.scatterplot(x=class_0_points.iloc[:, 0], y=class_0_points.iloc[:, 1], hue=y[y == 0],
+                    palette={0: "blue"}, alpha=0.3, ax=g.ax_joint, legend=True)
+
+    # Add title and other layout adjustments
+    g.fig.suptitle(
+        f'Before Nearmiss Undersampling', fontsize=14)
+    g.fig.tight_layout()
+    g.fig.subplots_adjust(top=0.95)
+
+    # Show the plot
+    plt.show()
+
+
+def plot_after_nearmiss(X, y, version, n_neighbors, palette={0: "blue", 1: "red"}):
+    """
+    Creates a scatter plot after applying nearmiss undersampling, showing class 1 points in the foreground
+    and class 0 points in the background, with transparency applied.
+
+    Parameters:
+    - X: DataFrame, the input data with features.
+    - y: Series, the target labels (binary: 0 or 1).
+    - version: str, version of the undersampling technique.
+    - n_neighbors: int, number of neighbors used in the undersampling technique.
+    - palette: dict, custom color palette for class 0 and class 1 (default is blue for 0 and red for 1).
+    """
+
+    colnames = X.columns
+
+    # Separate the points based on their class
+    class_1_points = X[y == 1]  # Points where class == 1
+    class_0_points = X[y == 0]  # Points where class == 0
+
+    # Create the jointplot
+    g = sns.jointplot(data=X, x=colnames[0], y=colnames[1], hue=y, alpha=0,
+                      kind='scatter', marginal_kws={'fill': False}, palette=palette, legend=False)
+
+    # Plot class 1 first (foreground) with transparency
+    sns.scatterplot(x=class_1_points.iloc[:, 0], y=class_1_points.iloc[:, 1], hue=y[y == 1],
+                    palette={1: "red"}, alpha=0.3, ax=g.ax_joint, legend=True)
+
+    # Plot class 0 second (background) with more transparency
+    sns.scatterplot(x=class_0_points.iloc[:, 0], y=class_0_points.iloc[:, 1], hue=y[y == 0],
+                    palette={0: "blue"}, alpha=0.3, ax=g.ax_joint, legend=True)
+
+    # Add title and other layout adjustments
+    g.fig.suptitle(
+        f'After Nearmiss Undersampling: vers.{version}, n.neighbgurs: {n_neighbors}', fontsize=14)
+    g.fig.tight_layout()
+    g.fig.subplots_adjust(top=0.95)
+
+    # Show the plot
+    plt.show()

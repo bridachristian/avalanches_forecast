@@ -12,8 +12,7 @@ from scripts.svm.undersampling_methods import undersampling_random, undersamplin
 from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
 from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm, train_evaluate_final_svm
 from scripts.svm.evaluation import (plot_learning_curve, plot_confusion_matrix,
-                                    plot_roc_curve, permutation_ranking, evaluate_svm_with_feature_selection,
-                                    plot_before_nearmiss, plot_after_nearmiss)
+                                    plot_roc_curve, permutation_ranking, evaluate_svm_with_feature_selection)
 from scripts.svm.utils import save_outputfile, get_adjacent_values
 
 
