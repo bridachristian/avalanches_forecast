@@ -55,13 +55,15 @@ mod1_clean = mod1_clean.dropna()
 X = mod1_clean[feature]
 y = mod1_clean['AvalDay']
 
+X_new = np.log(1+X)
+
 columns = X.columns
 
 # # Initialize the scaler
 # scaler = StandardScaler()
 
 # # Fit the scaler and transform the features
-# X_scaled = scaler.fit_transform(X)
+# X_scaled = scaler.fit_transform(X_res)
 
 # # Convert the scaled array back to a DataFrame with the original column names
 # X_scaled_df = pd.DataFrame(X_scaled, columns=X.columns, index=X.index)
@@ -69,12 +71,12 @@ columns = X.columns
 # # Now, X_scaled_df is the scaled version of the original DataFrame, preserving the structure
 # print(X_scaled_df.head())  # Print the first few rows to verify
 
+X_res = np.log(1+X_res)
+X_nm, y_nm = undersampling_nearmiss(X_new, y, version=1, n_neighbors=1)
 
-X_nm, y_nm = undersampling_nearmiss(X, y, version=1, n_neighbors=483)
 
-
-X_array = X_nm.values.astype(float)
-y_array = y_nm.values.astype(float)
+X_array = X_cnn.values.astype(float)
+y_array = y_cnn.values.astype(float)
 
 
 param_distributions = {
@@ -90,7 +92,7 @@ print("Best Parameters:", random_search.best_params_)
 print("Best Score:", random_search.best_score_)
 
 
-best_C = 1
+best_C = 0.1
 best_gamma = 0.001
 print(f'Run: C = {best_C}, gamma = {best_gamma}')
 model = SVC(C=best_C, gamma=best_gamma, kernel='rbf')
@@ -109,13 +111,13 @@ plt.title(f"SVM Decision Boundary with C={best_C} and gamma={best_gamma}")
 plt.scatter(X_array[:, 0], X_array[:, 1],
             c=y_array, cmap='coolwarm', alpha=0.5)
 
-# Add x and y axis labels
-plt.xlabel(columns[0])
-plt.ylabel(columns[1])
-
 ax = plt.gca()
 ax.contour(xx, yy, Z, levels=[-1, 0, 1],
            linestyles=['--', '-', '--'], colors='k')
+
+# Add x and y axis labels
+plt.xlabel(columns[0])
+plt.ylabel(columns[1])
 
 plt.show()
 
@@ -168,7 +170,7 @@ ax.view_init(elev=90, azim=0)  # Adjust elevation and azimuth
 # scatter = ax.scatter(X_array[:, 0], X_array[:, 1], Z.ravel(),
 #                       c=y_array, cmap='coolwarm', edgecolor='k', s=50)
 
-ax.view_init(elev=30, azim=60)  # Adjust elevation and azimuth
+ax.view_init(elev=0, azim=0)  # Adjust elevation and azimuth
 
 # Add labels and a title
 ax.set_xlabel(columns[0])

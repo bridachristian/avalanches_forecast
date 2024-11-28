@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
 from collections import Counter
-from imblearn.under_sampling import RandomUnderSampler, NearMiss
+from imblearn.under_sampling import (RandomUnderSampler, NearMiss, CondensedNearestNeighbour,
+                                     EditedNearestNeighbours, ClusterCentroids, TomekLinks)
 import matplotlib.pyplot as plt
 
 from scripts.svm.utils import plot_scatter_original, plot_scatter_under_over_sampling
@@ -11,8 +12,8 @@ def undersampling_random(X, y):
     """
     Perform random undersampling on the input data to balance the class distribution.
 
-    This function uses the RandomUnderSampler from the imbalanced-learn library to 
-    randomly downsample the majority class in the dataset. It then prints the class 
+    This function uses the RandomUnderSampler from the imbalanced-learn library to
+    randomly downsample the majority class in the dataset. It then prints the class
     distribution before and after undersampling, allowing you to compare the effect.
 
     Args:
@@ -26,7 +27,7 @@ def undersampling_random(X, y):
 
     Notes:
         - The RandomUnderSampler uses a fixed random seed (42) to ensure reproducibility.
-        - The original and resampled class distributions are printed using the Counter class 
+        - The original and resampled class distributions are printed using the Counter class
           from the collections module.
     """
     sampling_method = 'Random Undersampling'
@@ -57,15 +58,15 @@ def undersampling_random_timelimited(X, y, Ndays=10):
     """
     Perform random undersampling within a time-limited window before avalanche events.
 
-    This function applies random undersampling on the data, but limits the undersampling 
-    to only the data within a time window (default of 10 days) before each avalanche event. 
-    It ensures that the data used for resampling includes only non-avalanche events within 
+    This function applies random undersampling on the data, but limits the undersampling
+    to only the data within a time window (default of 10 days) before each avalanche event.
+    It ensures that the data used for resampling includes only non-avalanche events within
     the specified time window, while also preserving the avalanche events.
 
     Args:
         X (pd.DataFrame or np.ndarray): The feature matrix containing the input data.
         y (pd.Series or np.ndarray): The target labels corresponding to the data points.
-        Ndays (int): The number of days before an avalanche event to consider for undersampling 
+        Ndays (int): The number of days before an avalanche event to consider for undersampling
                      (default is 10 days).
 
     Returns:
@@ -74,13 +75,13 @@ def undersampling_random_timelimited(X, y, Ndays=10):
                - y_res: The resampled target labels.
 
     Notes:
-        - The function creates a time window of `Ndays` before each avalanche event and 
+        - The function creates a time window of `Ndays` before each avalanche event and
           applies undersampling within this window.
-        - The function uses RandomUnderSampler from the imbalanced-learn library to balance 
+        - The function uses RandomUnderSampler from the imbalanced-learn library to balance
           the class distribution by randomly undersampling the majority class.
-        - The random undersampling is applied to non-avalanche events within the selected 
+        - The random undersampling is applied to non-avalanche events within the selected
           time window.
-        - The original and resampled class distributions are printed using the Counter class 
+        - The original and resampled class distributions are printed using the Counter class
           from the collections module.
 
     Example:
@@ -147,8 +148,8 @@ def undersampling_nearmiss(X, y, version=1, n_neighbors=3):
     Perform undersampling using the NearMiss algorithm.
 
     This function applies the NearMiss undersampling technique to balance the class distribution
-    in the dataset. NearMiss selects samples from the majority class that are closest to the 
-    minority class samples. The algorithm can operate in different versions (1, 2, or 3), 
+    in the dataset. NearMiss selects samples from the majority class that are closest to the
+    minority class samples. The algorithm can operate in different versions (1, 2, or 3),
     where each version differs in how the closest majority class samples are selected.
 
     Args:
@@ -157,9 +158,9 @@ def undersampling_nearmiss(X, y, version=1, n_neighbors=3):
         version (int): The version of the NearMiss algorithm to use:
                        - version=1: Selects samples that are closest to the minority class.
                        - version=2: Selects samples farthest from the minority class.
-                       - version=3: Selects samples that are closest to the k-th nearest neighbor 
+                       - version=3: Selects samples that are closest to the k-th nearest neighbor
                          from the minority class.
-        n_neighbors (int): The number of neighbors to use when selecting samples. 
+        n_neighbors (int): The number of neighbors to use when selecting samples.
                            The default is 3.
 
     Returns:
@@ -168,10 +169,10 @@ def undersampling_nearmiss(X, y, version=1, n_neighbors=3):
                - y_res: The resampled target labels.
 
     Notes:
-        - NearMiss undersampling aims to balance the class distribution by undersampling the 
+        - NearMiss undersampling aims to balance the class distribution by undersampling the
           majority class based on its proximity to the minority class samples.
         - The function uses the `NearMiss` class from the imbalanced-learn library for resampling.
-        - The class distributions before and after resampling are printed using the `Counter` 
+        - The class distributions before and after resampling are printed using the `Counter`
           class from the collections module.
 
     Example:
@@ -209,3 +210,151 @@ def undersampling_nearmiss(X, y, version=1, n_neighbors=3):
         print("Skipping scatter plot: X does not have exactly 2 features.")
 
     return X_res, y_res
+
+
+def undersampling_cnn(X, y, version=1, n_neighbors=3):
+    sampling_method = 'Condensed Nearest Neighbour Undersampling'
+    cnn = CondensedNearestNeighbour(random_state=42)
+    X_res, y_res = cnn.fit_resample(X, y)
+
+    # Ensure equal number of samples (483) in each class
+    target_count = Counter(y_res)[1]
+
+    # Find indices for each class
+    indices_0 = np.where(y_res == 0)[0]
+    indices_1 = np.where(y_res == 1)[0]
+
+    # Randomly sample from the larger class to match the target count
+    indices_0 = np.random.choice(indices_0, size=target_count, replace=False)
+    indices_1 = np.random.choice(indices_1, size=target_count, replace=False)
+
+    # Combine the balanced indices
+    balanced_indices = np.hstack((indices_0, indices_1))
+
+    # Create the balanced dataset
+    X_balanced = X_res.iloc[balanced_indices, :]
+    y_balanced = y_res[balanced_indices]
+
+    if X.shape[1] == 2:
+        plot_scatter_original(X, y,
+                              title=f'Original Distribution before {sampling_method}',
+                              palette={0: "blue", 1: "red"})
+
+        plot_scatter_under_over_sampling(X_balanced, y_balanced,
+                                         title=f'{sampling_method}',
+                                         palette={0: "blue", 1: "red"})
+    else:
+        print("Skipping scatter plot: X does not have exactly 2 features.")
+
+    return X_res, y_res
+
+
+def undersampling_enn(X, y, version=1, n_neighbors=3):
+    sampling_method = 'Edite Nearest Neighbour Undersampling'
+    enn = EditedNearestNeighbours(sampling_strategy='auto')
+    X_res, y_res = enn.fit_resample(X, y)
+
+    # Ensure equal number of samples (483) in each class
+    target_count = Counter(y_res)[1]
+
+    # Find indices for each class
+    indices_0 = np.where(y_res == 0)[0]
+    indices_1 = np.where(y_res == 1)[0]
+
+    # Randomly sample from the larger class to match the target count
+    indices_0 = np.random.choice(indices_0, size=target_count, replace=False)
+    indices_1 = np.random.choice(indices_1, size=target_count, replace=False)
+
+    # Combine the balanced indices
+    balanced_indices = np.hstack((indices_0, indices_1))
+
+    # Create the balanced dataset
+    X_balanced = X_res.iloc[balanced_indices, :]
+    y_balanced = y_res[balanced_indices]
+
+    if X.shape[1] == 2:
+        plot_scatter_original(X, y,
+                              title=f'Original Distribution before {sampling_method}',
+                              palette={0: "blue", 1: "red"})
+
+        plot_scatter_under_over_sampling(X_balanced, y_balanced,
+                                         title=f'{sampling_method}',
+                                         palette={0: "blue", 1: "red"})
+    else:
+        print("Skipping scatter plot: X does not have exactly 2 features.")
+
+    return X_res, y_res
+
+
+def undersampling_clustercentroids(X, y, version=1, n_neighbors=3):
+    sampling_method = 'Cluster Centroids Undersampling'
+    cc = ClusterCentroids(random_state=42)
+    X_res, y_res = cc.fit_resample(X, y)
+
+    # Ensure equal number of samples (483) in each class
+    target_count = Counter(y_res)[1]
+
+    # Find indices for each class
+    indices_0 = np.where(y_res == 0)[0]
+    indices_1 = np.where(y_res == 1)[0]
+
+    # Randomly sample from the larger class to match the target count
+    indices_0 = np.random.choice(indices_0, size=target_count, replace=False)
+    indices_1 = np.random.choice(indices_1, size=target_count, replace=False)
+
+    # Combine the balanced indices
+    balanced_indices = np.hstack((indices_0, indices_1))
+
+    # Create the balanced dataset
+    X_balanced = X_res.iloc[balanced_indices, :]
+    y_balanced = y_res[balanced_indices]
+
+    if X.shape[1] == 2:
+        plot_scatter_original(X, y,
+                              title=f'Original Distribution before {sampling_method}',
+                              palette={0: "blue", 1: "red"})
+
+        plot_scatter_under_over_sampling(X_balanced, y_balanced,
+                                         title=f'{sampling_method}',
+                                         palette={0: "blue", 1: "red"})
+    else:
+        print("Skipping scatter plot: X does not have exactly 2 features.")
+
+    return X_res, y_res
+
+
+def undersampling_tomeklinks(X, y, version=1, n_neighbors=3):
+    sampling_method = 'Tomek Links Undersampling'
+    tl = TomekLinks()
+    X_res, y_res = tl.fit_resample(X, y)
+
+    # Ensure equal number of samples (483) in each class
+    target_count = Counter(y_res)[1]
+
+    # Find indices for each class
+    indices_0 = np.where(y_res == 0)[0]
+    indices_1 = np.where(y_res == 1)[0]
+
+    # Randomly sample from the larger class to match the target count
+    indices_0 = np.random.choice(indices_0, size=target_count, replace=False)
+    indices_1 = np.random.choice(indices_1, size=target_count, replace=False)
+
+    # Combine the balanced indices
+    balanced_indices = np.hstack((indices_0, indices_1))
+
+    # Create the balanced dataset
+    X_balanced = X_res.iloc[balanced_indices, :]
+    y_balanced = y_res[balanced_indices]
+
+    if X.shape[1] == 2:
+        plot_scatter_original(X, y,
+                              title=f'Original Distribution before {sampling_method}',
+                              palette={0: "blue", 1: "red"})
+
+        plot_scatter_under_over_sampling(X_balanced, y_balanced,
+                                         title=f'{sampling_method}',
+                                         palette={0: "blue", 1: "red"})
+    else:
+        print("Skipping scatter plot: X does not have exactly 2 features.")
+
+    return X_balanced, y_balanced

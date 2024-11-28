@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
+from sklearn.svm import SVC
 
 
 def save_outputfile(df, output_filepath):
@@ -165,4 +167,69 @@ def plot_scatter_under_over_sampling(X, y, title, palette={0: "blue", 1: "red"})
     g.fig.subplots_adjust(top=0.95)
 
     # Show the plot
+    plt.show()
+
+
+def plot_decision_boundary(X, y, res, title, palette={0: "blue", 1: "red"}):
+    """
+    Creates a scatter plot after applying nearmiss undersampling, showing class 1 points in the foreground
+    and class 0 points in the background, with transparency applied.
+
+    Parameters:
+    - X: DataFrame, the input data with features.
+    - y: Series, the target labels (binary: 0 or 1).
+    - version: str, version of the undersampling technique.
+    - n_neighbors: int, number of neighbors used in the undersampling technique.
+    - palette: dict, custom color palette for class 0 and class 1 (default is blue for 0 and red for 1).
+    """
+
+    colnames = X.columns
+
+    X_array = X.values.astype(float)
+    y_array = y.values.astype(float)
+
+    best_C = res['best_params']['C']
+    best_gamma = res['best_params']['gamma']
+
+    model = SVC(C=best_C, gamma=best_gamma, kernel='rbf')
+    model.fit(X_array, y_array)
+
+    xx, yy = np.meshgrid(np.linspace(X_array[:, 0].min(), X_array[:, 0].max(), 100),
+                         np.linspace(X_array[:, 1].min(), X_array[:, 1].max(), 100))
+
+    # Use decision_function after fitting the model
+    Z = model.decision_function(np.c_[xx.ravel(), yy.ravel()])
+    Z = Z.reshape(xx.shape)
+
+    # HEATMAP
+    # Define custom colormap
+    cmap = LinearSegmentedColormap.from_list(
+        'custom_colormap', ['violet', 'white', 'green'], N=256)
+
+    # Create a heatmap of Z values
+    plt.figure(figsize=(8, 6))
+    plt.title(
+        f"SVM Decision Boundary Heatmap with C={best_C} and gamma={best_gamma}")
+
+    # Plot heatmap using contourf, centering the color scale around 0
+    heatmap = plt.contourf(xx, yy, Z, levels=50, cmap='coolwarm',
+                           alpha=0.8)
+
+    plt.scatter(X_array[:, 0], X_array[:, 1],
+                c=y_array, cmap='coolwarm', alpha=0.5)
+
+    # Add contour lines for decision boundary at levels [-1, 0, 1]
+    ax = plt.gca()  # Get current axes
+    ax.contour(xx, yy, Z, levels=[-1, 0, 1],
+               linestyles=['--', '-', '--'], colors='k')
+
+    # Add color bar for the heatmap
+    cbar = plt.colorbar(heatmap)
+    cbar.set_label('Decision Function Value (Z)')
+
+    # Add axis labels
+    plt.xlabel(colnames[0])
+    plt.ylabel(colnames[1])
+
+    # Show the heatmap
     plt.show()

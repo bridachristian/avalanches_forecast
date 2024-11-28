@@ -8,7 +8,10 @@ import seaborn as sns
 from pathlib import Path
 
 from scripts.svm.data_loading import load_data
-from scripts.svm.undersampling_methods import undersampling_random, undersampling_random_timelimited, undersampling_nearmiss
+from scripts.svm.undersampling_methods import (undersampling_random, undersampling_random_timelimited,
+                                               undersampling_nearmiss, undersampling_cnn,
+                                               undersampling_enn, undersampling_clustercentroids,
+                                               undersampling_tomeklinks)
 from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
 from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm, train_evaluate_final_svm
 from scripts.svm.evaluation import (plot_learning_curve, plot_confusion_matrix,
@@ -142,24 +145,60 @@ if __name__ == '__main__':
             res_list.append(
                 {'sampling_method': f'NearMiss_v{v}_nn{n}', **res_nm})
 
+    # ... 4. Condensed Nearest Neighbour Undersampling ...
+
+    X_cnn, y_cnn = undersampling_cnn(X, y)
+
+    X_cnn_train, X_cnn_test, y_cnn_train, y_cnn_test = train_test_split(
+        X_cnn, y_cnn, test_size=0.25, random_state=42)
+    res_cnn = tune_train_evaluate_svm(
+        X_cnn_train, y_cnn_train, X_cnn_test, y_cnn_test, param_grid)
+
+    # ... 5. Edite Nearest Neighbour Undersampling ...
+
+    X_enn, y_enn = undersampling_enn(X, y)
+
+    X_enn_train, X_enn_test, y_enn_train, y_enn_test = train_test_split(
+        X_enn, y_enn, test_size=0.25, random_state=42)
+    res_enn = tune_train_evaluate_svm(
+        X_enn_train, y_enn_train, X_enn_test, y_enn_test, param_grid)
+
+    # ... 6. Cluster Centroids Undersampling ...
+
+    X_cc, y_cc = undersampling_clustercentroids(X, y)
+
+    X_cc_train, X_cc_test, y_cc_train, y_cc_test = train_test_split(
+        X_cc, y_cc, test_size=0.25, random_state=42)
+    res_cc = tune_train_evaluate_svm(
+        X_cc_train, y_cc_train, X_cc_test, y_cc_test, param_grid)
+
+    # ... 7. Tomek Links Undersampling ...
+
+    X_tl, y_tl = undersampling_tomeklinks(X, y)
+
+    X_tl_train, X_tl_test, y_tl_train, y_tl_test = train_test_split(
+        X_tl, y_tl, test_size=0.25, random_state=42)
+    res_tl = tune_train_evaluate_svm(
+        X_tl_train, y_tl_train, X_tl_test, y_tl_test, param_grid)
+
     # --- OVERSAMPLING ---
-    # ... 4. Random oversampling ...
+    # ... 1. Random oversampling ...
 
     X_ros, y_ros = oversampling_random(X_train, y_train)
     res_ros = tune_train_evaluate_svm(X_ros, y_ros, X_test, y_test, param_grid)
 
-    # ... 5. SMOTE oversampling ...
+    # ... 2. SMOTE oversampling ...
 
     X_sm, y_sm = oversampling_smote(X_train, y_train)
     res_sm = tune_train_evaluate_svm(X_sm, y_sm, X_test, y_test, param_grid)
 
-    # 6. ADASYN oversampling
+    # ... 3. ADASYN oversampling ...
 
     X_adas, y_adas = oversampling_adasyn(X_train, y_train)
     res_adas = tune_train_evaluate_svm(
         X_adas, y_adas, X_test, y_test, param_grid)
 
-    # ... 7. SVMSMOTE oversampling ...
+    # ... 4. SVMSMOTE oversampling ...
 
     X_svmsm, y_svmsm = oversampling_svmsmote(X_train, y_train)
     res_svmsm = tune_train_evaluate_svm(
