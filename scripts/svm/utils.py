@@ -172,14 +172,13 @@ def plot_scatter_under_over_sampling(X, y, title, palette={0: "blue", 1: "red"})
 
 def plot_decision_boundary(X, y, model, title, palette={0: "blue", 1: "red"}):
     """
-    Creates a scatter plot after applying nearmiss undersampling, showing class 1 points in the foreground
-    and class 0 points in the background, with transparency applied.
+    Creates a scatter plot showing the decision boundary of a classifier, with a heatmap of the decision function.
 
     Parameters:
     - X: DataFrame, the input data with features.
     - y: Series, the target labels (binary: 0 or 1).
-    - version: str, version of the undersampling technique.
-    - n_neighbors: int, number of neighbors used in the undersampling technique.
+    - model: Trained classifier with a decision_function method.
+    - title: str, the title of the plot.
     - palette: dict, custom color palette for class 0 and class 1 (default is blue for 0 and red for 1).
     """
 
@@ -188,36 +187,30 @@ def plot_decision_boundary(X, y, model, title, palette={0: "blue", 1: "red"}):
     X_array = X.values.astype(float)
     y_array = y.values.astype(float)
 
-    # best_C = model.C
-    # best_gamma = res['best_params']['gamma']
-
-    # model = SVC(C=best_C, gamma=best_gamma, kernel='rbf')
-    # model.fit(X_array, y_array)
-
+    # Create a grid of points to evaluate the decision function
     xx, yy = np.meshgrid(np.linspace(X_array[:, 0].min(), X_array[:, 0].max(), 100),
                          np.linspace(X_array[:, 1].min(), X_array[:, 1].max(), 100))
 
-    # Use decision_function after fitting the model
+    # Evaluate the decision function on the grid
     Z = model.decision_function(np.c_[xx.ravel(), yy.ravel()])
     Z = Z.reshape(xx.shape)
 
-    # HEATMAP
-    # Define custom colormap
+    # Define a custom colormap: white at 0, blue below, red above
     cmap = LinearSegmentedColormap.from_list(
-        'custom_colormap', ['violet', 'white', 'green'], N=256)
+        'custom_colormap',
+        [(0.0, "blue"), (0.5, "white"), (1.0, "red")]
+    )
 
     # Create a heatmap of Z values
     plt.figure(figsize=(8, 6))
+    heatmap = plt.contourf(xx, yy, Z, levels=50, cmap=cmap, alpha=0.8)
 
-    # Plot heatmap using contourf, centering the color scale around 0
-    heatmap = plt.contourf(xx, yy, Z, levels=50, cmap='coolwarm',
-                           alpha=0.8)
-
+    # Scatter plot of the data points
     plt.scatter(X_array[:, 0], X_array[:, 1],
                 c=y_array, cmap='coolwarm', alpha=0.5)
 
     # Add contour lines for decision boundary at levels [-1, 0, 1]
-    ax = plt.gca()  # Get current axes
+    ax = plt.gca()
     ax.contour(xx, yy, Z, levels=[-1, 0, 1],
                linestyles=['--', '-', '--'], colors='k')
 
@@ -232,5 +225,11 @@ def plot_decision_boundary(X, y, model, title, palette={0: "blue", 1: "red"}):
     # Add title
     plt.title(f'Decision function - {title}')
 
-    # Show the heatmap
+    # Add text box with best_C and best_gamma
+    textstr = f'Best C: {model.C}\nBest Gamma: {model.gamma}'
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    ax.text(0.95, 0.05, textstr, transform=ax.transAxes, fontsize=12,
+            verticalalignment='bottom', horizontalalignment='right', bbox=props)
+
+    # Show the plot
     plt.show()
