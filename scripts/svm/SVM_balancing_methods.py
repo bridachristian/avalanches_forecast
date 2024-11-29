@@ -100,9 +100,14 @@ if __name__ == '__main__':
     print("Original class distribution test set:", Counter(y_test))
 
     # Tuning of parameter C and gamma for SVM classification
+    # param_grid = {
+    #     'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
+    #     'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
+    # }
+
     param_grid = {
-        'C': [0.01, 0.1, 1, 10, 100, 1000],
-        'gamma': [10, 1, 0.1, 0.01, 0.001, 0.0001]
+        'C': [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000],
+        'gamma': [100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002, 0.001, 0.0005, 0.0002, 0.0001]
     }
 
     # --- UNDERSAMPLING ---
@@ -236,6 +241,15 @@ if __name__ == '__main__':
 
     # Add res_list directly (in case it hasn't been already added to results_list)
     final_results_list.extend(res_list)
+
+    final_results_list.append(
+        {'sampling_method': 'CNN_Undersampling', **res_cnn})
+    final_results_list.append(
+        {'sampling_method': 'ENN_Undersampling', **res_enn})
+    final_results_list.append(
+        {'sampling_method': 'ClusterCentroids_Undersampling', **res_cc})
+    final_results_list.append(
+        {'sampling_method': 'TomekLinks_Undersampling', **res_tl})
 
     final_results_list.append(
         {'sampling_method': 'Random_Oversampling', **res_ros})
