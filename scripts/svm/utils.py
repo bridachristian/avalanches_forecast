@@ -170,7 +170,7 @@ def plot_scatter_under_over_sampling(X, y, title, palette={0: "blue", 1: "red"})
     plt.show()
 
 
-def plot_decision_boundary(X, y, res, title, palette={0: "blue", 1: "red"}):
+def plot_decision_boundary(X, y, model, title, palette={0: "blue", 1: "red"}):
     """
     Creates a scatter plot after applying nearmiss undersampling, showing class 1 points in the foreground
     and class 0 points in the background, with transparency applied.
@@ -188,11 +188,11 @@ def plot_decision_boundary(X, y, res, title, palette={0: "blue", 1: "red"}):
     X_array = X.values.astype(float)
     y_array = y.values.astype(float)
 
-    best_C = res['best_params']['C']
-    best_gamma = res['best_params']['gamma']
+    # best_C = model.C
+    # best_gamma = res['best_params']['gamma']
 
-    model = SVC(C=best_C, gamma=best_gamma, kernel='rbf')
-    model.fit(X_array, y_array)
+    # model = SVC(C=best_C, gamma=best_gamma, kernel='rbf')
+    # model.fit(X_array, y_array)
 
     xx, yy = np.meshgrid(np.linspace(X_array[:, 0].min(), X_array[:, 0].max(), 100),
                          np.linspace(X_array[:, 1].min(), X_array[:, 1].max(), 100))
@@ -208,8 +208,6 @@ def plot_decision_boundary(X, y, res, title, palette={0: "blue", 1: "red"}):
 
     # Create a heatmap of Z values
     plt.figure(figsize=(8, 6))
-    plt.title(
-        f"SVM Decision Boundary Heatmap with C={best_C} and gamma={best_gamma}")
 
     # Plot heatmap using contourf, centering the color scale around 0
     heatmap = plt.contourf(xx, yy, Z, levels=50, cmap='coolwarm',
@@ -230,6 +228,9 @@ def plot_decision_boundary(X, y, res, title, palette={0: "blue", 1: "red"}):
     # Add axis labels
     plt.xlabel(colnames[0])
     plt.ylabel(colnames[1])
+
+    # Add title
+    plt.title(f'Decision function - {title}')
 
     # Show the heatmap
     plt.show()

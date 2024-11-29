@@ -18,7 +18,7 @@ from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm
 from scripts.svm.utils import get_adjacent_values, save_outputfile
 
 
-def plot_learning_curve(clf, X, y, cv=5):
+def plot_learning_curve(clf, X, y, title, cv=5):
     """
     Plots the learning curve for the given classifier.
 
@@ -45,7 +45,7 @@ def plot_learning_curve(clf, X, y, cv=5):
     plt.ylabel("Score")
     plt.ylim(0, 1)
     plt.legend()
-    plt.title("Learning Curve for SVM")
+    plt.title(f'Learning Curve - {title}')
     plt.show()
 
 

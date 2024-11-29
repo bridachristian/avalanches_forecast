@@ -10,6 +10,7 @@ from sklearn.inspection import permutation_importance
 from scripts.svm.data_loading import load_data
 from scripts.svm.undersampling_methods import undersampling_random, undersampling_random_timelimited, undersampling_nearmiss
 from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
+from scripts.svm.utils import plot_decision_boundary
 
 
 def cross_validate_svm(X, y, param_grid, cv=5, scoring='f1_macro'):
@@ -50,7 +51,7 @@ def cross_validate_svm(X, y, param_grid, cv=5, scoring='f1_macro'):
     }
 
 
-def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, cv=5):
+def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method, cv=5):
     '''
     Performs hyperparameter tuning, training, and evaluation of an SVM classifier.
 
@@ -86,7 +87,13 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, cv=5):
     clf.fit(X, y)
 
     # 3. Evaluate Training Performance with a Learning Curve
-    plot_learning_curve(clf, X, y, cv)
+    plot_learning_curve(clf, X, y, title=f'{resampling_method}', cv=cv)
+
+    if X.shape[1] == 2:
+        plot_decision_boundary(X, y, clf,
+                               title=f'{resampling_method}', palette={0: "blue", 1: "red"})
+    else:
+        print("Skipping scatter plot: X does not have exactly 2 features.")
 
     # 4. Evaluate Test Set Performance
     y_pred = clf.predict(X_test)

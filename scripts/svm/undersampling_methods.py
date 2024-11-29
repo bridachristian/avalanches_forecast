@@ -280,6 +280,7 @@ def undersampling_enn(X, y, version=1, n_neighbors=3):
         plot_scatter_under_over_sampling(X_balanced, y_balanced,
                                          title=f'{sampling_method}',
                                          palette={0: "blue", 1: "red"})
+
     else:
         print("Skipping scatter plot: X does not have exactly 2 features.")
 

@@ -115,16 +115,19 @@ if __name__ == '__main__':
         X_rand, y_rand, test_size=0.25, random_state=42)
 
     res_rand = tune_train_evaluate_svm(
-        X_rand_train, y_rand_train, X_rand_test, y_rand_test, param_grid)
+        X_rand_train, y_rand_train, X_rand_test, y_rand_test, param_grid,
+        resampling_method='Random undersampling')
 
     # ... 2. Random undersampling N days before ...
-
-    X_rand_10d, y_rand_10d = undersampling_random_timelimited(X, y, Ndays=10)
+    Ndays = 10
+    X_rand_10d, y_rand_10d = undersampling_random_timelimited(
+        X, y, Ndays=Ndays)
 
     X_rand_10d_train, X_rand_10d_test, y_rand_10d_train, y_rand_10d_test = train_test_split(
         X_rand_10d, y_rand_10d, test_size=0.25, random_state=42)
     res_rand_10d = tune_train_evaluate_svm(
-        X_rand_10d_train, y_rand_10d_train, X_rand_10d_test, y_rand_10d_test, param_grid)
+        X_rand_10d_train, y_rand_10d_train, X_rand_10d_test, y_rand_10d_test, param_grid,
+        resampling_method=f'Random undersampling {Ndays} days before')
 
     # ... 3. Nearmiss undersampling ...
 
@@ -140,7 +143,8 @@ if __name__ == '__main__':
             X_nm_train, X_nm_test, y_nm_train, y_nm_test = train_test_split(
                 X_nm, y_nm, test_size=0.25, random_state=42)
             res_nm = tune_train_evaluate_svm(
-                X_nm_train, y_nm_train, X_nm_test, y_nm_test, param_grid)
+                X_nm_train, y_nm_train, X_nm_test, y_nm_test, param_grid,
+                resampling_method=f'NearMiss_v{v}_nn{n}')
 
             res_list.append(
                 {'sampling_method': f'NearMiss_v{v}_nn{n}', **res_nm})
@@ -152,7 +156,8 @@ if __name__ == '__main__':
     X_cnn_train, X_cnn_test, y_cnn_train, y_cnn_test = train_test_split(
         X_cnn, y_cnn, test_size=0.25, random_state=42)
     res_cnn = tune_train_evaluate_svm(
-        X_cnn_train, y_cnn_train, X_cnn_test, y_cnn_test, param_grid)
+        X_cnn_train, y_cnn_train, X_cnn_test, y_cnn_test, param_grid,
+        resampling_method='Condensed Nearest Neighbour Undersampling')
 
     # ... 5. Edite Nearest Neighbour Undersampling ...
 
@@ -161,7 +166,8 @@ if __name__ == '__main__':
     X_enn_train, X_enn_test, y_enn_train, y_enn_test = train_test_split(
         X_enn, y_enn, test_size=0.25, random_state=42)
     res_enn = tune_train_evaluate_svm(
-        X_enn_train, y_enn_train, X_enn_test, y_enn_test, param_grid)
+        X_enn_train, y_enn_train, X_enn_test, y_enn_test, param_grid,
+        resampling_method='Edite Nearest Neighbour Undersampling')
 
     # ... 6. Cluster Centroids Undersampling ...
 
@@ -170,7 +176,8 @@ if __name__ == '__main__':
     X_cc_train, X_cc_test, y_cc_train, y_cc_test = train_test_split(
         X_cc, y_cc, test_size=0.25, random_state=42)
     res_cc = tune_train_evaluate_svm(
-        X_cc_train, y_cc_train, X_cc_test, y_cc_test, param_grid)
+        X_cc_train, y_cc_train, X_cc_test, y_cc_test, param_grid,
+        resampling_method='Cluster Centroids Undersampling')
 
     # ... 7. Tomek Links Undersampling ...
 
@@ -179,30 +186,33 @@ if __name__ == '__main__':
     X_tl_train, X_tl_test, y_tl_train, y_tl_test = train_test_split(
         X_tl, y_tl, test_size=0.25, random_state=42)
     res_tl = tune_train_evaluate_svm(
-        X_tl_train, y_tl_train, X_tl_test, y_tl_test, param_grid)
+        X_tl_train, y_tl_train, X_tl_test, y_tl_test, param_grid,
+        resampling_method='Tomek Links Undersampling')
 
     # --- OVERSAMPLING ---
     # ... 1. Random oversampling ...
 
     X_ros, y_ros = oversampling_random(X_train, y_train)
-    res_ros = tune_train_evaluate_svm(X_ros, y_ros, X_test, y_test, param_grid)
-
+    res_ros = tune_train_evaluate_svm(X_ros, y_ros, X_test, y_test, param_grid,
+                                      resampling_method='Random oversampling')
     # ... 2. SMOTE oversampling ...
 
     X_sm, y_sm = oversampling_smote(X_train, y_train)
-    res_sm = tune_train_evaluate_svm(X_sm, y_sm, X_test, y_test, param_grid)
+    res_sm = tune_train_evaluate_svm(X_sm, y_sm, X_test, y_test, param_grid,
+                                     resampling_method='SMOTE oversampling')
 
     # ... 3. ADASYN oversampling ...
 
     X_adas, y_adas = oversampling_adasyn(X_train, y_train)
     res_adas = tune_train_evaluate_svm(
-        X_adas, y_adas, X_test, y_test, param_grid)
-
+        X_adas, y_adas, X_test, y_test, param_grid,
+        resampling_method='ADASYN oversampling')
     # ... 4. SVMSMOTE oversampling ...
 
     X_svmsm, y_svmsm = oversampling_svmsmote(X_train, y_train)
     res_svmsm = tune_train_evaluate_svm(
-        X_svmsm, y_svmsm, X_test, y_test, param_grid)
+        X_svmsm, y_svmsm, X_test, y_test, param_grid,
+        resampling_method='SVMSMOTE oversampling')
 
     # --- STORE RESULTS IN A DATAFRAME ---
 
