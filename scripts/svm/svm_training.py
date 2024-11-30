@@ -13,7 +13,7 @@ from scripts.svm.oversampling_methods import oversampling_random, oversampling_s
 from scripts.svm.utils import plot_decision_boundary, get_adjacent_values
 
 
-def coarse_cross_validate_svm(X, y, param_distributions, n_iter=20, cv=5, scoring='f1_macro', random_state=42):
+def coarse_cross_validate_svm(X, y, param_distributions, n_iter=50, cv=5, scoring='f1_macro', random_state=42):
     """
     Performs coarse hyperparameter tuning and cross-validation for an SVM model using RandomizedSearchCV.
 
@@ -126,21 +126,21 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method,
     from scripts.svm.evaluation import plot_learning_curve
 
     # 1. Hyperparameter Tuning: Cross-validation to find the best C and gamma
-    cv_results = coarse_cross_validate_svm(
+    cv_results_coarse = cross_validate_svm(
         X, y, param_grid, cv, scoring='f1_macro')
 
     # Create a finer grid based on adiacent values fo coarse grid
 
     C_fine = get_adjacent_values(
-        param_grid['C'], cv_results['best_params']['C'])
+        param_grid['C'], cv_results_coarse['best_params']['C'])
     gamma_fine = get_adjacent_values(
-        param_grid['gamma'], cv_results['best_params']['gamma'])
+        param_grid['gamma'], cv_results_coarse['best_params']['gamma'])
 
     finer_param_grid = {
         # 20 values between the adjacent C values
-        'C': np.linspace(C_fine[0], C_fine[-1], 21),
+        'C': np.linspace(C_fine[0], C_fine[-1], 21, dtype=np.float64),
         # 20 values between the adjacent gamma values
-        'gamma': np.linspace(gamma_fine[0], gamma_fine[-1], 21)
+        'gamma': np.linspace(gamma_fine[0], gamma_fine[-1], 21, dtype=np.float64)
     }
 
     cv_results = cross_validate_svm(
