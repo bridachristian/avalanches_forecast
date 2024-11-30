@@ -3,14 +3,61 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn import svm
-from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score, learning_curve
+from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV, cross_val_score, learning_curve
 from sklearn.metrics import (accuracy_score, precision_score, recall_score,
                              f1_score, confusion_matrix, roc_curve, auc)
 from sklearn.inspection import permutation_importance
 from scripts.svm.data_loading import load_data
 from scripts.svm.undersampling_methods import undersampling_random, undersampling_random_timelimited, undersampling_nearmiss
 from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
-from scripts.svm.utils import plot_decision_boundary
+from scripts.svm.utils import plot_decision_boundary, get_adjacent_values
+
+
+def coarse_cross_validate_svm(X, y, param_distributions, n_iter=20, cv=5, scoring='f1_macro', random_state=42):
+    """
+    Performs coarse hyperparameter tuning and cross-validation for an SVM model using RandomizedSearchCV.
+
+    Parameters:
+        X (array-like): Training data features.
+        y (array-like): Training data labels.
+        param_distributions (dict): Dictionary with parameter names (`C` and `gamma`) as keys and distributions/ranges of parameter values to sample from.
+        n_iter (int): Number of parameter settings sampled (default is 20).
+        cv (int): Number of cross-validation folds (default is 5).
+        scoring (str): Scoring metric for RandomizedSearchCV (default is 'f1_macro').
+        random_state (int): Random seed for reproducibility (default is 42).
+
+    Returns:
+        dict: Contains the best parameters, cross-validation scores, and the best model.
+    """
+    # Initialize RandomizedSearchCV for hyperparameter tuning
+    random_search = RandomizedSearchCV(
+        estimator=svm.SVC(kernel='rbf'),
+        param_distributions=param_distributions,
+        n_iter=n_iter,
+        cv=cv,
+        scoring=scoring,
+        verbose=3,
+        random_state=random_state
+    )
+    random_search.fit(X, y)
+
+    # Extract the best parameters and model
+    best_params = random_search.best_params_
+    best_model = random_search.best_estimator_
+
+    # Perform cross-validation using the best model
+    cv_scores = cross_val_score(best_model, X, y, cv=cv, scoring=scoring)
+    print("Best Parameters:", best_params)
+    print("Average Cross-Validation Score:", cv_scores.mean())
+    print("Standard Deviation of Scores:", cv_scores.std())
+
+    # Return the best model and evaluation metrics
+    return {
+        'best_model': best_model,
+        'best_params': best_params,
+        'cv_mean_score': cv_scores.mean(),
+        'cv_std_score': cv_scores.std()
+    }
 
 
 def cross_validate_svm(X, y, param_grid, cv=5, scoring='f1_macro'):
@@ -79,7 +126,25 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method,
     from scripts.svm.evaluation import plot_learning_curve
 
     # 1. Hyperparameter Tuning: Cross-validation to find the best C and gamma
-    cv_results = cross_validate_svm(X, y, param_grid, cv, scoring='f1_macro')
+    cv_results = coarse_cross_validate_svm(
+        X, y, param_grid, cv, scoring='f1_macro')
+
+    # Create a finer grid based on adiacent values fo coarse grid
+
+    C_fine = get_adjacent_values(
+        param_grid['C'], cv_results['best_params']['C'])
+    gamma_fine = get_adjacent_values(
+        param_grid['gamma'], cv_results['best_params']['gamma'])
+
+    finer_param_grid = {
+        # 20 values between the adjacent C values
+        'C': np.linspace(C_fine[0], C_fine[-1], 21),
+        # 20 values between the adjacent gamma values
+        'gamma': np.linspace(gamma_fine[0], gamma_fine[-1], 21)
+    }
+
+    cv_results = cross_validate_svm(
+        X, y, finer_param_grid, cv, scoring='f1_macro')
 
     # 2. Train the SVM Classifier with Best Hyperparameters
     clf = svm.SVC(
