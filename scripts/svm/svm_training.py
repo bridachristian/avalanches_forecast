@@ -10,7 +10,7 @@ from sklearn.inspection import permutation_importance
 from scripts.svm.data_loading import load_data
 from scripts.svm.undersampling_methods import undersampling_random, undersampling_random_timelimited, undersampling_nearmiss
 from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
-from scripts.svm.utils import plot_decision_boundary, get_adjacent_values
+from scripts.svm.utils import plot_decision_boundary, get_adjacent_values, detect_grid_type
 
 
 def randomsearch_cross_validate_svm(X, y, param_distributions, n_iter=50, cv=5, scoring='f1_macro', random_state=42):
@@ -95,6 +95,8 @@ def cross_validate_svm(X, y, param_grid, cv=5, title='CV scores', scoring='f1_ma
 
     # Reshape scores for heatmap visualization
     c_values = param_grid['C']
+    # grid_type_C = detect_grid_type(c_values)
+
     gamma_values = param_grid['gamma']
     scores_matrix = scores.reshape(len(c_values), len(gamma_values))
 

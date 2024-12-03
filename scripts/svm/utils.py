@@ -233,3 +233,30 @@ def plot_decision_boundary(X, y, model, title, palette={0: "blue", 1: "red"}):
 
     # Show the plot
     plt.show()
+
+
+def detect_grid_type(values):
+    """
+    Detects if a list of values is linear, exponential, or neither.
+
+    Parameters:
+        values (list or array-like): A sequence of numerical values.
+
+    Returns:
+        str: 'linear', 'exponential', or 'neither'
+    """
+    values = np.array(values)
+    if len(values) < 2:
+        return "neither"
+
+    # Check for linear progression
+    diffs = np.diff(values)  # Consecutive differences
+    if np.allclose(diffs, diffs[0]):
+        return "linear"
+
+    # Check for exponential progression
+    ratios = values[1:] / values[:-1]  # Consecutive ratios
+    if np.allclose(ratios, ratios[0]):
+        return "exponential"
+
+    return "neither"
