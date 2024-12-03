@@ -250,7 +250,7 @@ def undersampling_cnn(X, y, version=1, n_neighbors=3):
 
 
 def undersampling_enn(X, y, version=1, n_neighbors=3):
-    sampling_method = 'Edite Nearest Neighbour Undersampling'
+    sampling_method = 'Edited Nearest Neighbour Undersampling'
     enn = EditedNearestNeighbours(sampling_strategy='auto')
     X_res, y_res = enn.fit_resample(X, y)
 

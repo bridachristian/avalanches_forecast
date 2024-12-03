@@ -13,7 +13,7 @@ from scripts.svm.oversampling_methods import oversampling_random, oversampling_s
 from scripts.svm.utils import plot_decision_boundary, get_adjacent_values
 
 
-def coarse_cross_validate_svm(X, y, param_distributions, n_iter=50, cv=5, scoring='f1_macro', random_state=42):
+def randomsearch_cross_validate_svm(X, y, param_distributions, n_iter=50, cv=5, scoring='f1_macro', random_state=42):
     """
     Performs coarse hyperparameter tuning and cross-validation for an SVM model using RandomizedSearchCV.
 
@@ -60,7 +60,7 @@ def coarse_cross_validate_svm(X, y, param_distributions, n_iter=50, cv=5, scorin
     }
 
 
-def cross_validate_svm(X, y, param_grid, cv=5, scoring='f1_macro'):
+def cross_validate_svm(X, y, param_grid, cv=5, title='CV scores', scoring='f1_macro'):
     """
     Performs hyperparameter tuning and cross-validation for an SVM model.
 
@@ -88,6 +88,23 @@ def cross_validate_svm(X, y, param_grid, cv=5, scoring='f1_macro'):
     print("Best Parameters:", best_params)
     print("Average Cross-Validation Score:", cv_scores.mean())
     print("Standard Deviation of Scores:", cv_scores.std())
+
+    # Extract grid search results and create a heatmap
+    results = grid.cv_results_
+    scores = results['mean_test_score']
+
+    # Reshape scores for heatmap visualization
+    c_values = param_grid['C']
+    gamma_values = param_grid['gamma']
+    scores_matrix = scores.reshape(len(c_values), len(gamma_values))
+
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(scores_matrix, annot=False, fmt=".3f",
+                xticklabels=gamma_values, yticklabels=c_values, cmap="viridis")
+    plt.title(f'{title} - {scoring}')
+    plt.xlabel("Gamma")
+    plt.ylabel("C")
+    plt.show()
 
     # Return the best model and evaluation metrics
     return {
@@ -127,7 +144,7 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method,
 
     # 1. Hyperparameter Tuning: Cross-validation to find the best C and gamma
     cv_results_coarse = cross_validate_svm(
-        X, y, param_grid, cv, scoring='f1_macro')
+        X, y, param_grid, cv, title=f'1st run - CV scores for {resampling_method} ', scoring='f1_macro')
 
     # Create a finer grid based on adiacent values fo coarse grid
 
@@ -144,7 +161,7 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method,
     }
 
     cv_results = cross_validate_svm(
-        X, y, finer_param_grid, cv, scoring='f1_macro')
+        X, y, finer_param_grid, cv, title=f'2nd run - CV scores for {resampling_method} ', scoring='f1_macro')
 
     # 2. Train the SVM Classifier with Best Hyperparameters
     clf = svm.SVC(

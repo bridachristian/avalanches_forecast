@@ -174,7 +174,7 @@ if __name__ == '__main__':
         X_cnn_train, y_cnn_train, X_cnn_test, y_cnn_test, param_grid,
         resampling_method='Condensed Nearest Neighbour Undersampling')
 
-    # ... 5. Edite Nearest Neighbour Undersampling ...
+    # ... 5. Edited Nearest Neighbour Undersampling ...
 
     X_enn, y_enn = undersampling_enn(X, y)
 
@@ -182,7 +182,7 @@ if __name__ == '__main__':
         X_enn, y_enn, test_size=0.25, random_state=42)
     res_enn = tune_train_evaluate_svm(
         X_enn_train, y_enn_train, X_enn_test, y_enn_test, param_grid,
-        resampling_method='Edite Nearest Neighbour Undersampling')
+        resampling_method='Edited Nearest Neighbour Undersampling')
 
     # ... 6. Cluster Centroids Undersampling ...
 
@@ -222,6 +222,7 @@ if __name__ == '__main__':
     res_adas = tune_train_evaluate_svm(
         X_adas, y_adas, X_test, y_test, param_grid,
         resampling_method='ADASYN oversampling')
+
     # ... 4. SVMSMOTE oversampling ...
 
     X_svmsm, y_svmsm = oversampling_svmsmote(X_train, y_train)
