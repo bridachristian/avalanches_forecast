@@ -157,9 +157,9 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method,
 
     finer_param_grid = {
         # 20 values between the adjacent C values
-        'C': np.linspace(C_fine[0], C_fine[-1], 21, dtype=np.float64),
+        'C': np.linspace(C_fine[0], C_fine[-1], 10, dtype=np.float64),
         # 20 values between the adjacent gamma values
-        'gamma': np.linspace(gamma_fine[0], gamma_fine[-1], 21, dtype=np.float64)
+        'gamma': np.linspace(gamma_fine[0], gamma_fine[-1], 10, dtype=np.float64)
     }
 
     cv_results = cross_validate_svm(

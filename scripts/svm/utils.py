@@ -34,7 +34,7 @@ def get_adjacent_values(arr, best_value):
     """
     Retrieves the previous, current, and next values in a 1D array based on the closest match to a given 'best_value'.
 
-    This function finds the index of the element in the array that is closest to the given `best_value` (using `np.isclose`), 
+    This function finds the index of the element in the array that is closest to the given `best_value` (using `np.isclose`),
     and then returns the values at the previous, current, and next indices, ensuring that boundary conditions are handled safely.
 
     Args:
@@ -49,7 +49,8 @@ def get_adjacent_values(arr, best_value):
     Example:
         arr = np.array([1, 3, 7, 10, 15])
         best_value = 7
-        prev_value, current_value, next_value = get_adjacent_values(arr, best_value)
+        prev_value, current_value, next_value = get_adjacent_values(
+            arr, best_value)
         print(prev_value, current_value, next_value)  # Output: 3 7 10
     """
 
@@ -61,6 +62,33 @@ def get_adjacent_values(arr, best_value):
     next_value = arr[idx + 1] if idx < len(arr) - 1 else arr[idx]
 
     return prev_value, arr[idx], next_value
+
+
+def detect_grid_type(values):
+    """
+    Detects if a list of values is linear, exponential, or neither.
+
+    Parameters:
+        values (list or array-like): A sequence of numerical values.
+
+    Returns:
+        str: 'linear', 'exponential', or 'neither'
+    """
+    values = np.array(values)
+    if len(values) < 2:
+        return "neither"
+
+    # Check for linear progression
+    diffs = np.diff(values)  # Consecutive differences
+    if np.allclose(diffs, diffs[0]):
+        return "linear"
+
+    # Check for exponential progression
+    ratios = values[1:] / values[:-1]  # Consecutive ratios
+    if np.allclose(ratios, ratios[0]):
+        return "exponential"
+
+    return "neither"
 
 
 def plot_scatter_original(X, y, title, palette={0: "blue", 1: "red"}):
@@ -233,30 +261,3 @@ def plot_decision_boundary(X, y, model, title, palette={0: "blue", 1: "red"}):
 
     # Show the plot
     plt.show()
-
-
-def detect_grid_type(values):
-    """
-    Detects if a list of values is linear, exponential, or neither.
-
-    Parameters:
-        values (list or array-like): A sequence of numerical values.
-
-    Returns:
-        str: 'linear', 'exponential', or 'neither'
-    """
-    values = np.array(values)
-    if len(values) < 2:
-        return "neither"
-
-    # Check for linear progression
-    diffs = np.diff(values)  # Consecutive differences
-    if np.allclose(diffs, diffs[0]):
-        return "linear"
-
-    # Check for exponential progression
-    ratios = values[1:] / values[:-1]  # Consecutive ratios
-    if np.allclose(ratios, ratios[0]):
-        return "exponential"
-
-    return "neither"

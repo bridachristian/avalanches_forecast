@@ -17,6 +17,7 @@ from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm
 from scripts.svm.evaluation import (plot_learning_curve, plot_confusion_matrix,
                                     plot_roc_curve, permutation_ranking, evaluate_svm_with_feature_selection)
 from scripts.svm.utils import save_outputfile, get_adjacent_values
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 
 if __name__ == '__main__':
@@ -65,30 +66,8 @@ if __name__ == '__main__':
     mod1_clean = mod1[feature_plus]
     mod1_clean = mod1_clean.dropna()
 
-    # X = mod1_clean.drop(columns=['Stagione', 'AvalDay'])
     X = mod1_clean[feature]
     y = mod1_clean['AvalDay']
-
-    # --- Plot example for 2 features classification ----
-    #
-    # # Confirm columns in mod1_clean
-    # print(mod1_clean.columns)
-    # df = mod1_clean
-    # # Check for NaNs in specific columns and data types
-    # print(df[['HSnum', 'HN72h', 'AvalDay']].isna().sum())
-    # # Ensure categorical/int data for hue
-    # df['AvalDay'] = df['AvalDay'].astype(int)
-
-    # # Plot with Seaborn
-    # plt.figure(figsize=(10, 6))
-    # # Edgecolor changed to 'w' for white, or remove if not needed
-    # sns.scatterplot(data=df, x='HSnum', y='HN72h', hue='AvalDay',
-    #                 palette='coolwarm', s=60, edgecolor='w', alpha=0.5)
-    # plt.title('Scatter Plot of Features with Avalanche Day Classification')
-    # plt.xlabel('HSnum')
-    # plt.ylabel('HN72h')
-    # plt.legend(title='AvalDay', loc='upper right')
-    # plt.show()
 
     # --- SPLIT TRAIN AND TEST ---
 
@@ -99,6 +78,31 @@ if __name__ == '__main__':
     print("Original class distribution training set:", Counter(y_train))
     print("Original class distribution test set:", Counter(y_test))
 
+    # --- SCALING FEATURES (NORMALIZATION vs STANDARDIZATION) ---
+
+    # NORMALIZATION
+    norm = MinMaxScaler().fit(X)
+    X_norm = pd.DataFrame(norm.transform(X), columns=X.columns, index=X.index)
+
+    # STANDARDIZATION
+    stand = StandardScaler().fit(X)
+    X_stand = pd.DataFrame(stand.transform(
+        X), columns=X.columns, index=X.index)
+
+    summary_X = X.describe()
+    summary_X_norm = X_norm.describe()
+    summary_X_stand = X_stand.describe()
+
+    print(summary_X)
+    print(summary_X_norm)
+    print(summary_X_stand)
+
+    save_outputfile(summary_X, results_path / 'summary_X.csv')
+    save_outputfile(summary_X_norm, results_path / 'summary_X_norm.csv')
+    save_outputfile(summary_X_stand, results_path / 'summary_X_stand.csv')
+
+    # --- TUNING SVM PARAMETERS ---
+
     # Tuning of parameter C and gamma for SVM classification
     # param_grid = {
     #     'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
@@ -106,21 +110,28 @@ if __name__ == '__main__':
     # }
 
     param_grid = {
-        'C': [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
-              0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
-              0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
-              1, 2, 3, 4, 5, 6, 7, 8, 9,
-              10, 20, 30, 40, 50, 60, 70, 80, 90,
-              100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
-        'gamma': [0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009,
-                  0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
-                  0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
-                  0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
-                  1, 2, 3, 4, 5, 6, 7, 8, 9,
-                  10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+        'C': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000],
+        'gamma': [100, 50, 10, 5, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
     }
 
+    # param_grid = {
+    #     'C': [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
+    #           0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
+    #           0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+    #           1, 2, 3, 4, 5, 6, 7, 8, 9,
+    #           10, 20, 30, 40, 50, 60, 70, 80, 90,
+    #           100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
+    #     'gamma': [0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009,
+    #               0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
+    #               0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
+    #               0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+    #               1, 2, 3, 4, 5, 6, 7, 8, 9,
+    #               10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    # }
+
     # --- UNDERSAMPLING ---
+
+    X = X_stand  # normalization
 
     # ... 1. Random undersampling ...
 
@@ -276,7 +287,7 @@ if __name__ == '__main__':
     print(results_df)
 
     save_outputfile(results_df, results_path /
-                    'under_oversampling_comparison.csv')
+                    'under_oversampling_comparison_standardized.csv')
 
     # ---------------------------------------------------------------
     # --- a) DEVELOP SVM FOR NearMiss UNDERSAMPLING ---
