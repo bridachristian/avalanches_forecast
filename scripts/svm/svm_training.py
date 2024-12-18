@@ -266,7 +266,8 @@ def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params):
     print("Test Set Accuracy:", test_accuracy)
 
     # Evaluate Training Performance with a Learning Curve
-    plot_learning_curve(clf, X_train, y_train, cv=10)
+    plot_learning_curve(clf, X_train, y_train, cv=10,
+                        title='Learning Curve Final SVM')
 
     # Predicting on the test data
     y_pred = model.predict(X_test)

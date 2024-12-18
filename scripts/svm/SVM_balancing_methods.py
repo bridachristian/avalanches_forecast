@@ -41,26 +41,27 @@ if __name__ == '__main__':
     print(mod1.dtypes)  # For initial data type inspection
 
     # --- FEATURES SELECTION ---
-    feature = ['HN_3d', 'HSnum']
-    # feature = [
-    #     'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
-    #     'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
-    #     'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
-    #     'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-    #     'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-    #     'TempAmplitude_3d', 'TempAmplitude_5d', 'Ta_delta_1d', 'Ta_delta_2d',
-    #     'Ta_delta_3d', 'Ta_delta_5d', 'Tmin_delta_1d', 'Tmin_delta_2d',
-    #     'Tmin_delta_3d', 'Tmin_delta_5d', 'Tmax_delta_1d', 'Tmax_delta_2d',
-    #     'Tmax_delta_3d', 'Tmax_delta_5d', 'T_mean', 'DegreeDays_Pos',
-    #     'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-    #     'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
-    #     'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
-    #     'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
-    #     'TempGrad_HS', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-    #     'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
-    #     'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
-    #     'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
-    # ]
+    # feature = ['HN_3d', 'HSnum']
+    # feature = ['HSnum', 'HN_3d']
+    feature = [
+        'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
+        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+        'TempAmplitude_3d', 'TempAmplitude_5d', 'Ta_delta_1d', 'Ta_delta_2d',
+        'Ta_delta_3d', 'Ta_delta_5d', 'Tmin_delta_1d', 'Tmin_delta_2d',
+        'Tmin_delta_3d', 'Tmin_delta_5d', 'Tmax_delta_1d', 'Tmax_delta_2d',
+        'Tmax_delta_3d', 'Tmax_delta_5d', 'T_mean', 'DegreeDays_Pos',
+        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+        'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
+        'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
+        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
+        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
+        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
+        'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
+    ]
 
     feature_plus = feature + ['AvalDay']
     mod1_clean = mod1[feature_plus]
@@ -84,22 +85,22 @@ if __name__ == '__main__':
     norm = MinMaxScaler().fit(X)
     X_norm = pd.DataFrame(norm.transform(X), columns=X.columns, index=X.index)
 
-    # STANDARDIZATION
-    stand = StandardScaler().fit(X)
-    X_stand = pd.DataFrame(stand.transform(
-        X), columns=X.columns, index=X.index)
+    # # STANDARDIZATION
+    # stand = StandardScaler().fit(X)
+    # X_stand = pd.DataFrame(stand.transform(
+    #     X), columns=X.columns, index=X.index)
 
     summary_X = X.describe()
     summary_X_norm = X_norm.describe()
-    summary_X_stand = X_stand.describe()
+    # summary_X_stand = X_stand.describe()
 
     print(summary_X)
     print(summary_X_norm)
-    print(summary_X_stand)
+    # print(summary_X_stand)
 
-    save_outputfile(summary_X, results_path / 'summary_X.csv')
-    save_outputfile(summary_X_norm, results_path / 'summary_X_norm.csv')
-    save_outputfile(summary_X_stand, results_path / 'summary_X_stand.csv')
+    # save_outputfile(summary_X, results_path / 'summary_X.csv')
+    # save_outputfile(summary_X_norm, results_path / 'summary_X_norm.csv')
+    # save_outputfile(summary_X_stand, results_path / 'summary_X_stand.csv')
 
     # --- TUNING SVM PARAMETERS ---
 
@@ -131,7 +132,7 @@ if __name__ == '__main__':
 
     # --- UNDERSAMPLING ---
 
-    X = X_stand  # normalization
+    X = X_norm  # normalization
 
     # ... 1. Random undersampling ...
 
@@ -179,8 +180,13 @@ if __name__ == '__main__':
 
     X_cnn, y_cnn = undersampling_cnn(X, y)
 
+    # norm = MinMaxScaler().fit(X)
+    # X_norm = pd.DataFrame(norm.transform(
+    #     X_cnn), columns=X_cnn.columns, index=X_cnn.index)
+
     X_cnn_train, X_cnn_test, y_cnn_train, y_cnn_test = train_test_split(
         X_cnn, y_cnn, test_size=0.25, random_state=42)
+
     res_cnn = tune_train_evaluate_svm(
         X_cnn_train, y_cnn_train, X_cnn_test, y_cnn_test, param_grid,
         resampling_method='Condensed Nearest Neighbour Undersampling')
@@ -313,43 +319,67 @@ if __name__ == '__main__':
     # plt.legend(title='AvalDay', loc='upper right')
     # plt.show()
 
-    classifier_nm = train_evaluate_final_svm(
-        X_nm_train, y_nm_train, X_nm_test, y_nm_test, res_nm['best_params'])
+    classifier_cnn = train_evaluate_final_svm(
+        X_cnn_train, y_cnn_train, X_cnn_test, y_cnn_test, res_cnn['best_params'])
 
     # --- PERMUTATION IMPORTANCE FEATURE SELECTION ---
 
     feature_importance_df = permutation_ranking(
-        classifier_nm[0], X_test, y_test)
+        classifier_cnn[0], X_cnn_test, y_cnn_test)
 
-    # Filter the DataFrame to include only positive importance values
+    # # Filter the DataFrame to include only positive importance values
     positive_features = feature_importance_df[feature_importance_df['Importance_Mean'] > 0]
 
-    # Get only the feature names
+    # ordered_features = feature_importance_df['Feature'].iloc[::-1]
+
+    # # Get only the feature names
     features_plus_aval = positive_features['Feature'].tolist() + ['AvalDay']
+    # features_plus_aval = ordered_features.tolist() + ['AvalDay']
 
-    # --- NEW SVM MODEL WITH FEATURES SELECTED ---
+    # # --- NEW SVM MODEL WITH FEATURES SELECTED ---
 
-    # mod1_clean = mod1.dropna()  # Keep the clean DataFrame with the datetime index
-    # X = mod1_clean.drop(columns=['Stagione', 'AvalDay'])
-    mod1_filtered = mod1[features_plus_aval]
-    mod1_filtered = mod1_filtered.dropna()
+    # # mod1_clean = mod1.dropna()  # Keep the clean DataFrame with the datetime index
+    # # X = mod1_clean.drop(columns=['Stagione', 'AvalDay'])
+    X_new = X[positive_features['Feature'].tolist()]
+    y_new = y
 
-    X_new = mod1_filtered.drop(columns=['AvalDay'])
-    y_new = mod1_filtered['AvalDay']
+    # X_cnn2, y_cnn2 = undersampling_cnn(X_new, y_new)
 
-    # --- SCALING ---
+    # # norm = MinMaxScaler().fit(X)
+    # # X_norm = pd.DataFrame(norm.transform(
+    # #     X_cnn), columns=X_cnn.columns, index=X_cnn.index)
 
-    # scaler = StandardScaler()
-    # X_new = pd.DataFrame(scaler.fit_transform(X_new),
-    #                      columns=X_new.columns,
-    #                      index=X_new.index)
+    # X_cnn_train2, X_cnn_test2, y_cnn_train2, y_cnn_test2 = train_test_split(
+    #     X_cnn2, y_cnn2, test_size=0.25, random_state=42)
+
+    # res_cnn2 = tune_train_evaluate_svm(
+    #     X_cnn_train2, y_cnn_train2, X_cnn_test2, y_cnn_test2, param_grid,
+    #     resampling_method='Condensed Nearest Neighbour Undersampling')
+
+    # classifier_cnn2 = train_evaluate_final_svm(
+    #     X_cnn_train2, y_cnn_train2, X_cnn_test2, y_cnn_test2, res_cnn2['best_params'])
+
+    # mod1_filtered = mod1_filtered.dropna()
+
+    # X_new = mod1_filtered.drop(columns=['AvalDay'])
+    # y_new = mod1_filtered['AvalDay']
 
     # --- SPLIT TRAIN AND TEST ---
 
-    X_nm_new, y_nm_new = undersampling_nearmiss(X_new, y_new)
+    # ... 4. Condensed Nearest Neighbour Undersampling ...
+    resampling_method = 'CNN'
+    X_cnn, y_cnn = undersampling_cnn(X_new, y_new)
 
     X_train_new, X_test_new, y_train_new, y_test_new = train_test_split(
-        X_nm_new, y_nm_new, test_size=0.25, random_state=42)
+        X_cnn, y_cnn, test_size=0.25, random_state=42)
+    res_new = tune_train_evaluate_svm(
+        X_train_new, y_train_new, X_test_new, y_test_new, param_grid,
+        resampling_method='Condensed Nearest Neighbour Undersampling')
+
+    # X_nm_new, y_nm_new = undersampling_nearmiss(X_new, y_new)
+
+    # X_train_new, X_test_new, y_train_new, y_test_new = train_test_split(
+    #     X_nm_new, y_nm_new, test_size=0.25, random_state=42)
 
     # df = pd.concat([X_train_new, y_train_new], axis=1)
     # # Check for NaNs in specific columns and data types
@@ -368,20 +398,20 @@ if __name__ == '__main__':
     # plt.legend(title='AvalDay', loc='upper right')
     # plt.show()
 
-    res_nm_new = tune_train_evaluate_svm(
-        X_train_new, y_train_new, X_test_new, y_test_new)
+    # res_nm_new = tune_train_evaluate_svm(
+    #     X_train_new, y_train_new, X_test_new, y_test_new)
 
-    res_nm_new_list = []
+    res_new_list = []
 
     # Add each result to the list with the sampling method as an identifier
-    res_nm_new_list.append(
-        {'Run': '1', **res_nm_new})
+    res_new_list.append(
+        {'Run': '1', **res_new})
 
-    classifier_nm_new = train_evaluate_final_svm(
-        X_train_new, y_train_new, X_test_new, y_test_new, res_nm_new)
+    classifier_new = train_evaluate_final_svm(
+        X_train_new, y_train_new, X_test_new, y_test_new, res_new['best_params'])
 
     # Calculate evaluation metrics
-    y_predict = classifier_nm_new.predict(X_test_new)
+    y_predict = classifier_new.predict(X_test_new)
     accuracy = accuracy_score(y_test_new, y_predict)
     precision = precision_score(y_test_new, y_predict)
     recall = recall_score(y_test_new, y_predict)
@@ -392,17 +422,18 @@ if __name__ == '__main__':
         'accuracy': accuracy,
         'recall': recall,
         'f1': f1,
-        'best_params': {'C': classifier_nm_new.C, 'gamma': classifier_nm_new.gamma}
+        'best_params': {'C': classifier_new.C, 'gamma': classifier_new.gamma}
     }
 
-    res_nm_new_list.append(
+    res_new_list.append(
         {'Run': '2', **res_2})
-    res_nm_new_df = pd.DataFrame(res_nm_new_list)
+    res_new_df = pd.DataFrame(res_new_list)
 
-    save_outputfile(res_nm_new_df, common_path / 'nearmiss_result.csv')
+    save_outputfile(res_new_df, common_path /
+                    f'all_feature_{resampling_method}.csv')
 
     feature_importance_df = permutation_ranking(
-        classifier_nm_new, X_test_new, y_test_new)
+        classifier_new, X_test_new, y_test_new)
 
     # # ---------------------------------------------------------------
     # # --- b) DEVELOP SVM FOR SMOTE OVERSAMPLING ---
@@ -472,7 +503,7 @@ if __name__ == '__main__':
         'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
         'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
         'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
-        'TempGrad_HS', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
         'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
         'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
         'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'

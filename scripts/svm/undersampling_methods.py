@@ -212,35 +212,42 @@ def undersampling_nearmiss(X, y, version=1, n_neighbors=3):
     return X_res, y_res
 
 
-def undersampling_cnn(X, y, version=1, n_neighbors=3):
+def undersampling_cnn(X, y):
     sampling_method = 'Condensed Nearest Neighbour Undersampling'
     cnn = CondensedNearestNeighbour(random_state=42)
     X_res, y_res = cnn.fit_resample(X, y)
 
-    # Ensure equal number of samples (483) in each class
-    target_count = Counter(y_res)[1]
+    # # Get the target count (minority class count)
+    # target_count = min(Counter(y_res).values())
 
-    # Find indices for each class
-    indices_0 = np.where(y_res == 0)[0]
-    indices_1 = np.where(y_res == 1)[0]
+    # # Find indices for each class
+    # indices_0 = np.where(y_res == 0)[0]
+    # indices_1 = np.where(y_res == 1)[0]
 
-    # Randomly sample from the larger class to match the target count
-    indices_0 = np.random.choice(indices_0, size=target_count, replace=False)
-    indices_1 = np.random.choice(indices_1, size=target_count, replace=False)
+    # # Randomly sample the majority class (class 0) to match the minority class size
+    # indices_0 = np.random.choice(indices_0, size=target_count, replace=False)
 
-    # Combine the balanced indices
-    balanced_indices = np.hstack((indices_0, indices_1))
+    # # Use all samples from the minority class
+    # # No sampling needed, just trim if needed
+    # indices_1 = indices_1[:target_count]
 
-    # Create the balanced dataset
-    X_balanced = X_res.iloc[balanced_indices, :]
-    y_balanced = y_res[balanced_indices]
+    # # Combine the balanced indices
+    # balanced_indices = np.hstack((indices_0, indices_1))
 
+    # # Shuffle the indices to mix both classes
+    # np.random.shuffle(balanced_indices)
+
+    # # Create the balanced dataset
+    # X_balanced = X_res.iloc[balanced_indices, :]
+    # y_balanced = y_res[balanced_indices]
+
+    # Optionally plot the scatter plot if the dataset has 2 features
     if X.shape[1] == 2:
         plot_scatter_original(X, y,
                               title=f'Original Distribution before {sampling_method}',
                               palette={0: "blue", 1: "red"})
 
-        plot_scatter_under_over_sampling(X_balanced, y_balanced,
+        plot_scatter_under_over_sampling(X_res, y_res,
                                          title=f'{sampling_method}',
                                          palette={0: "blue", 1: "red"})
     else:
@@ -255,29 +262,29 @@ def undersampling_enn(X, y, version=1, n_neighbors=3):
     X_res, y_res = enn.fit_resample(X, y)
 
     # Ensure equal number of samples (483) in each class
-    target_count = Counter(y_res)[1]
+    # target_count = Counter(y_res)[1]
 
-    # Find indices for each class
-    indices_0 = np.where(y_res == 0)[0]
-    indices_1 = np.where(y_res == 1)[0]
+    # # Find indices for each class
+    # indices_0 = np.where(y_res == 0)[0]
+    # indices_1 = np.where(y_res == 1)[0]
 
-    # Randomly sample from the larger class to match the target count
-    indices_0 = np.random.choice(indices_0, size=target_count, replace=False)
-    indices_1 = np.random.choice(indices_1, size=target_count, replace=False)
+    # # Randomly sample from the larger class to match the target count
+    # indices_0 = np.random.choice(indices_0, size=target_count, replace=False)
+    # indices_1 = np.random.choice(indices_1, size=target_count, replace=False)
 
-    # Combine the balanced indices
-    balanced_indices = np.hstack((indices_0, indices_1))
+    # # Combine the balanced indices
+    # balanced_indices = np.hstack((indices_0, indices_1))
 
-    # Create the balanced dataset
-    X_balanced = X_res.iloc[balanced_indices, :]
-    y_balanced = y_res[balanced_indices]
+    # # Create the balanced dataset
+    # X_balanced = X_res.iloc[balanced_indices, :]
+    # y_balanced = y_res[balanced_indices]
 
     if X.shape[1] == 2:
         plot_scatter_original(X, y,
                               title=f'Original Distribution before {sampling_method}',
                               palette={0: "blue", 1: "red"})
 
-        plot_scatter_under_over_sampling(X_balanced, y_balanced,
+        plot_scatter_under_over_sampling(X_res, y_res,
                                          title=f'{sampling_method}',
                                          palette={0: "blue", 1: "red"})
 
@@ -292,30 +299,30 @@ def undersampling_clustercentroids(X, y, version=1, n_neighbors=3):
     cc = ClusterCentroids(random_state=42)
     X_res, y_res = cc.fit_resample(X, y)
 
-    # Ensure equal number of samples (483) in each class
-    target_count = Counter(y_res)[1]
+    # # Ensure equal number of samples (483) in each class
+    # target_count = Counter(y_res)[1]
 
-    # Find indices for each class
-    indices_0 = np.where(y_res == 0)[0]
-    indices_1 = np.where(y_res == 1)[0]
+    # # Find indices for each class
+    # indices_0 = np.where(y_res == 0)[0]
+    # indices_1 = np.where(y_res == 1)[0]
 
-    # Randomly sample from the larger class to match the target count
-    indices_0 = np.random.choice(indices_0, size=target_count, replace=False)
-    indices_1 = np.random.choice(indices_1, size=target_count, replace=False)
+    # # Randomly sample from the larger class to match the target count
+    # indices_0 = np.random.choice(indices_0, size=target_count, replace=False)
+    # indices_1 = np.random.choice(indices_1, size=target_count, replace=False)
 
-    # Combine the balanced indices
-    balanced_indices = np.hstack((indices_0, indices_1))
+    # # Combine the balanced indices
+    # balanced_indices = np.hstack((indices_0, indices_1))
 
-    # Create the balanced dataset
-    X_balanced = X_res.iloc[balanced_indices, :]
-    y_balanced = y_res[balanced_indices]
+    # # Create the balanced dataset
+    # X_balanced = X_res.iloc[balanced_indices, :]
+    # y_balanced = y_res[balanced_indices]
 
     if X.shape[1] == 2:
         plot_scatter_original(X, y,
                               title=f'Original Distribution before {sampling_method}',
                               palette={0: "blue", 1: "red"})
 
-        plot_scatter_under_over_sampling(X_balanced, y_balanced,
+        plot_scatter_under_over_sampling(X_res, y_res,
                                          title=f'{sampling_method}',
                                          palette={0: "blue", 1: "red"})
     else:
@@ -329,33 +336,33 @@ def undersampling_tomeklinks(X, y, version=1, n_neighbors=3):
     tl = TomekLinks()
     X_res, y_res = tl.fit_resample(X, y)
 
-    # Ensure equal number of samples (483) in each class
-    target_count = Counter(y_res)[1]
+    # # Ensure equal number of samples (483) in each class
+    # target_count = Counter(y_res)[1]
 
-    # Find indices for each class
-    indices_0 = np.where(y_res == 0)[0]
-    indices_1 = np.where(y_res == 1)[0]
+    # # Find indices for each class
+    # indices_0 = np.where(y_res == 0)[0]
+    # indices_1 = np.where(y_res == 1)[0]
 
-    # Randomly sample from the larger class to match the target count
-    indices_0 = np.random.choice(indices_0, size=target_count, replace=False)
-    indices_1 = np.random.choice(indices_1, size=target_count, replace=False)
+    # # Randomly sample from the larger class to match the target count
+    # indices_0 = np.random.choice(indices_0, size=target_count, replace=False)
+    # indices_1 = np.random.choice(indices_1, size=target_count, replace=False)
 
-    # Combine the balanced indices
-    balanced_indices = np.hstack((indices_0, indices_1))
+    # # Combine the balanced indices
+    # balanced_indices = np.hstack((indices_0, indices_1))
 
-    # Create the balanced dataset
-    X_balanced = X_res.iloc[balanced_indices, :]
-    y_balanced = y_res[balanced_indices]
+    # # Create the balanced dataset
+    # X_balanced = X_res.iloc[balanced_indices, :]
+    # y_balanced = y_res[balanced_indices]
 
     if X.shape[1] == 2:
         plot_scatter_original(X, y,
                               title=f'Original Distribution before {sampling_method}',
                               palette={0: "blue", 1: "red"})
 
-        plot_scatter_under_over_sampling(X_balanced, y_balanced,
+        plot_scatter_under_over_sampling(X_res, y_res,
                                          title=f'{sampling_method}',
                                          palette={0: "blue", 1: "red"})
     else:
         print("Skipping scatter plot: X does not have exactly 2 features.")
 
-    return X_balanced, y_balanced
+    return X_res, y_res
