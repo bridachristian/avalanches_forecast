@@ -143,6 +143,9 @@ def calculate_degreedays(df):
 
 
 def calculate_snow_temperature(df):
+    df['TH10_tanh'] = 20*np.tanh(0.2*df['TH01G'])  # new, hyperbolic transform.
+    df['TH30_tanh'] = 20*np.tanh(0.2*df['TH03G'])  # new, hyperbolic transform.
+
     df['Tsnow_delta_1d'] = df['TH01G'].diff(periods=1)
     df['Tsnow_delta_2d'] = df['TH01G'].diff(periods=2)
     df['Tsnow_delta_3d'] = df['TH01G'].diff(periods=3)
