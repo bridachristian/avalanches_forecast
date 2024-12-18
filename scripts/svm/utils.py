@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
 from sklearn.svm import SVC
 
 
@@ -229,9 +229,13 @@ def plot_decision_boundary(X, y, model, title, palette={0: "blue", 1: "red"}):
         [(0.0, "blue"), (0.5, "white"), (1.0, "red")]
     )
 
+    norm = TwoSlopeNorm(vmin=Z.min(), vcenter=0, vmax=Z.max())
+
     # Create a heatmap of Z values
     plt.figure(figsize=(8, 6))
-    heatmap = plt.contourf(xx, yy, Z, levels=50, cmap=cmap, alpha=0.8)
+    # heatmap = plt.contourf(xx, yy, Z, levels=50, cmap=cmap, alpha=0.8)
+    heatmap = plt.contourf(xx, yy, Z, levels=50,
+                           cmap=cmap, norm=norm, alpha=0.8)
 
     # Scatter plot of the data points
     plt.scatter(X_array[:, 0], X_array[:, 1],
