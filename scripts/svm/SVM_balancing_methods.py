@@ -296,28 +296,8 @@ if __name__ == '__main__':
                     'under_oversampling_comparison_standardized.csv')
 
     # ---------------------------------------------------------------
-    # --- a) DEVELOP SVM FOR NearMiss UNDERSAMPLING ---
+    # --- a) DEVELOP SVM FOR CNN UNDERSAMPLING ---
     # ---------------------------------------------------------------
-    # # Plot training data
-
-    # print(mod1_clean.columns)
-    # df = pd.concat([X_nm_train, y_nm_train], axis=1)
-    # # Check for NaNs in specific columns and data types
-    # print(df[['HSnum', 'HN72h', 'AvalDay']].isna().sum())
-    # # Ensure categorical/int data for hue
-    # df['AvalDay'] = df['AvalDay'].astype(int)
-
-    # # Plot with Seaborn
-    # plt.figure(figsize=(10, 6))
-    # # Edgecolor changed to 'w' for white, or remove if not needed
-    # sns.scatterplot(data=df, x='HSnum', y='HN72h', hue='AvalDay',
-    #                 palette='coolwarm', s=60, edgecolor='w', alpha=1)
-    # plt.title(
-    #     'Training Data: scatterplot of Features with Avalanche Day Classification')
-    # plt.xlabel('HSnum')
-    # plt.ylabel('HN72h')
-    # plt.legend(title='AvalDay', loc='upper right')
-    # plt.show()
 
     classifier_cnn = train_evaluate_final_svm(
         X_cnn_train, y_cnn_train, X_cnn_test, y_cnn_test, res_cnn['best_params'])
@@ -343,27 +323,6 @@ if __name__ == '__main__':
     X_new = X[positive_features['Feature'].tolist()]
     y_new = y
 
-    # X_cnn2, y_cnn2 = undersampling_cnn(X_new, y_new)
-
-    # # norm = MinMaxScaler().fit(X)
-    # # X_norm = pd.DataFrame(norm.transform(
-    # #     X_cnn), columns=X_cnn.columns, index=X_cnn.index)
-
-    # X_cnn_train2, X_cnn_test2, y_cnn_train2, y_cnn_test2 = train_test_split(
-    #     X_cnn2, y_cnn2, test_size=0.25, random_state=42)
-
-    # res_cnn2 = tune_train_evaluate_svm(
-    #     X_cnn_train2, y_cnn_train2, X_cnn_test2, y_cnn_test2, param_grid,
-    #     resampling_method='Condensed Nearest Neighbour Undersampling')
-
-    # classifier_cnn2 = train_evaluate_final_svm(
-    #     X_cnn_train2, y_cnn_train2, X_cnn_test2, y_cnn_test2, res_cnn2['best_params'])
-
-    # mod1_filtered = mod1_filtered.dropna()
-
-    # X_new = mod1_filtered.drop(columns=['AvalDay'])
-    # y_new = mod1_filtered['AvalDay']
-
     # --- SPLIT TRAIN AND TEST ---
 
     # ... 4. Condensed Nearest Neighbour Undersampling ...
@@ -375,31 +334,6 @@ if __name__ == '__main__':
     res_new = tune_train_evaluate_svm(
         X_train_new, y_train_new, X_test_new, y_test_new, param_grid,
         resampling_method='Condensed Nearest Neighbour Undersampling')
-
-    # X_nm_new, y_nm_new = undersampling_nearmiss(X_new, y_new)
-
-    # X_train_new, X_test_new, y_train_new, y_test_new = train_test_split(
-    #     X_nm_new, y_nm_new, test_size=0.25, random_state=42)
-
-    # df = pd.concat([X_train_new, y_train_new], axis=1)
-    # # Check for NaNs in specific columns and data types
-    # print(df[['HSnum', 'HN72h', 'AvalDay']].isna().sum())
-    # # Ensure categorical/int data for hue
-    # df['AvalDay'] = df['AvalDay'].astype(int)
-
-    # # Plot with Seaborn
-    # plt.figure(figsize=(10, 6))
-    # # Edgecolor changed to 'w' for white, or remove if not needed
-    # sns.scatterplot(data=df, x='HSnum', y='HN72h', hue='AvalDay',
-    #                 palette='coolwarm', s=60, edgecolor='w', alpha=1)
-    # plt.title('Training data after scaling')
-    # plt.xlabel('HSnum')
-    # plt.ylabel('HN72h')
-    # plt.legend(title='AvalDay', loc='upper right')
-    # plt.show()
-
-    # res_nm_new = tune_train_evaluate_svm(
-    #     X_train_new, y_train_new, X_test_new, y_test_new)
 
     res_new_list = []
 
@@ -434,56 +368,6 @@ if __name__ == '__main__':
 
     feature_importance_df = permutation_ranking(
         classifier_new, X_test_new, y_test_new)
-
-    # # ---------------------------------------------------------------
-    # # --- b) DEVELOP SVM FOR SMOTE OVERSAMPLING ---
-    # # ---------------------------------------------------------------
-
-    # classifier_sm = train_evaluate_final_svm(
-    #     X_sm, y_sm, X_test, y_test, res_sm)
-
-    # # --- PERMUTATION IMPORTANCE FEATURE SELECTION ---
-
-    # feature_importance_df = permutation_ranking(classifier_sm, X_test, y_test)
-
-    # # Filter the DataFrame to include only positive importance values
-    # positive_features = feature_importance_df[feature_importance_df['Importance_Mean'] > 0]
-
-    # # Get only the feature names
-    # features_plus_aval = positive_features['Feature'].tolist() + ['AvalDay']
-
-    # # --- NEW SVM MODEL WITH FEATURES SELECTED ---
-
-    # # mod1_clean = mod1.dropna()  # Keep the clean DataFrame with the datetime index
-    # # X = mod1_clean.drop(columns=['Stagione', 'AvalDay'])
-    # mod1_filtered = mod1[features_plus_aval]
-    # mod1_filtered = mod1_filtered.dropna()
-
-    # X_new = mod1_filtered.drop(columns=['AvalDay'])
-    # y_new = mod1_filtered['AvalDay']
-
-    # # --- SCALING ---
-
-    # scaler = StandardScaler()
-    # X_new = pd.DataFrame(scaler.fit_transform(X_new),
-    #                      columns=X_new.columns,
-    #                      index=X_new.index)
-
-    # # --- SPLIT TRAIN AND TEST ---
-
-    # X_train_new, X_test_new, y_train_new, y_test_new = train_test_split(
-    #     X_new, y_new, test_size=0.25, random_state=42)
-
-    # X_sm_new, y_sm_new = oversampling_smote(X_train_new, y_train_new)
-
-    # res_sm_new = train_and_evaluate_svm(
-    #     X_sm_new, y_sm_new, X_test_new, y_test_new)
-
-    # classifier_sm_new = train_evaluate_final_svm(
-    #     X_sm_new, y_sm_new, X_test_new, y_test_new, res_sm_new)
-
-    # feature_importance_df = permutation_ranking(
-    #     classifier_sm_new, X_test_new, y_test_new)
 
     # ---------------------------------------------------------------
     # --- c) TEST DIFFERENT CONFIGURATION OF  ---
