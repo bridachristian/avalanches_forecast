@@ -470,40 +470,10 @@ if __name__ == '__main__':
     y = mod1_clean['AvalDay']  # Target
 
     # Standardizzazione
-    scaler = StandardScaler()
+    # scaler = StandardScaler()
+    scaler = MinMaxScaler()
     X_scaled = pd.DataFrame(scaler.fit_transform(
         X), columns=X.columns, index=X.index)
-    # X_scaled = scaler.fit_transform(X)
-
-    # # Random undersampling
-    # X_rand, y_rand = undersampling_random(X_scaled, y)
-
-    # # Divisione train-test
-    # X_train, X_test, y_train, y_test = train_test_split(
-    #     X_rand, y_rand, test_size=0.25, random_state=42)
-
-    # from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-
-    # # Applicazione della LDA
-    # # Mantiene tutte le componenti significative
-    # lda = LinearDiscriminantAnalysis(n_components=None)
-    # X_train_lda = lda.fit_transform(X_train, y_train)
-    # X_test_lda = lda.transform(X_test)
-
-    # # Varianza spiegata
-    # explained_variance = lda.explained_variance_ratio_
-    # print(
-    #     f"Varianza spiegata da ciascuna componente LDA: {explained_variance}")
-    # from sklearn import svm
-
-    # # Modello di classificazione (esempio con Random Forest)
-    # clf = svm.SVC(kernel='rbf', C=10, gamma=0.1)
-    # clf.fit(X_train_lda, y_train)
-    # y_pred = clf.predict(X_test_lda)
-
-    # # Valutazione delle performance
-    # accuracy = accuracy_score(y_test, y_pred)
-    # print(f"Accuratezza del modello su dati LDA: {accuracy:.2f}")
 
     # Calcola la matrice di correlazione
     corr_matrix = pd.concat([X_scaled, y], axis=1).corr()
@@ -532,45 +502,168 @@ if __name__ == '__main__':
             features_to_remove.add(feature1)
 
     # Rimuovi le feature selezionate
-    X_filtered = X.drop(columns=features_to_remove)
+    X_filtered = X_scaled.drop(columns=features_to_remove)
 
     # Random undersampling
-    X_rand, y_rand = undersampling_cnn(X_filtered, y)
+    X_resampled, y_resampled = undersampling_cnn(X_filtered, y)
 
     # Divisione train-test
     X_train, X_test, y_train, y_test = train_test_split(
-        X_rand, y_rand, test_size=0.25, random_state=42)
+        X_resampled, y_resampled, test_size=0.25, random_state=42)
 
+    # Random undersampling
+    X_resampled, y_resampled = undersampling_cnn(X_scaled, y)
+
+    # Divisione train-test
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_resampled, y_resampled, test_size=0.25, random_state=42)
+
+    # Initialize the SVM classifier (you can choose kernel type based on your dataset)
+    from sklearn import svm
+    from sklearn.feature_selection import RFE
     from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
-    # Applicazione della LDA
-    # Mantiene tutte le componenti significative
-    lda = LinearDiscriminantAnalysis(n_components=None)
-    X_train_lda = lda.fit_transform(X_train, y_train)
-    X_test_lda = lda.transform(X_test)
+    # Initialize the SVM model
+    svc = svm.SVC(kernel='linear')
 
-    # Varianza spiegata
-    explained_variance = lda.explained_variance_ratio_
+    # Range of n_features_to_select to test
+    n_features_range = list(range(2, X_resampled.shape[1] + 1))
+
+    # To store the results of each iteration
+    results = {}
+
+    # Loop over the range of possible feature selections
+    for n_features in n_features_range:
+        print(f"Evaluating with n_features_to_select = {n_features}")
+
+        # Recursive Feature Elimination (RFE) to select the best features
+        selector = RFE(svc, n_features_to_select=n_features, step=1)
+        selector = selector.fit(X_resampled, y_resampled)
+
+        # Get the selected features
+        selected_features = [f for f, s in zip(
+            candidate_features, selector.support_) if s]
+        print(f"Selected features for n={n_features}: {selected_features}")
+
+        # Create the new dataset with selected features
+        X_filtered = X_resampled[selected_features]
+
+        # Split into training and testing sets before applying LDA
+        X_train, X_test, y_train, y_test = train_test_split(
+            X_filtered, y_resampled, test_size=0.25, random_state=42)
+
+        # Apply LDA
+        lda = LinearDiscriminantAnalysis(n_components=None)
+        X_train_lda = lda.fit_transform(X_train, y_train)
+        X_test_lda = lda.transform(X_test)
+
+        # Evaluate the model with the selected features using SVM
+        result_1iter = tune_train_evaluate_svm(
+            X_train, y_train, X_test, y_test, param_grid,
+            resampling_method='Condensed Nearest Neighbour Undersampling'
+        )
+
+        # Train and evaluate the final SVM model with the best parameters found
+        classifier, evaluation_metrics = train_evaluate_final_svm(
+            X_train_lda, y_train, X_test_lda, y_test, result_1iter['best_params']
+        )
+
+        # Store the results, such as accuracy, F1-score, etc.
+        results[n_features] = evaluation_metrics
+        print(f"Evaluation metrics for n={n_features}: {evaluation_metrics}")
+
+    # After the loop, you can analyze the results to choose the best number of features
+    # You can adjust the key as needed (e.g., based on accuracy, F1-score, etc.)
+    best_n_features = max(results, key=lambda k: results[k]['accuracy'])
     print(
-        f"Varianza spiegata da ciascuna componente LDA: {explained_variance}")
-    from sklearn import svm
-
-    result_1iter = tune_train_evaluate_svm(
-        X_train_lda, y_train, X_test_lda, y_test, param_grid,
-        resampling_method='Condensed Nearest Neighbour Undersampling')
-
-    classifier, evaluation_metrics = train_evaluate_final_svm(
-        X_train_lda, y_train, X_test_lda, y_test, result_1iter['best_params']
+        f"Best number of features: {best_n_features} with accuracy: {results[best_n_features]['accuracy']}"
     )
+    # svc = svm.SVC(kernel='linear')  # Using a linear kernel for simplicity
 
-    # Output delle feature rimosse
-    print(f"Feature rimosse: {features_to_remove}")
-    print(f"Feature rimanenti: {X_filtered.columns.tolist()}")
+    # # Initialize RFE and fit it to the model
+    # # Select the top 10 features
+    # selector = RFE(svc, n_features_to_select=20, step=1)
+    # selector = selector.fit(X_train, y_train)
 
-    candidate_features_filtered = [
-        feature for feature in candidate_features if feature not in features_to_remove]
-    res_filt = evaluate_svm_with_feature_selection(
-        mod1, candidate_features_filtered)
+    # # Get the selected features
+    # selected_features = [f for f, s in zip(
+    #     candidate_features, selector.support_) if s]
+    # print("Selected Features: ", selected_features)
+
+    # X_filtered_2 = X_resampled[selected_features]
+    # X_train, X_test, y_train, y_test = train_test_split(
+    #     X_filtered_2, y_resampled, test_size=0.25, random_state=42)
+
+    # from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+
+    # # Applicazione della LDA
+    # # Mantiene tutte le componenti significative
+    # lda = LinearDiscriminantAnalysis(n_components=None)
+    # X_train_lda = lda.fit_transform(X_train, y_train)
+    # X_test_lda = lda.transform(X_test)
+
+    # # # Use X_train and y_train (already filtered and transformed)
+
+    # # X_subset = X_train  # Select only HSnum and HN_3d
+    # # y_subset = y_train  # Target
+    # # feature_1 = X_subset.columns[0]  # First feature (dynamically selected)
+    # # feature_2 = X_subset.columns[1]  # Second feature (dynamically selected)
+    # # # Fit LDA to the selected features
+    # # lda = LinearDiscriminantAnalysis()
+    # # lda.fit(X_subset, y_subset)
+
+    # # # Scatterplot of the two features
+    # # plt.figure(figsize=(10, 8))
+    # # classes = np.unique(y_subset)
+    # # for cls in classes:
+    # #     plt.scatter(
+    # #         X_subset[y_subset == cls][feature_1],
+    # #         X_subset[y_subset == cls][feature_2],
+    # #         label=f'Class {cls}', alpha=0.7
+    # #     )
+
+    # # # Calculate the decision boundary
+    # # coef = lda.coef_[0]  # Coefficients for the linear decision boundary
+    # # intercept = lda.intercept_[0]  # Intercept for the linear decision boundary
+
+    # # # Decision boundary equation: HSnum * coef[0] + HN_3d * coef[1] + intercept = 0
+    # # x_values = np.linspace(
+    # #     X_subset[feature_1].min(), X_subset[feature_1].max(), 100)
+    # # y_values = -(coef[0] * x_values + intercept) / coef[1]
+
+    # # # Plot the decision boundary
+    # # plt.plot(x_values, y_values, color='red', label='Decision Boundary')
+
+    # # # Add labels and legend
+    # # plt.title("Scatterplot of HSnum vs HN_3d with LDA Decision Boundary")
+    # # plt.xlabel(f'{feature_1}')
+    # # plt.ylabel(f'{feature_2}')
+    # # plt.legend()
+    # # plt.grid()
+    # # plt.show()
+
+    # # Varianza spiegata
+    # explained_variance = lda.explained_variance_ratio_
+    # print(
+    #     f"Varianza spiegata da ciascuna componente LDA: {explained_variance}")
+    # from sklearn import svm
+
+    # result_1iter = tune_train_evaluate_svm(
+    #     X_train, y_train, X_test, y_test, param_grid,
+    #     resampling_method='Condensed Nearest Neighbour Undersampling')
+
+    # classifier, evaluation_metrics = train_evaluate_final_svm(
+    #     X_train_lda, y_train, X_test_lda, y_test, result_1iter['best_params']
+    # )
+
+    # # Output delle feature rimosse
+    # print(f"Feature rimosse: {features_to_remove}")
+    # print(f"Feature rimanenti: {X_filtered.columns.tolist()}")
+
+    # candidate_features_filtered = [
+    #     feature for feature in candidate_features if feature not in features_to_remove]
+    # res_filt = evaluate_svm_with_feature_selection(
+    #     mod1, candidate_features_filtered)
 
     # -------------------------------------------------------
     # TEST FEATURES PERFORMANCE
