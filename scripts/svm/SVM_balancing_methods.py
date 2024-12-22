@@ -370,7 +370,7 @@ if __name__ == '__main__':
         classifier_new, X_test_new, y_test_new)
 
     # ---------------------------------------------------------------
-    # --- c) TEST DIFFERENT CONFIGURATION OF  ---
+    # --- b) TEST DIFFERENT CONFIGURATION OF FEATURES  ---
     # ---------------------------------------------------------------
 
     candidate_features = [
@@ -435,6 +435,142 @@ if __name__ == '__main__':
     df = df.sort_values(by='recall', ascending=False)
 
     save_outputfile(df, common_path / 'precision_features.csv')
+
+    # ---------------------------------------------------------------
+    # --- c) FEATURE EXTRACTION: LINEAR DISCRIMINANT ANALYSIS .(LDA)  ---
+    # ---------------------------------------------------------------
+
+    # candidate_features = ['HSnum', 'HN_3d']
+    candidate_features = [
+        'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+        'HNnum', 'TH01G', 'TH03G', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
+        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+        'TempAmplitude_3d', 'TempAmplitude_5d', 'Ta_delta_1d', 'Ta_delta_2d',
+        'Ta_delta_3d', 'Ta_delta_5d', 'Tmin_delta_1d', 'Tmin_delta_2d',
+        'Tmin_delta_3d', 'Tmin_delta_5d', 'Tmax_delta_1d', 'Tmax_delta_2d',
+        'Tmax_delta_3d', 'Tmax_delta_5d', 'T_mean', 'DegreeDays_Pos',
+        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+        'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
+        'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
+        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
+        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
+        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
+        'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
+    ]
+
+    feature_plus = candidate_features + ['AvalDay']
+    mod1_clean = mod1[feature_plus]
+    mod1_clean = mod1_clean.dropna()
+
+    # Supponiamo che `mod1_clean` contenga il dataset pre-pulito
+    X = mod1_clean[candidate_features]
+    y = mod1_clean['AvalDay']  # Target
+
+    # Standardizzazione
+    scaler = StandardScaler()
+    X_scaled = pd.DataFrame(scaler.fit_transform(
+        X), columns=X.columns, index=X.index)
+    # X_scaled = scaler.fit_transform(X)
+
+    # # Random undersampling
+    # X_rand, y_rand = undersampling_random(X_scaled, y)
+
+    # # Divisione train-test
+    # X_train, X_test, y_train, y_test = train_test_split(
+    #     X_rand, y_rand, test_size=0.25, random_state=42)
+
+    # from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+
+    # # Applicazione della LDA
+    # # Mantiene tutte le componenti significative
+    # lda = LinearDiscriminantAnalysis(n_components=None)
+    # X_train_lda = lda.fit_transform(X_train, y_train)
+    # X_test_lda = lda.transform(X_test)
+
+    # # Varianza spiegata
+    # explained_variance = lda.explained_variance_ratio_
+    # print(
+    #     f"Varianza spiegata da ciascuna componente LDA: {explained_variance}")
+    # from sklearn import svm
+
+    # # Modello di classificazione (esempio con Random Forest)
+    # clf = svm.SVC(kernel='rbf', C=10, gamma=0.1)
+    # clf.fit(X_train_lda, y_train)
+    # y_pred = clf.predict(X_test_lda)
+
+    # # Valutazione delle performance
+    # accuracy = accuracy_score(y_test, y_pred)
+    # print(f"Accuratezza del modello su dati LDA: {accuracy:.2f}")
+
+    # Calcola la matrice di correlazione
+    corr_matrix = pd.concat([X_scaled, y], axis=1).corr()
+
+    # Correlazione reciproca tra feature
+    feature_corr = corr_matrix.loc[X.columns, X.columns]
+
+    # Correlazione con il target
+    target_corr = corr_matrix.loc[X.columns, y.name]
+
+    # Trova le feature con alta correlazione reciproca (>0.9)
+    high_corr_pairs = np.where((np.abs(feature_corr) > 0.9) & (
+        np.triu(np.ones(feature_corr.shape), k=1)))
+
+    # Lista di coppie di feature altamente correlate
+    high_corr_feature_pairs = [(X.columns[i], X.columns[j])
+                               for i, j in zip(*high_corr_pairs)]
+
+    # Identifica le feature da rimuovere
+    features_to_remove = set()
+    for feature1, feature2 in high_corr_feature_pairs:
+        # Confronta la correlazione di entrambe le feature con il target
+        if abs(target_corr[feature1]) > abs(target_corr[feature2]):
+            features_to_remove.add(feature2)
+        else:
+            features_to_remove.add(feature1)
+
+    # Rimuovi le feature selezionate
+    X_filtered = X.drop(columns=features_to_remove)
+
+    # Random undersampling
+    X_rand, y_rand = undersampling_cnn(X_filtered, y)
+
+    # Divisione train-test
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_rand, y_rand, test_size=0.25, random_state=42)
+
+    from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+
+    # Applicazione della LDA
+    # Mantiene tutte le componenti significative
+    lda = LinearDiscriminantAnalysis(n_components=None)
+    X_train_lda = lda.fit_transform(X_train, y_train)
+    X_test_lda = lda.transform(X_test)
+
+    # Varianza spiegata
+    explained_variance = lda.explained_variance_ratio_
+    print(
+        f"Varianza spiegata da ciascuna componente LDA: {explained_variance}")
+    from sklearn import svm
+
+    result_1iter = tune_train_evaluate_svm(
+        X_train_lda, y_train, X_test_lda, y_test, param_grid,
+        resampling_method='Condensed Nearest Neighbour Undersampling')
+
+    classifier, evaluation_metrics = train_evaluate_final_svm(
+        X_train_lda, y_train, X_test_lda, y_test, result_1iter['best_params']
+    )
+
+    # Output delle feature rimosse
+    print(f"Feature rimosse: {features_to_remove}")
+    print(f"Feature rimanenti: {X_filtered.columns.tolist()}")
+
+    candidate_features_filtered = [
+        feature for feature in candidate_features if feature not in features_to_remove]
+    res_filt = evaluate_svm_with_feature_selection(
+        mod1, candidate_features_filtered)
 
     # -------------------------------------------------------
     # TEST FEATURES PERFORMANCE
