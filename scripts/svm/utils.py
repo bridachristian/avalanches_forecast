@@ -4,6 +4,10 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
 from sklearn.svm import SVC
+from sklearn.inspection import permutation_importance
+from sklearn.feature_selection import RFECV
+from sklearn.base import BaseEstimator, MetaEstimatorMixin
+import numpy as np
 
 
 def save_outputfile(df, output_filepath):
@@ -265,3 +269,40 @@ def plot_decision_boundary(X, y, model, title, palette={0: "blue", 1: "red"}):
 
     # Show the plot
     plt.show()
+
+
+class PermutationImportanceWrapper(BaseEstimator, MetaEstimatorMixin):
+    def __init__(self, estimator, scoring='accuracy', n_repeats=10, random_state=None):
+        self.estimator = estimator
+        self.scoring = scoring
+        self.n_repeats = n_repeats
+        self.random_state = random_state
+        self._feature_importances = None
+
+    def fit(self, X, y):
+        # Fit the underlying estimator
+        self.estimator.fit(X, y)
+        # Compute permutation importance
+        perm_importance = permutation_importance(
+            self.estimator, X, y, scoring=self.scoring,
+            n_repeats=self.n_repeats, random_state=self.random_state
+        )
+        self._feature_importances = perm_importance.importances_mean
+        return self
+
+    @property
+    def feature_importances_(self):
+        # Return feature importances after fitting
+        return self._feature_importances
+
+    def predict(self, X):
+        # Delegate the prediction to the underlying estimator
+        return self.estimator.predict(X)
+
+    def predict_proba(self, X):
+        # Optional: if you want to support probability predictions, add this method
+        if hasattr(self.estimator, 'predict_proba'):
+            return self.estimator.predict_proba(X)
+        else:
+            raise AttributeError(
+                "The estimator does not support probability prediction.")
