@@ -7,6 +7,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 from sklearn import svm
+# Initialize the SVM classifier (you can choose kernel type based on your dataset)
+from sklearn import svm
+from sklearn.feature_selection import RFE
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 from scripts.svm.data_loading import load_data
 from scripts.svm.undersampling_methods import (undersampling_random, undersampling_random_timelimited,
@@ -482,10 +486,10 @@ if __name__ == '__main__':
     df = pd.DataFrame(data)
     df = df.sort_values(by='recall', ascending=False)
 
-    save_outputfile(df, common_path / 'precision_features.csv')
+    save_outputfile(df, common_path / 'precision_features_NEW.csv')
 
     # ---------------------------------------------------------------
-    # --- c) FEATURE EXTRACTION: LINEAR DISCRIMINANT ANALYSIS .(LDA)  ---
+    # --- c) FEATURE EXTRACTION: LINEAR DISCRIMINANT ANALYSIS (LDA)  ---
     # ---------------------------------------------------------------
 
     # candidate_features = ['HSnum', 'HN_3d']
@@ -524,20 +528,15 @@ if __name__ == '__main__':
     X_resampled, y_resampled = undersampling_nearmiss(
         X_new, y, version=3, n_neighbors=10)
 
-    # # Divisione train-test
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_resampled, y_resampled, test_size=0.25, random_state=42)
+    # # # Divisione train-test
+    # X_train, X_test, y_train, y_test = train_test_split(
+    #     X_resampled, y_resampled, test_size=0.25, random_state=42)
 
-    scaler = StandardScaler()
-    X_train = pd.DataFrame(scaler.fit_transform(
-        X_train), columns=X_train.columns, index=X_train.index)
-    X_test = pd.DataFrame(scaler.transform(
-        X_test), columns=X_test.columns, index=X_test.index)
-
-    # Initialize the SVM classifier (you can choose kernel type based on your dataset)
-    from sklearn import svm
-    from sklearn.feature_selection import RFE
-    from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+    # scaler = StandardScaler()
+    # X_train = pd.DataFrame(scaler.fit_transform(
+    #     X_train), columns=X_train.columns, index=X_train.index)
+    # X_test = pd.DataFrame(scaler.transform(
+    #     X_test), columns=X_test.columns, index=X_test.index)
 
     # Initialize the SVM model
     svc = svm.SVC(kernel='linear')
@@ -569,15 +568,22 @@ if __name__ == '__main__':
         X_train, X_test, y_train, y_test = train_test_split(
             X_filt, y_resampled, test_size=0.25, random_state=42)
 
+        scaler = StandardScaler()
+        X_train = pd.DataFrame(scaler.fit_transform(
+            X_train), columns=X_train.columns, index=X_train.index)
+        X_test = pd.DataFrame(scaler.transform(
+            X_test), columns=X_test.columns, index=X_test.index)
+
         # Apply LDA
         lda = LinearDiscriminantAnalysis(n_components=None)
-        X_train_lda = lda.fit_transform(X_train, y_train)
-        X_test_lda = lda.transform(X_test)
+        X_train_lda = pd.DataFrame(lda.fit_transform(
+            X_train, y_train), columns=['LDA'])
+        X_test_lda = pd.DataFrame(lda.transform(X_test), columns=['LDA'])
 
         # Evaluate the model with the selected features using SVM
         result_1iter = tune_train_evaluate_svm(
             X_train_lda, y_train, X_test_lda, y_test, param_grid,
-            resampling_method='Condensed Nearest Neighbour Undersampling'
+            resampling_method='Nearmiss3'
         )
 
         # Train and evaluate the final SVM model with the best parameters found
