@@ -6,6 +6,7 @@ from collections import Counter
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
+from sklearn import svm
 
 from scripts.svm.data_loading import load_data
 from scripts.svm.undersampling_methods import (undersampling_random, undersampling_random_timelimited,
@@ -16,7 +17,7 @@ from scripts.svm.oversampling_methods import oversampling_random, oversampling_s
 from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm, train_evaluate_final_svm
 from scripts.svm.evaluation import (plot_learning_curve, plot_confusion_matrix,
                                     plot_roc_curve, permutation_ranking, evaluate_svm_with_feature_selection)
-from scripts.svm.utils import save_outputfile, get_adjacent_values, PermutationImportanceWrapper
+from scripts.svm.utils import save_outputfile, get_adjacent_values, PermutationImportanceWrapper, remove_correlated_features
 
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
@@ -28,7 +29,7 @@ if __name__ == '__main__':
     common_path = Path(
         'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\MOD1_manipulation\\')
 
-    filepath = common_path / 'mod1_newfeatures.csv'
+    filepath = common_path / 'mod1_newfeatures_NEW.csv'
     results_path = Path(
         'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\SVM_results\\')
 
@@ -43,26 +44,26 @@ if __name__ == '__main__':
 
     # --- FEATURES SELECTION ---
     feature = ['HN_3d', 'HSnum']
-    # feature = ['HSnum', 'HN_3d']
-    # feature = [
-    #     'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
-    #     'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
-    #     'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
-    #     'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-    #     'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-    #     'TempAmplitude_3d', 'TempAmplitude_5d', 'Ta_delta_1d', 'Ta_delta_2d',
-    #     'Ta_delta_3d', 'Ta_delta_5d', 'Tmin_delta_1d', 'Tmin_delta_2d',
-    #     'Tmin_delta_3d', 'Tmin_delta_5d', 'Tmax_delta_1d', 'Tmax_delta_2d',
-    #     'Tmax_delta_3d', 'Tmax_delta_5d', 'T_mean', 'DegreeDays_Pos',
-    #     'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-    #     'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
-    #     'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
-    #     'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
-    #     'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-    #     'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
-    #     'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
-    #     'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
-    # ]
+    # # feature = ['HSnum', 'HN_3d']
+    feature = [
+        'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
+        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+        'TempAmplitude_3d', 'TempAmplitude_5d', 'Ta_delta_1d', 'Ta_delta_2d',
+        'Ta_delta_3d', 'Ta_delta_5d', 'Tmin_delta_1d', 'Tmin_delta_2d',
+        'Tmin_delta_3d', 'Tmin_delta_5d', 'Tmax_delta_1d', 'Tmax_delta_2d',
+        'Tmax_delta_3d', 'Tmax_delta_5d', 'T_mean', 'DegreeDays_Pos',
+        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+        'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
+        'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
+        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
+        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
+        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
+        'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
+    ]
 
     feature_plus = feature + ['AvalDay']
     mod1_clean = mod1[feature_plus]
@@ -70,38 +71,6 @@ if __name__ == '__main__':
 
     X = mod1_clean[feature]
     y = mod1_clean['AvalDay']
-
-    # --- SPLIT TRAIN AND TEST ---
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.25, random_state=42)
-
-    print("Original class distribution:", Counter(y))
-    print("Original class distribution training set:", Counter(y_train))
-    print("Original class distribution test set:", Counter(y_test))
-
-    # --- SCALING FEATURES (NORMALIZATION vs STANDARDIZATION) ---
-
-    # NORMALIZATION
-    norm = MinMaxScaler().fit(X)
-    X_norm = pd.DataFrame(norm.transform(X), columns=X.columns, index=X.index)
-
-    # # STANDARDIZATION
-    # stand = StandardScaler().fit(X)
-    # X_stand = pd.DataFrame(stand.transform(
-    #     X), columns=X.columns, index=X.index)
-
-    summary_X = X.describe()
-    summary_X_norm = X_norm.describe()
-    # summary_X_stand = X_stand.describe()
-
-    print(summary_X)
-    print(summary_X_norm)
-    # print(summary_X_stand)
-
-    # save_outputfile(summary_X, results_path / 'summary_X.csv')
-    # save_outputfile(summary_X_norm, results_path / 'summary_X_norm.csv')
-    # save_outputfile(summary_X_stand, results_path / 'summary_X_stand.csv')
 
     # --- TUNING SVM PARAMETERS ---
 
@@ -133,14 +102,18 @@ if __name__ == '__main__':
 
     # --- UNDERSAMPLING ---
 
-    X = X_norm  # normalization
-
     # ... 1. Random undersampling ...
 
     X_rand, y_rand = undersampling_random(X, y)
 
     X_rand_train, X_rand_test, y_rand_train, y_rand_test = train_test_split(
         X_rand, y_rand, test_size=0.25, random_state=42)
+
+    scaler = MinMaxScaler()
+    X_rand_train = pd.DataFrame(scaler.fit_transform(
+        X_rand_train), columns=X_rand_train.columns, index=X_rand_train.index)
+    X_rand_test = pd.DataFrame(scaler.transform(
+        X_rand_test), columns=X_rand_test.columns, index=X_rand_test.index)
 
     res_rand = tune_train_evaluate_svm(
         X_rand_train, y_rand_train, X_rand_test, y_rand_test, param_grid,
@@ -153,14 +126,22 @@ if __name__ == '__main__':
 
     X_rand_10d_train, X_rand_10d_test, y_rand_10d_train, y_rand_10d_test = train_test_split(
         X_rand_10d, y_rand_10d, test_size=0.25, random_state=42)
+
+    scaler = MinMaxScaler()
+    X_rand_10d_train = pd.DataFrame(scaler.fit_transform(
+        X_rand_10d_train), columns=X_rand_10d_train.columns, index=X_rand_10d_train.index)
+    X_rand_10d_test = pd.DataFrame(scaler.transform(
+        X_rand_10d_test), columns=X_rand_10d_test.columns, index=X_rand_10d_test.index)
+
     res_rand_10d = tune_train_evaluate_svm(
         X_rand_10d_train, y_rand_10d_train, X_rand_10d_test, y_rand_10d_test, param_grid,
         resampling_method=f'Random undersampling {Ndays} days before')
 
     # ... 3. Nearmiss undersampling ...
 
-    vers = [1, 2, 3]
-    n_neig = [1, 3, 5, 10]
+    # vers = [1, 2, 3]
+    vers = [3]
+    n_neig = [1, 3, 5, 10, 50]
 
     # List to store results
     res_list = []
@@ -170,6 +151,13 @@ if __name__ == '__main__':
 
             X_nm_train, X_nm_test, y_nm_train, y_nm_test = train_test_split(
                 X_nm, y_nm, test_size=0.25, random_state=42)
+
+            scaler = MinMaxScaler()
+            X_nm_train = pd.DataFrame(scaler.fit_transform(
+                X_nm_train), columns=X_nm_train.columns, index=X_nm_train.index)
+            X_nm_test = pd.DataFrame(scaler.transform(
+                X_nm_test), columns=X_nm_test.columns, index=X_nm_test.index)
+
             res_nm = tune_train_evaluate_svm(
                 X_nm_train, y_nm_train, X_nm_test, y_nm_test, param_grid,
                 resampling_method=f'NearMiss_v{v}_nn{n}')
@@ -181,12 +169,14 @@ if __name__ == '__main__':
 
     X_cnn, y_cnn = undersampling_cnn(X, y)
 
-    # norm = MinMaxScaler().fit(X)
-    # X_norm = pd.DataFrame(norm.transform(
-    #     X_cnn), columns=X_cnn.columns, index=X_cnn.index)
-
     X_cnn_train, X_cnn_test, y_cnn_train, y_cnn_test = train_test_split(
         X_cnn, y_cnn, test_size=0.25, random_state=42)
+
+    scaler = MinMaxScaler()
+    X_cnn_train = pd.DataFrame(scaler.fit_transform(
+        X_cnn_train), columns=X_cnn_train.columns, index=X_cnn_train.index)
+    X_cnn_test = pd.DataFrame(scaler.transform(
+        X_cnn_test), columns=X_cnn_test.columns, index=X_cnn_test.index)
 
     res_cnn = tune_train_evaluate_svm(
         X_cnn_train, y_cnn_train, X_cnn_test, y_cnn_test, param_grid,
@@ -198,6 +188,13 @@ if __name__ == '__main__':
 
     X_enn_train, X_enn_test, y_enn_train, y_enn_test = train_test_split(
         X_enn, y_enn, test_size=0.25, random_state=42)
+
+    scaler = MinMaxScaler()
+    X_enn_train = pd.DataFrame(scaler.fit_transform(
+        X_enn_train), columns=X_enn_train.columns, index=X_enn_train.index)
+    X_enn_test = pd.DataFrame(scaler.transform(
+        X_enn_test), columns=X_enn_test.columns, index=X_enn_test.index)
+
     res_enn = tune_train_evaluate_svm(
         X_enn_train, y_enn_train, X_enn_test, y_enn_test, param_grid,
         resampling_method='Edited Nearest Neighbour Undersampling')
@@ -208,6 +205,13 @@ if __name__ == '__main__':
 
     X_cc_train, X_cc_test, y_cc_train, y_cc_test = train_test_split(
         X_cc, y_cc, test_size=0.25, random_state=42)
+
+    scaler = MinMaxScaler()
+    X_cc_train = pd.DataFrame(scaler.fit_transform(
+        X_cc_train), columns=X_cc_train.columns, index=X_cc_train.index)
+    X_cc_test = pd.DataFrame(scaler.transform(
+        X_cc_test), columns=X_cc_test.columns, index=X_cc_test.index)
+
     res_cc = tune_train_evaluate_svm(
         X_cc_train, y_cc_train, X_cc_test, y_cc_test, param_grid,
         resampling_method='Cluster Centroids Undersampling')
@@ -218,11 +222,33 @@ if __name__ == '__main__':
 
     X_tl_train, X_tl_test, y_tl_train, y_tl_test = train_test_split(
         X_tl, y_tl, test_size=0.25, random_state=42)
+
+    scaler = MinMaxScaler()
+    X_tl_train = pd.DataFrame(scaler.fit_transform(
+        X_tl_train), columns=X_tl_train.columns, index=X_tl_train.index)
+    X_tl_test = pd.DataFrame(scaler.transform(
+        X_tl_test), columns=X_tl_test.columns, index=X_tl_test.index)
+
     res_tl = tune_train_evaluate_svm(
         X_tl_train, y_tl_train, X_tl_test, y_tl_test, param_grid,
         resampling_method='Tomek Links Undersampling')
 
     # --- OVERSAMPLING ---
+    # --- SPLIT TRAIN AND TEST ---
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.25, random_state=42)
+
+    scaler = MinMaxScaler()
+    X_train = pd.DataFrame(scaler.fit_transform(
+        X_train), columns=X_train.columns, index=X_train.index)
+    X_test = pd.DataFrame(scaler.transform(
+        X_test), columns=X_test.columns, index=X_test.index)
+
+    print("Original class distribution:", Counter(y))
+    print("Original class distribution training set:", Counter(y_train))
+    print("Original class distribution test set:", Counter(y_test))
+
     # ... 1. Random oversampling ...
 
     X_ros, y_ros = oversampling_random(X_train, y_train)
@@ -294,19 +320,69 @@ if __name__ == '__main__':
     print(results_df)
 
     save_outputfile(results_df, results_path /
-                    'under_oversampling_comparison_standardized.csv')
+                    'under_oversampling_comparison_normalized_NEW.csv')
 
     # ---------------------------------------------------------------
     # --- a) DEVELOP SVM FOR CNN UNDERSAMPLING ---
     # ---------------------------------------------------------------
+    feature = [
+        'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
+        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+        'TempAmplitude_3d', 'TempAmplitude_5d', 'Ta_delta_1d', 'Ta_delta_2d',
+        'Ta_delta_3d', 'Ta_delta_5d', 'Tmin_delta_1d', 'Tmin_delta_2d',
+        'Tmin_delta_3d', 'Tmin_delta_5d', 'Tmax_delta_1d', 'Tmax_delta_2d',
+        'Tmax_delta_3d', 'Tmax_delta_5d', 'T_mean', 'DegreeDays_Pos',
+        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+        'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
+        'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
+        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
+        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
+        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
+        'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
+    ]
 
-    classifier_cnn = train_evaluate_final_svm(
-        X_cnn_train, y_cnn_train, X_cnn_test, y_cnn_test, res_cnn['best_params'])
+    feature_plus = feature + ['AvalDay']
+    mod1_clean = mod1[feature_plus]
+    mod1_clean = mod1_clean.dropna()
+
+    X = mod1_clean[feature]
+    y = mod1_clean['AvalDay']
+
+    features_to_remove = remove_correlated_features(X, y)
+
+    X_new = X.drop(columns=features_to_remove)
+
+    param_grid = {
+        'C': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000],
+        'gamma': [100, 50, 10, 5, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
+    }
+
+    X_nm, y_nm = undersampling_nearmiss(X_new, y, version=3, n_neighbors=10)
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_nm, y_nm, test_size=0.25, random_state=42)
+
+    scaler = MinMaxScaler()
+    X_train = pd.DataFrame(scaler.fit_transform(
+        X_train), columns=X_train.columns, index=X_train.index)
+    X_test = pd.DataFrame(scaler.transform(
+        X_test), columns=X_test.columns, index=X_test.index)
+
+    res_tuning = tune_train_evaluate_svm(
+        X_train, y_train, X_test, y_test, param_grid,
+        resampling_method=f'NearMiss_v{v}_nn{n}')
+
+    classifier = train_evaluate_final_svm(
+        X_train, y_train, X_test, y_test, res_tuning['best_params'])
 
     # --- PERMUTATION IMPORTANCE FEATURE SELECTION ---
 
     feature_importance_df = permutation_ranking(
-        classifier_cnn[0], X_cnn_test, y_cnn_test)
+        classifier[0], X_test, y_test)
 
     # # Filter the DataFrame to include only positive importance values
     positive_features = feature_importance_df[feature_importance_df['Importance_Mean'] > 0]
@@ -327,48 +403,18 @@ if __name__ == '__main__':
     # --- SPLIT TRAIN AND TEST ---
 
     # ... 4. Condensed Nearest Neighbour Undersampling ...
-    resampling_method = 'CNN'
-    X_cnn, y_cnn = undersampling_cnn(X_new, y_new)
+    resampling_method = 'NearMiss3'
+    X_resampled, y_resampled = undersampling_nearmiss(
+        X_new, y_new, version=3, n_neighbors=10)
 
     X_train_new, X_test_new, y_train_new, y_test_new = train_test_split(
-        X_cnn, y_cnn, test_size=0.25, random_state=42)
+        X_resampled, y_resampled, test_size=0.25, random_state=42)
     res_new = tune_train_evaluate_svm(
         X_train_new, y_train_new, X_test_new, y_test_new, param_grid,
-        resampling_method='Condensed Nearest Neighbour Undersampling')
-
-    res_new_list = []
-
-    # Add each result to the list with the sampling method as an identifier
-    res_new_list.append(
-        {'Run': '1', **res_new})
+        resampling_method='NearMiss3 Undersampling')
 
     classifier_new = train_evaluate_final_svm(
         X_train_new, y_train_new, X_test_new, y_test_new, res_new['best_params'])
-
-    # Calculate evaluation metrics
-    y_predict = classifier_new.predict(X_test_new)
-    accuracy = accuracy_score(y_test_new, y_predict)
-    precision = precision_score(y_test_new, y_predict)
-    recall = recall_score(y_test_new, y_predict)
-    f1 = f1_score(y_test_new, y_predict)
-
-    res_2 = {
-        'precision': precision,
-        'accuracy': accuracy,
-        'recall': recall,
-        'f1': f1,
-        'best_params': {'C': classifier_new.C, 'gamma': classifier_new.gamma}
-    }
-
-    res_new_list.append(
-        {'Run': '2', **res_2})
-    res_new_df = pd.DataFrame(res_new_list)
-
-    save_outputfile(res_new_df, common_path /
-                    f'all_feature_{resampling_method}.csv')
-
-    feature_importance_df = permutation_ranking(
-        classifier_new, X_test_new, y_test_new)
 
     # ---------------------------------------------------------------
     # --- b) TEST DIFFERENT CONFIGURATION OF FEATURES  ---
@@ -395,7 +441,7 @@ if __name__ == '__main__':
     ]
 
     # Base predictors
-    base_predictors = ['HSnum']
+    # base_predictors = ['HSnum']
 
     # Initialize results dictionary
     results = {}
@@ -403,8 +449,9 @@ if __name__ == '__main__':
     # Loop through each candidate feature and test its performance
     for feature in candidate_features:
         # Define the current set of features to evaluate
-        current_features = base_predictors + [feature]
-        # current_features = [feature]
+        # current_features = base_predictors + [feature]
+        current_features = [feature]
+        print(current_features)
 
         # Evaluate the model with the selected features
         result = evaluate_svm_with_feature_selection(mod1, current_features)
@@ -470,47 +517,22 @@ if __name__ == '__main__':
     X = mod1_clean[candidate_features]
     y = mod1_clean['AvalDay']  # Target
 
-    # Standardizzazione
-    # scaler = StandardScaler()
-    scaler = MinMaxScaler()
-    X_scaled = pd.DataFrame(scaler.fit_transform(
-        X), columns=X.columns, index=X.index)
+    features_to_remove = remove_correlated_features(X, y)
 
-    # Calcola la matrice di correlazione
-    corr_matrix = pd.concat([X_scaled, y], axis=1).corr()
-
-    # Correlazione reciproca tra feature
-    feature_corr = corr_matrix.loc[X.columns, X.columns]
-
-    # Correlazione con il target
-    target_corr = corr_matrix.loc[X.columns, y.name]
-
-    # Trova le feature con alta correlazione reciproca (>0.9)
-    high_corr_pairs = np.where((np.abs(feature_corr) > 0.9) & (
-        np.triu(np.ones(feature_corr.shape), k=1)))
-
-    # Lista di coppie di feature altamente correlate
-    high_corr_feature_pairs = [(X.columns[i], X.columns[j])
-                               for i, j in zip(*high_corr_pairs)]
-
-    # Identifica le feature da rimuovere
-    features_to_remove = set()
-    for feature1, feature2 in high_corr_feature_pairs:
-        # Confronta la correlazione di entrambe le feature con il target
-        if abs(target_corr[feature1]) > abs(target_corr[feature2]):
-            features_to_remove.add(feature2)
-        else:
-            features_to_remove.add(feature1)
-
-    # Rimuovi le feature selezionate
-    X_filtered = X_scaled.drop(columns=features_to_remove)
-
+    X_new = X.drop(columns=features_to_remove)
     # Random undersampling
-    X_resampled, y_resampled = undersampling_cnn(X_filtered, y)
+    X_resampled, y_resampled = undersampling_nearmiss(
+        X_new, y, version=3, n_neighbors=10)
 
     # # Divisione train-test
-    # X_train, X_test, y_train, y_test = train_test_split(
-    #     X_resampled, y_resampled, test_size=0.25, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_resampled, y_resampled, test_size=0.25, random_state=42)
+
+    scaler = StandardScaler()
+    X_train = pd.DataFrame(scaler.fit_transform(
+        X_train), columns=X_train.columns, index=X_train.index)
+    X_test = pd.DataFrame(scaler.transform(
+        X_test), columns=X_test.columns, index=X_test.index)
 
     # Initialize the SVM classifier (you can choose kernel type based on your dataset)
     from sklearn import svm
@@ -753,7 +775,7 @@ importance_df = pd.DataFrame({
 })
 
 # Select the top N features
-top_features_df = importance_df.tail(N)
+top_features_df = importance_df.tail(10)
 
 # Plot the importance scores for the top N features
 plt.figure(figsize=(10, 12))
@@ -779,7 +801,8 @@ X_test_selected = X_test.iloc[:, top_features]
 
 # ....... 1. SNOW LOAD DUE SNOWFALL ...........................
 
-s0 = ['Precip_3d', 'Tmax_delta_3d']
+s0 = ['Precip_5d', 'Tmin_delta_3d']
+s0 = ['Tmin_delta_3d', 'Precip_5d']
 res0 = evaluate_svm_with_feature_selection(mod1, s0)
 
 s1 = ['HSnum', 'HN_5d']

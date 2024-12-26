@@ -276,7 +276,19 @@ def calculate_penetration(df):
 
 def calculate_avalanche_days(df):
     """Calculate avalanche occurrence and moving averages."""
-    df['AvalDay'] = np.where(df['L1'] >= 1, 1, df['L1'])
+    # Define conditions
+    conditions = [
+        df['L1'].isin([2, 3, 4]),  # L1 is 2, 3, or 4
+        df['L1'] == 0,             # L1 is 0
+        df['L1'] == 1              # L1 is 1
+    ]
+
+    # Define corresponding values
+    values = [1, 0, np.nan]
+
+    # Create the new column 'AvalDay'
+    df['AvalDay'] = np.select(conditions, values, default=np.nan)
+    # df['AvalDay'] = np.where(df['L1'] >= 2, 1, df['L1'])
     df['AvalDay'] = np.where((df['AvalDay'] == 1) & (
         df['L2'].isin([1, 2, 5, 6])) & (df['VQ1'] >= 1), 0, df['AvalDay'])
 
@@ -300,7 +312,7 @@ def main():
 
     filepath = common_path / 'mod1_gapfillled.csv'
 
-    output_filepath = common_path / 'mod1_newfeatures.csv'
+    output_filepath = common_path / 'mod1_newfeatures_NEW.csv'
 
     # --- DATA IMPORT ---
 

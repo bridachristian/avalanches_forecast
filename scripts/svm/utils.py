@@ -8,6 +8,7 @@ from sklearn.inspection import permutation_importance
 from sklearn.feature_selection import RFECV
 from sklearn.base import BaseEstimator, MetaEstimatorMixin
 import numpy as np
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 
 def save_outputfile(df, output_filepath):
@@ -233,7 +234,8 @@ def plot_decision_boundary(X, y, model, title, palette={0: "blue", 1: "red"}):
         [(0.0, "blue"), (0.5, "white"), (1.0, "red")]
     )
 
-    norm = TwoSlopeNorm(vmin=Z.min(), vcenter=0, vmax=Z.max())
+    # norm = TwoSlopeNorm(vmin=Z.min(), vcenter=0, vmax=Z.max())
+    norm = TwoSlopeNorm(vmin=-2, vcenter=0, vmax=2)
 
     # Create a heatmap of Z values
     plt.figure(figsize=(8, 6))
@@ -271,6 +273,78 @@ def plot_decision_boundary(X, y, model, title, palette={0: "blue", 1: "red"}):
     plt.show()
 
 
+def plot_threshold_scoring(X, y, X_test, y_test, model):
+    """
+    Creates a scatter plot showing the decision boundary of a classifier, with a heatmap of the decision function.
+
+    Parameters:
+    - X: DataFrame, the input data with features.
+    - y: Series, the target labels (binary: 0 or 1).
+    - model: Trained classifier with a decision_function method.
+    - title: str, the title of the plot.
+    - palette: dict, custom color palette for class 0 and class 1 (default is blue for 0 and red for 1).
+    """
+
+    colnames = X.columns
+
+    X_array = X.values.astype(float)
+    y_array = y.values.astype(float)
+
+    clf2 = SVC(C=model.C, gamma=model.gamma, probability=True)
+    clf2.fit(X, y)
+
+    # Probability of the positive class
+    proba = clf2.predict_proba(X_test)[:, 1]
+    # Define a range of thresholds
+    thresholds = np.arange(0.0, 1.01, 0.01)
+
+    # Store metrics for each threshold
+    hk_scores, hss_scores, oa_scores = [], [], []
+    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+    for t in thresholds:
+        # Classify using the current threshold
+        y_pred = (proba >= t).astype(int)
+
+        # Compute metrics (example for HK, HSS, and OA)
+        TP = np.sum((y_test == 1) & (y_pred == 1))
+        TN = np.sum((y_test == 0) & (y_pred == 0))
+        FP = np.sum((y_test == 0) & (y_pred == 1))
+        FN = np.sum((y_test == 1) & (y_pred == 0))
+
+        # Heidke Skill Score (HSS)
+        HSS = 2 * (TP * TN - FP * FN) / ((TP + FN) *
+                                         (FN + TN) + (TP + FP) * (FP + TN))
+        hss_scores.append(HSS)
+
+        # Hanssen-Kuipers (HK)
+        HK = TP / (TP + FN) - FP / (FP + TN)
+        hk_scores.append(HK)
+
+        # Overall Accuracy (OA)
+        OA = accuracy_score(y_test, y_pred)
+        oa_scores.append(OA)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(thresholds, hk_scores, label="HK", linestyle='-', color='blue')
+    plt.plot(thresholds, hss_scores, label="HSS", linestyle='--', color='red')
+    plt.plot(thresholds, oa_scores, label="OA", linestyle=':', color='black')
+    plt.xlabel("Threshold")
+    plt.ylabel("Performance Measure")
+    plt.title("Performance vs. Threshold")
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+    optimal_threshold_hk = thresholds[np.argmax(hk_scores)]
+    optimal_threshold_hss = thresholds[np.argmax(hss_scores)]
+
+    print(f"Optimal Threshold (HK): {optimal_threshold_hk}")
+    print(f"Optimal Threshold (HSS): {optimal_threshold_hss}")
+
+    return optimal_threshold_hk
+
+
 class PermutationImportanceWrapper(BaseEstimator, MetaEstimatorMixin):
     def __init__(self, estimator, scoring='accuracy', n_repeats=10, random_state=None):
         self.estimator = estimator
@@ -306,3 +380,38 @@ class PermutationImportanceWrapper(BaseEstimator, MetaEstimatorMixin):
         else:
             raise AttributeError(
                 "The estimator does not support probability prediction.")
+
+
+def remove_correlated_features(X, y):
+    # scaler = StandardScaler()
+    scaler = MinMaxScaler()
+    X_scaled = pd.DataFrame(scaler.fit_transform(
+        X), columns=X.columns, index=X.index)
+
+    # Calcola la matrice di correlazione
+    corr_matrix = pd.concat([X_scaled, y], axis=1).corr()
+
+    # Correlazione reciproca tra feature
+    feature_corr = corr_matrix.loc[X.columns, X.columns]
+
+    # Correlazione con il target
+    target_corr = corr_matrix.loc[X.columns, y.name]
+
+    # Trova le feature con alta correlazione reciproca (>0.9)
+    high_corr_pairs = np.where((np.abs(feature_corr) > 0.9) & (
+        np.triu(np.ones(feature_corr.shape), k=1)))
+
+    # Lista di coppie di feature altamente correlate
+    high_corr_feature_pairs = [(X.columns[i], X.columns[j])
+                               for i, j in zip(*high_corr_pairs)]
+
+    # Identifica le feature da rimuovere
+    features_to_remove = set()
+    for feature1, feature2 in high_corr_feature_pairs:
+        # Confronta la correlazione di entrambe le feature con il target
+        if abs(target_corr[feature1]) > abs(target_corr[feature2]):
+            features_to_remove.add(feature2)
+        else:
+            features_to_remove.add(feature1)
+
+    return features_to_remove

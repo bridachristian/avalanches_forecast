@@ -15,7 +15,7 @@ from scripts.svm.data_loading import load_data
 from scripts.svm.undersampling_methods import undersampling_random, undersampling_random_timelimited, undersampling_nearmiss, undersampling_cnn
 from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
 from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm, train_evaluate_final_svm
-from scripts.svm.utils import get_adjacent_values, save_outputfile
+from scripts.svm.utils import get_adjacent_values, save_outputfile, remove_correlated_features
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 
@@ -229,109 +229,34 @@ def evaluate_svm_with_feature_selection(data, feature_list):
     X = clean_data[feature_list]
     y = clean_data['AvalDay']
 
+    features_to_remove = remove_correlated_features(X, y)
+
+    X = X.drop(columns=features_to_remove)
+
     initial_param_grid = {
         'C': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000],
         'gamma': [100, 50, 10, 5, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
     }
 
-    # NORMALIZATION
-    norm = MinMaxScaler().fit(X)
-    X_norm = pd.DataFrame(norm.transform(X), columns=X.columns, index=X.index)
-
-    X_resampled, y_resampled = undersampling_cnn(X_norm, y)
+    X_resampled, y_resampled = undersampling_nearmiss(
+        X, y, version=3, n_neighbors=10)
 
     X_train, X_test, y_train, y_test = train_test_split(
         X_resampled, y_resampled, test_size=0.25, random_state=42)
 
-    result_1iter = tune_train_evaluate_svm(
+    scaler = MinMaxScaler()
+    X_train = pd.DataFrame(scaler.fit_transform(
+        X_train), columns=X_train.columns, index=X_train.index)
+    X_test = pd.DataFrame(scaler.transform(
+        X_test), columns=X_test.columns, index=X_test.index)
+
+    result = tune_train_evaluate_svm(
         X_train, y_train, X_test, y_test, initial_param_grid,
         resampling_method='Condensed Nearest Neighbour Undersampling')
 
-    # # Step 1: Apply NearMiss undersampling to balance the dataset
-    # # X_resampled, y_resampled = undersampling_nearmiss(
-    # #     X, y, version=2, n_neighbors=3)
-
-    # # Step 1: Apply Condensed Nearest Neighbours undersampling to balance the dataset
-    # X_resampled, y_resampled = undersampling_cnn(X_norm, y)
-
-    # # Step 2: Split the data into training and testing sets
-    # X_train, X_test, y_train, y_test = train_test_split(
-    #     X_resampled, y_resampled, test_size=0.25, random_state=42)
-
-    # # Step 3: Initial broad search for hyperparameters C and gamma
-    # # initial_param_grid = {
-    # #     'C': [0.01, 0.1, 1, 10, 100, 1000],
-    # #     'gamma': [10, 1, 0.1, 0.01, 0.001, 0.0001]
-    # # }
-
-    # # initial_param_grid = {
-    # #     'C': [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
-    # #           0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
-    # #           0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
-    # #           1, 2, 3, 4, 5, 6, 7, 8, 9,
-    # #           10, 20, 30, 40, 50, 60, 70, 80, 90,
-    # #           100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
-    # #     'gamma': [0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009,
-    # #               0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
-    # #               0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
-    # #               0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
-    # #               1, 2, 3, 4, 5, 6, 7, 8, 9,
-    # #               10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-    # # }
-
-    # result_1iter = tune_train_evaluate_svm(
-    #     X_train, y_train, X_test, y_test, initial_param_grid, cv=5, resampling_method='CNN'
-    # )
-
-    # # Step 4: Refining the search space based on the best parameters from the first iteration
-    # best_params = result_1iter['best_params']
-    # C_fine = get_adjacent_values(
-    #     initial_param_grid['C'], best_params['C'])
-    # gamma_fine = get_adjacent_values(
-    #     initial_param_grid['gamma'], best_params['best_params']['gamma'])
-
-    # refined_param_grid = {
-    #     # 20 values between the adjacent C values
-    #     'C': np.linspace(C_fine[0], C_fine[-1], 10, dtype=np.float64),
-    #     # 20 values between the adjacent gamma values
-    #     'gamma': np.linspace(gamma_fine[0], gamma_fine[-1], 10, dtype=np.float64)
-    # }
-
-    # refined_C_range = np.linspace(
-    #     best_params['C'] * 0.1, best_params['C'] * 10, 10)
-    # refined_gamma_range = np.linspace(
-    #     best_params['gamma'] * 0.1, best_params['gamma'] * 10, 10)
-
-    # refined_param_grid = {
-    #     'C': refined_C_range,
-    #     'gamma': refined_gamma_range
-    # }
-    # result_2iter = tune_train_evaluate_svm(
-    #     X_train, y_train, X_test, y_test, refined_param_grid, cv=5, resampling_method='CNN'
-    # )
-
-    # # Step 5: Fine-tuning around the best parameters found in the second iteration
-    # best_params2 = result_2iter['best_params']
-    # C_adj_values = get_adjacent_values(
-    #     refined_param_grid['C'], best_params2['C'])
-    # gamma_adj_values = get_adjacent_values(
-    #     refined_param_grid['gamma'], best_params2['gamma'])
-
-    # final_C_range = np.linspace(C_adj_values[0], C_adj_values[-1], 10)
-    # final_gamma_range = np.linspace(
-    #     gamma_adj_values[0], gamma_adj_values[-1], 10)
-
-    # final_param_grid = {
-    #     'C': final_C_range,
-    #     'gamma': final_gamma_range
-    # }
-    # result_3iter = tune_train_evaluate_svm(
-    #     X_train, y_train, X_test, y_test, final_param_grid, cv=5, resampling_method='CNN'
-    # )
-
     # Step 6: Train the final model with the best hyperparameters and evaluate it
     classifier, evaluation_metrics = train_evaluate_final_svm(
-        X_train, y_train, X_test, y_test, result_1iter['best_params']
+        X_train, y_train, X_test, y_test, result['best_params']
     )
 
     return feature_list, classifier, evaluation_metrics
