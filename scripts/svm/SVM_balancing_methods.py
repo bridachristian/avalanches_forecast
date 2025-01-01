@@ -832,7 +832,7 @@ if __name__ == '__main__':
         'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
     ]
 
-s0 = ['MF_Crust_Present']
+s0 = ['MF_Crust_Present', 'TH01G']
 res0 = evaluate_svm_with_feature_selection(mod1, s0)
 
 s1 = ['HSnum', 'HN_5d']
