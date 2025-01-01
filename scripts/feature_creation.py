@@ -9,6 +9,7 @@ import pandas as pd
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.stats import zscore
 
 
 def load_data(filepath):
@@ -57,10 +58,39 @@ def calculate_day_of_season(df, season_start_date='12-01'):
 
 def calculate_snow_height_differences(df):
     """Calculate snow height differences over different periods."""
-    df['HS_delta_1d'] = df['HSnum'].diff(periods=1)
-    df['HS_delta_2d'] = df['HSnum'].diff(periods=2)
-    df['HS_delta_3d'] = df['HSnum'].diff(periods=3)
-    df['HS_delta_5d'] = df['HSnum'].diff(periods=5)
+    # Initialize the difference columns
+    for period in [1, 2, 3, 5]:
+        col_name = f'HS_delta_{period}d'
+        df[col_name] = df['HSnum'].diff(periods=period)
+
+    # Ensure the index is a DatetimeIndex
+    if not isinstance(df.index, pd.DatetimeIndex):
+        raise ValueError("The DataFrame index must be a DatetimeIndex.")
+
+    # Identify where Stagione changes
+    stagione_changes = df['Stagione'] != df['Stagione'].shift(1)
+
+    # Reset differences to NaN for each new season
+    for col in [f'HS_delta_{period}d' for period in [1, 2, 3, 5]]:
+        df.loc[stagione_changes, col] = np.nan
+
+    # Set HS_delta_2d, HS_delta_3d, and HS_delta_5d to NaN for 2, 3, 5 days following a Stagione change
+    for period in [2, 3, 5]:
+        for idx in df.index[stagione_changes]:
+            # Add the specified period to the current timestamp using pd.Timedelta
+            end_idx = idx + pd.Timedelta(days=period)
+
+            # Set the snow height differences to NaN for the period following the change
+            df.loc[idx + pd.Timedelta(days=1): end_idx,
+                   f'HS_delta_{period}d'] = np.nan
+
+    # Filter by z-score for each HS_delta_Xd column
+    for col in [f'HS_delta_{period}d' for period in [1, 2, 3, 5]]:
+        # Calculate z-scores, ignoring NaN values
+        col_zscore = zscore(df[col], nan_policy='omit')
+        # Set values with z-scores exceeding ±3 to NaN
+        df[col] = np.where(np.abs(col_zscore) > 3, np.nan, df[col])
+
     return df
 
 
@@ -81,48 +111,47 @@ def calculate_new_snow(df):
 
 
 def calculate_temperature(df):
-    """Calculate minimum, maximum temperatures and their differences over different periods."""
-    # Minimum/maximum temperatures in the last 2, 3, 5 days
-    df['Tmin_2d'] = df['TminG'].rolling(
-        window=2).min()  # Min temperature over 2 days
-    df['Tmax_2d'] = df['TmaxG'].rolling(
-        window=2).max()  # Max temperature over 2 days
-    df['Tmin_3d'] = df['TminG'].rolling(
-        window=3).min()  # Min temperature over 3 days
-    df['Tmax_3d'] = df['TmaxG'].rolling(
-        window=3).max()  # Max temperature over 3 days
-    df['Tmin_5d'] = df['TminG'].rolling(
-        window=5).min()  # Min temperature over 5 days
-    df['Tmax_5d'] = df['TmaxG'].rolling(
-        window=5).max()  # Max temperature over 5 days
+    """
+    Calculate minimum, maximum temperatures, their differences, and temperature amplitudes over different periods.
+    Resets calculations at the start of a new season ('Stagione').
+    """
+    # Define periods for rolling calculations and differences
+    periods = [2, 3, 5]
 
-    # Temperature amplitude (difference between max and min temperatures)
-    df['TempAmplitude_1d'] = df['TmaxG'] - \
-        df['TminG']               # Amplitude for today
-    df['TempAmplitude_2d'] = df['Tmax_2d'] - \
-        df['Tmin_2d']   # Amplitude over 2 days
-    df['TempAmplitude_3d'] = df['Tmax_3d'] - \
-        df['Tmin_3d']   # Amplitude over 3 days
-    df['TempAmplitude_5d'] = df['Tmax_5d'] - \
-        df['Tmin_5d']   # Amplitude over 5 days
+    # Rolling min, max, and reset for each new season
+    for period in periods:
+        df[f'Tmin_{period}d'] = df['TminG'].rolling(window=period).min()
+        df[f'Tmax_{period}d'] = df['TmaxG'].rolling(window=period).max()
 
-    # Difference of TaG between today and previous days
-    df['Ta_delta_1d'] = df['TaG'].diff(periods=1)
-    df['Ta_delta_2d'] = df['TaG'].diff(periods=2)
-    df['Ta_delta_3d'] = df['TaG'].diff(periods=3)
-    df['Ta_delta_5d'] = df['TaG'].diff(periods=5)
+    # Detect season changes and reset rolling calculations
+    stagione_changes = df['Stagione'] != df['Stagione'].shift(1)
+    for col in [f'Tmin_{period}d' for period in periods] + [f'Tmax_{period}d' for period in periods]:
+        df.loc[stagione_changes, col] = np.nan
 
-    # Difference of TminG between today and previous days
-    df['Tmin_delta_1d'] = df['TminG'].diff(periods=1)
-    df['Tmin_delta_2d'] = df['TminG'].diff(periods=2)
-    df['Tmin_delta_3d'] = df['TminG'].diff(periods=3)
-    df['Tmin_delta_5d'] = df['TminG'].diff(periods=5)
+    # Calculate temperature amplitude
+    df['TempAmplitude_1d'] = df['TmaxG'] - df['TminG']
+    for period in periods:
+        df[f'TempAmplitude_{period}d'] = df[f'Tmax_{period}d'] - \
+            df[f'Tmin_{period}d']
 
-    # Difference of TmaxG between today and previous days
-    df['Tmax_delta_1d'] = df['TmaxG'].diff(periods=1)
-    df['Tmax_delta_2d'] = df['TmaxG'].diff(periods=2)
-    df['Tmax_delta_3d'] = df['TmaxG'].diff(periods=3)
-    df['Tmax_delta_5d'] = df['TmaxG'].diff(periods=5)
+    # Calculate differences for TaG, TminG, TmaxG
+    for temp_col in ['TaG', 'TminG', 'TmaxG']:
+        for period in [1] + periods:
+            col_name = f'{temp_col}_delta_{period}d'
+            df[col_name] = df[temp_col].diff(periods=period)
+            df.loc[stagione_changes, col_name] = np.nan
+
+    # Set NaN for 2, 3, 5 days after a season change for each relevant column
+    for period in [2, 3, 5]:
+        # Set NaN for the next 'period' days after the season change
+        for idx in df.index[stagione_changes]:
+            end_idx = idx + pd.Timedelta(days=period)
+            # Ensure the range includes the next 'period' days
+            df.loc[idx + pd.Timedelta(days=1): end_idx, [
+                f'Tmin_{period}d', f'Tmax_{period}d', f'TempAmplitude_{period}d']] = np.nan
+            for temp_col in ['TaG', 'TminG', 'TmaxG']:
+                df.loc[idx + pd.Timedelta(days=1): end_idx,
+                       f'{temp_col}_delta_{period}d'] = np.nan
 
     return df
 
@@ -139,78 +168,154 @@ def calculate_degreedays(df):
     df['DegreeDays_cumsum_3d'] = df['DegreeDays_Pos'].rolling(window=3).sum()
     df['DegreeDays_cumsum_5d'] = df['DegreeDays_Pos'].rolling(window=5).sum()
 
+    # Detect season changes
+    stagione_changes = df['Stagione'] != df['Stagione'].shift(1)
+
+    # Reset cumulative degree days to NaN for each new season
+    for col in [f'DegreeDays_cumsum_{period}d' for period in [2, 3, 5]]:
+        df.loc[stagione_changes, col] = np.nan
+
+    # Set NaN for 1, 2, 3, 5 days after a season change for cumulative degree days
+    for period in [2, 3, 5]:
+        for idx in df.index[stagione_changes]:
+            end_idx = idx + pd.Timedelta(days=period)
+            # Set NaN for the following 'period' days for cumulative degree days
+            df.loc[idx + pd.Timedelta(days=1): end_idx,
+                   [f'DegreeDays_cumsum_{p}d' for p in [2, 3, 5]]] = np.nan
+
     return df
 
 
 def calculate_snow_temperature(df):
-    df['TH10_tanh'] = 20*np.tanh(0.2*df['TH01G'])  # new, hyperbolic transform.
-    df['TH30_tanh'] = 20*np.tanh(0.2*df['TH03G'])  # new, hyperbolic transform.
+    """
+    Calculate snow-related temperature features and categorize snow types based on temperature.
+    Resets calculations when the 'Stagione' column changes.
+    """
+    # Hyperbolic transformations
+    df['TH10_tanh'] = 20 * np.tanh(0.2 * df['TH01G'])
+    df['TH30_tanh'] = 20 * np.tanh(0.2 * df['TH03G'])
 
-    df['Tsnow_delta_1d'] = df['TH01G'].diff(periods=1)
-    df['Tsnow_delta_2d'] = df['TH01G'].diff(periods=2)
-    df['Tsnow_delta_3d'] = df['TH01G'].diff(periods=3)
-    df['Tsnow_delta_5d'] = df['TH01G'].diff(periods=5)
+    # Snow temperature differences
+    for period in [1, 2, 3, 5]:
+        df[f'Tsnow_delta_{period}d'] = df['TH01G'].diff(periods=period)
 
     # Categorize snow types based on temperature
-    df['SnowType_Cold'] = np.where(df['TH01G'] < -10, 1, 0)
-    df['SnowType_Warm'] = np.where(
-        (df['TH01G'] >= -10) & (df['TH01G'] < -2), 1, 0)
-    df['SnowType_Wet'] = np.where(
-        (df['TH01G'] >= -2) & (df['TH01G'] <= 0), 1, 0)
-
-    # Condensed snow condition index
-    df['SnowConditionIndex'] = np.where(
-        df['TH01G'] < -10, 0,  # Cold Snow
-        np.where((df['TH01G'] >= -10) & (df['TH01G'] < -2), 1,  # Warm Snow
-                 np.where((df['TH01G'] >= -2) & (df['TH01G'] <= 0), 2,  # Wet Snow
-                          -1))  # Invalid condition (optional)
+    df['SnowConditionIndex'] = np.select(
+        [df['TH01G'] < -10, (df['TH01G'] >= -10) & (df['TH01G'] < -2),
+         (df['TH01G'] >= -2) & (df['TH01G'] <= 0)],
+        [0, 1, 2],  # 0: Cold Snow, 1: Warm Snow, 2: Wet Snow
+        default=np.nan  # Invalid condition (optional)
     )
 
     # Count consecutive days of wet snow
     df['ConsecWetSnowDays'] = (
-        df['SnowType_Wet'].groupby(
-            (df['SnowType_Wet'] != df['SnowType_Wet'].shift()).cumsum()).cumsum()
+        df['SnowConditionIndex'].eq(2).groupby(
+            (df['SnowConditionIndex'].ne(2)).cumsum()
+        ).cumsum()
     )
 
-    # Zero out non-wet days in the consecutive count column for clarity
+    # Zero out non-wet days in the consecutive count column
     df['ConsecWetSnowDays'] = np.where(
-        df['SnowType_Wet'] == 1, df['ConsecWetSnowDays'], 0)
+        df['SnowConditionIndex'] == 2, df['ConsecWetSnowDays'], 0)
 
-    # Drop intermediate snow type columns
-    df = df.drop(columns=['SnowType_Cold', 'SnowType_Warm', 'SnowType_Wet'])
+    # Handle resets when 'Stagione' changes
+    stagione_changes = df['Stagione'] != df['Stagione'].shift(1)
+
+    # Set NaN for snow-related temperature features for 1, 2, 3, and 5 days after a season change
+    for period in [1, 2, 3, 5]:
+        # Set NaN for the following 'period' days for snow temperature differences
+        for idx in df.index[stagione_changes]:
+            end_idx = idx + pd.Timedelta(days=period)
+            df.loc[idx + pd.Timedelta(days=1): end_idx,
+                   [f'Tsnow_delta_{p}d' for p in [1, 2, 3, 5]]] = np.nan
+            df.loc[idx + pd.Timedelta(days=1): end_idx, ['SnowConditionIndex',
+                                                         'ConsecWetSnowDays', 'TH10_tanh', 'TH30_tanh']] = np.nan
+
+    # Set NaN for snow-related temperature features at the start of each new season
+    for col in [f'Tsnow_delta_{period}d' for period in [1, 2, 3, 5]] + [
+            'SnowConditionIndex', 'ConsecWetSnowDays', 'TH10_tanh', 'TH30_tanh']:
+        df.loc[stagione_changes, col] = np.nan
 
     return df
 
 
 def calculate_wind_snow_drift(df):
-    """Calculate snow drift based on wind strength (VQ1)."""
+    """
+    Calculate snow drift indices based on wind strength (VQ1).
+    Resets calculations when the 'Stagione' column changes.
+
+    Parameters:
+    - df: DataFrame containing wind strength column 'VQ1' and season column 'Stagione'.
+
+    Returns:
+    - DataFrame with added snow drift columns.
+    """
+    # Map wind strength to drift index
     df['SnowDrift_1d'] = df['VQ1'].map({0: 0, 1: 1, 2: 2, 3: 3, 4: 0})
-    df['SnowDrift_2d'] = df['SnowDrift_1d'].rolling(window=2).sum()
-    df['SnowDrift_3d'] = df['SnowDrift_1d'].rolling(window=3).sum()
-    df['SnowDrift_5d'] = df['SnowDrift_1d'].rolling(window=5).sum()
+
+    # Calculate rolling sums for 2, 3, and 5 days
+    for period in [2, 3, 5]:
+        df[f'SnowDrift_{period}d'] = df['SnowDrift_1d'].rolling(
+            window=period).sum()
+
+    # Identify season changes
+    stagione_changes = df['Stagione'] != df['Stagione'].shift(1)
+
+    # Reset rolling sums to NaN when the season changes
+    for col in [f'SnowDrift_{period}d' for period in [2, 3, 5]]:
+        df.loc[stagione_changes, col] = np.nan
+
+    # Set NaN for 1, 2, 3, and 5 days after a season change for snow drift indices
+    for period in [1, 2, 3, 5]:
+        for idx in df.index[stagione_changes]:
+            end_idx = idx + pd.Timedelta(days=period)
+            df.loc[idx + pd.Timedelta(days=1): end_idx,
+                   [f'SnowDrift_{p}d' for p in [2, 3, 5]]] = np.nan
 
     return df
 
 
 def calculate_swe(df):
-    # Adjusted snow density based on conditions
+    """
+    Calculate Snow Water Equivalent (SWE) and related precipitation metrics.
+
+    Parameters:
+    - df: DataFrame containing columns 'HNnum', 'rho', and 'Stagione'.
+
+    Returns:
+    - DataFrame with additional SWE and precipitation metrics.
+    """
+    # Adjust snow density based on snowfall conditions
     df['rho_adj'] = np.where(df['HNnum'] < 6, 100, df['rho'])
     df['rho_adj'] = np.where(df['HNnum'] == 0, 0, df['rho_adj'])
 
     # Calculate fresh snow water equivalent (FreshSWE)
     df['FreshSWE'] = df['HNnum'] * df['rho_adj'] / 100
+
+    # Cumulative Seasonal SWE
     df['SeasonalSWE_cum'] = df.groupby('Stagione')['FreshSWE'].cumsum()
 
-    # Precipitation sums over different periods
-    df['Precip_1d'] = df['FreshSWE']  # Instantaneous precipitation (FreshSWE)
-    df['Precip_2d'] = df['FreshSWE'].rolling(
-        window=2).sum()  # Cumulative for 48h
-    df['Precip_3d'] = df['FreshSWE'].rolling(
-        window=3).sum()  # Cumulative for 72h
-    df['Precip_5d'] = df['FreshSWE'].rolling(
-        window=5).sum()  # Cumulative for 120h
+    # Rolling precipitation sums for different periods
+    for period in [1, 2, 3, 5]:
+        col_name = f'Precip_{period}d'
+        df[col_name] = df['FreshSWE'].rolling(window=period).sum()
 
-    df = df.drop(columns=['rho_adj'])
+    # Identify season changes
+    stagione_changes = df['Stagione'] != df['Stagione'].shift(1)
+
+    # Set NaN for 1, 2, 3, and 5 days after a season change for precipitation sums
+    for period in [1, 2, 3, 5]:
+        for idx in df.index[stagione_changes]:
+            end_idx = idx + pd.Timedelta(days=period)
+            df.loc[idx + pd.Timedelta(days=1): end_idx,
+                   [f'Precip_{p}d' for p in [1, 2, 3, 5]]] = np.nan
+
+    # Reset rolling precipitation sums to NaN when the season changes
+    for col in [f'Precip_{period}d' for period in [1, 2, 3, 5]]:
+        df.loc[stagione_changes, col] = np.nan
+
+    # Drop intermediate adjustment column
+    df.drop(columns=['rho_adj'], inplace=True)
 
     return df
 
@@ -245,7 +350,17 @@ def calculate_LooseSnow_avalanches(df):
 
 
 def calculate_MFcrust(df):
-   # Identify MF crust presence
+    """
+    Calculate Melt-Freeze (MF) crust presence, new crust events, 
+    and consecutive days with crust.
+
+    Parameters:
+    - df: DataFrame with columns 'CS' and 'Stagione'.
+
+    Returns:
+    - DataFrame with additional columns related to MF crust analysis.
+    """
+    # Identify MF crust presence
     df['MF_Crust_Present'] = np.where(df['CS'].isin([12, 13, 22, 23]), 1, 0)
     df['MF_Crust_Present'] = np.where(
         df['CS'].isna(), np.nan, df['MF_Crust_Present'])
@@ -253,16 +368,29 @@ def calculate_MFcrust(df):
     # Forward fill to ensure continuity
     df['MF_Crust_Present'] = df['MF_Crust_Present'].ffill()
 
-    # Check for new MF crust (transition from 0 to 1)
-    df['New_MF_Crust'] = df['MF_Crust_Present'].diff().fillna(
-        0).where(df['MF_Crust_Present'] == 1, 0)
+    # Identify new MF crust formations (transition from 0 to 1)
+    df['New_MF_Crust'] = (
+        (df['MF_Crust_Present'] == 1) &
+        (df['MF_Crust_Present'].shift(1) == 0)
+    ).astype(int)
+
+    # Reset counts and handle season changes
+    stagione_changes = df['Stagione'] != df['Stagione'].shift(1)
 
     # Count consecutive days with crust
-    df['ConsecCrustDays'] = (df['MF_Crust_Present'].cumsum() -
-                             df['MF_Crust_Present'].cumsum().where(df['MF_Crust_Present'] == 0).ffill().fillna(0))
+    df['ConsecCrustDays'] = df.groupby(
+        (df['MF_Crust_Present'] != df['MF_Crust_Present'].shift()).cumsum()
+    ).cumcount() + 1
+
+    # Zero out consecutive crust days where crust is not present
+    df['ConsecCrustDays'] = np.where(
+        df['MF_Crust_Present'] == 1, df['ConsecCrustDays'], 0)
+
+    # Reset consecutive count when seasons change
+    df.loc[stagione_changes, 'ConsecCrustDays'] = np.nan
 
     # Drop the 'CS' column as it's no longer needed
-    df = df.drop(columns=['CS'])
+    df.drop(columns=['CS'], inplace=True)
 
     return df
 
@@ -275,26 +403,52 @@ def calculate_penetration(df):
 
 
 def calculate_avalanche_days(df):
-    """Calculate avalanche occurrence and moving averages."""
-    # Define conditions
+    """
+    Calculate avalanche occurrence and moving averages over specified periods.
+
+    Parameters:
+    - df: DataFrame with columns 'L1', 'L2', and 'VQ1'.
+
+    Returns:
+    - DataFrame with added avalanche-related columns.
+    """
+    # Define conditions for avalanche occurrence
     conditions = [
         df['L1'].isin([2, 3, 4]),  # L1 is 2, 3, or 4
         df['L1'] == 0,             # L1 is 0
         df['L1'] == 1              # L1 is 1
     ]
-
-    # Define corresponding values
+    # Corresponding values for 'AvalDay'
     values = [1, 0, np.nan]
 
-    # Create the new column 'AvalDay'
+    # Calculate initial avalanche occurrence
     df['AvalDay'] = np.select(conditions, values, default=np.nan)
-    # df['AvalDay'] = np.where(df['L1'] >= 2, 1, df['L1'])
-    df['AvalDay'] = np.where((df['AvalDay'] == 1) & (
-        df['L2'].isin([1, 2, 5, 6])) & (df['VQ1'] >= 1), 0, df['AvalDay'])
 
-    df['AvalDay_2d'] = df['AvalDay'].shift(1).rolling(window=1).mean()
-    df['AvalDay_3d'] = df['AvalDay'].shift(1).rolling(window=2).mean()
-    df['AvalDay_5d'] = df['AvalDay'].shift(1).rolling(window=4).mean()
+    # Additional condition to reset 'AvalDay' based on 'L2' and 'VQ1'
+    df['AvalDay'] = np.where(
+        (df['AvalDay'] == 1) & (df['L2'].isin([1, 2, 5, 6])) & (df['VQ1'] >= 1),
+        0,
+        df['AvalDay']
+    )
+
+    # Calculate moving averages of avalanche occurrence
+    df['AvalDay_2d'] = df['AvalDay'].shift(1).rolling(window=2).mean()
+    df['AvalDay_3d'] = df['AvalDay'].shift(1).rolling(window=3).mean()
+    df['AvalDay_5d'] = df['AvalDay'].shift(1).rolling(window=5).mean()
+
+    # Reset moving averages when seasons change
+    if 'Stagione' in df.columns:
+        stagione_changes = df['Stagione'] != df['Stagione'].shift(1)
+        for col in ['AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d']:
+            df.loc[stagione_changes, col] = np.nan
+
+        # Set NaN for 1, 2, 3, and 5 days after a season change for avalanche-related columns
+        for period in [1, 2, 3, 5]:
+            for idx in df.index[stagione_changes]:
+                end_idx = idx + pd.Timedelta(days=period)
+                df.loc[idx + pd.Timedelta(days=1): end_idx,
+                       ['AvalDay', 'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d']] = np.nan
+
     return df
 
 
@@ -323,7 +477,6 @@ def main():
     # --- NEW FEATURES CREATION ---
 
     # Add new variables to the dataset
-    mod1 = calculate_day_of_season(mod1, season_start_date='12-01')
     mod1_features = mod1[['Stagione', 'N', 'V', 'VQ1', 'VQ2', 'TaG', 'TminG',
                           'TmaxG', 'HSnum', 'HNnum', 'rho', 'TH01G', 'TH03G', 'PR', 'CS', 'B', 'L1', 'L2']]
     mod1_features = calculate_day_of_season(
