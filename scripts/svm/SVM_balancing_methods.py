@@ -327,7 +327,7 @@ if __name__ == '__main__':
                     'under_oversampling_comparison_normalized_2var_NEW.csv')
 
     # ---------------------------------------------------------------
-    # --- a) DEVELOP SVM FOR CNN UNDERSAMPLING ---
+    # --- a) DEVELOP SVM FOR Nearmiss3 UNDERSAMPLING ---
     # ---------------------------------------------------------------
     feature = [
         'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
@@ -419,6 +419,9 @@ if __name__ == '__main__':
 
     classifier_new = train_evaluate_final_svm(
         X_train_new, y_train_new, X_test_new, y_test_new, res_new['best_params'])
+
+    feature_importance_df = permutation_ranking(
+        classifier_new[0], X_test_new, y_test_new)
 
     # ---------------------------------------------------------------
     # --- b) TEST DIFFERENT CONFIGURATION OF FEATURES  ---
@@ -683,122 +686,121 @@ if __name__ == '__main__':
     # ---------------------------------------------------------------
     # --- d) RECURSIVE FEATURE EXTRACTION WITH CROSS VALIDATION  ---
     # ---------------------------------------------------------------
-    from sklearn.feature_selection import RFECV
-    from sklearn.model_selection import StratifiedKFold
+    # from sklearn.feature_selection import RFECV
+    # from sklearn.model_selection import StratifiedKFold
 
-    # candidate_features = ['HSnum', 'HN_3d']
-    candidate_features = [
-        'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
-        'HNnum', 'TH01G', 'TH03G', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
-        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
-        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-        'TempAmplitude_3d', 'TempAmplitude_5d', 'Ta_delta_1d', 'Ta_delta_2d',
-        'Ta_delta_3d', 'Ta_delta_5d', 'Tmin_delta_1d', 'Tmin_delta_2d',
-        'Tmin_delta_3d', 'Tmin_delta_5d', 'Tmax_delta_1d', 'Tmax_delta_2d',
-        'Tmax_delta_3d', 'Tmax_delta_5d', 'T_mean', 'DegreeDays_Pos',
-        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-        'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
-        'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
-        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
-        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
-        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
-        'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
-    ]
+    # # candidate_features = ['HSnum', 'HN_3d']
+    # candidate_features = [
+    #     'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+    #     'HNnum', 'TH01G', 'TH03G', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
+    #     'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+    #     'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+    #     'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+    #     'TempAmplitude_3d', 'TempAmplitude_5d', 'Ta_delta_1d', 'Ta_delta_2d',
+    #     'Ta_delta_3d', 'Ta_delta_5d', 'Tmin_delta_1d', 'Tmin_delta_2d',
+    #     'Tmin_delta_3d', 'Tmin_delta_5d', 'Tmax_delta_1d', 'Tmax_delta_2d',
+    #     'Tmax_delta_3d', 'Tmax_delta_5d', 'T_mean', 'DegreeDays_Pos',
+    #     'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+    #     'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
+    #     'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
+    #     'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
+    #     'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+    #     'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
+    #     'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
+    #     'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
+    # ]
 
-    feature_plus = candidate_features + ['AvalDay']
-    mod1_clean = mod1[feature_plus]
-    mod1_clean = mod1_clean.dropna()
+    # feature_plus = candidate_features + ['AvalDay']
+    # mod1_clean = mod1[feature_plus]
+    # mod1_clean = mod1_clean.dropna()
 
-    # Supponiamo che `mod1_clean` contenga il dataset pre-pulito
-    X = mod1_clean[candidate_features]
-    y = mod1_clean['AvalDay']  # Target
+    # # Supponiamo che `mod1_clean` contenga il dataset pre-pulito
+    # X = mod1_clean[candidate_features]
+    # y = mod1_clean['AvalDay']  # Target
 
-    # Standardizzazione
-    # scaler = StandardScaler()
-    scaler = MinMaxScaler()
-    X_scaled = pd.DataFrame(scaler.fit_transform(
-        X), columns=X.columns, index=X.index)
+    # # Standardizzazione
+    # # scaler = StandardScaler()
+    # scaler = MinMaxScaler()
+    # X_scaled = pd.DataFrame(scaler.fit_transform(
+    #     X), columns=X.columns, index=X.index)
 
-    # Calcola la matrice di correlazione
-    corr_matrix = pd.concat([X_scaled, y], axis=1).corr()
+    # # Calcola la matrice di correlazione
+    # corr_matrix = pd.concat([X_scaled, y], axis=1).corr()
 
-    # Correlazione reciproca tra feature
-    feature_corr = corr_matrix.loc[X.columns, X.columns]
+    # # Correlazione reciproca tra feature
+    # feature_corr = corr_matrix.loc[X.columns, X.columns]
 
-    # Correlazione con il target
-    target_corr = corr_matrix.loc[X.columns, y.name]
+    # # Correlazione con il target
+    # target_corr = corr_matrix.loc[X.columns, y.name]
 
-    # Trova le feature con alta correlazione reciproca (>0.9)
-    high_corr_pairs = np.where((np.abs(feature_corr) > 0.9) & (
-        np.triu(np.ones(feature_corr.shape), k=1)))
+    # # Trova le feature con alta correlazione reciproca (>0.9)
+    # high_corr_pairs = np.where((np.abs(feature_corr) > 0.9) & (
+    #     np.triu(np.ones(feature_corr.shape), k=1)))
 
-    # Lista di coppie di feature altamente correlate
-    high_corr_feature_pairs = [(X.columns[i], X.columns[j])
-                               for i, j in zip(*high_corr_pairs)]
+    # # Lista di coppie di feature altamente correlate
+    # high_corr_feature_pairs = [(X.columns[i], X.columns[j])
+    #                            for i, j in zip(*high_corr_pairs)]
 
-    # Identifica le feature da rimuovere
-    features_to_remove = set()
-    for feature1, feature2 in high_corr_feature_pairs:
-        # Confronta la correlazione di entrambe le feature con il target
-        if abs(target_corr[feature1]) > abs(target_corr[feature2]):
-            features_to_remove.add(feature2)
-        else:
-            features_to_remove.add(feature1)
+    # # Identifica le feature da rimuovere
+    # features_to_remove = set()
+    # for feature1, feature2 in high_corr_feature_pairs:
+    #     # Confronta la correlazione di entrambe le feature con il target
+    #     if abs(target_corr[feature1]) > abs(target_corr[feature2]):
+    #         features_to_remove.add(feature2)
+    #     else:
+    #         features_to_remove.add(feature1)
 
-    # Rimuovi le feature selezionate
-    X_filtered = X_scaled.drop(columns=features_to_remove)
+    # # Rimuovi le feature selezionate
+    # X_filtered = X_scaled.drop(columns=features_to_remove)
 
-    # Random undersampling
-    X_resampled, y_resampled = undersampling_cnn(X_filtered, y)
+    # # Random undersampling
+    # X_resampled, y_resampled = undersampling_cnn(X_filtered, y)
 
-    # Divisione train-test
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_resampled, y_resampled, test_size=0.25, random_state=42)
-    from sklearn.inspection import permutation_importance
+    # # Divisione train-test
+    # X_train, X_test, y_train, y_test = train_test_split(
+    #     X_resampled, y_resampled, test_size=0.25, random_state=42)
+    # from sklearn.inspection import permutation_importance
 
-# Define SVC with RBF kernel
-svc = svm.SVC(kernel='rbf', C=1, gamma='scale', random_state=42)
+    # # Define SVC with RBF kernel
+    # svc = svm.SVC(kernel='rbf', C=1, gamma='scale', random_state=42)
 
-# Fit the model initially to calculate feature importance
-svc.fit(X_train, y_train)
+    # # Fit the model initially to calculate feature importance
+    # svc.fit(X_train, y_train)
 
-# Calculate permutation importance for feature selection
-perm_importance = permutation_importance(
-    svc, X_train, y_train, n_repeats=10, random_state=42)
+    # # Calculate permutation importance for feature selection
+    # perm_importance = permutation_importance(
+    #     svc, X_train, y_train, n_repeats=10, random_state=42)
 
-# Get the importance scores for features
-importance_scores = perm_importance.importances_mean
+    # # Get the importance scores for features
+    # importance_scores = perm_importance.importances_mean
 
-# Sort features based on importance
-sorted_idx = importance_scores.argsort()
+    # # Sort features based on importance
+    # sorted_idx = importance_scores.argsort()
 
-feature_names = X.columns
-importance_df = pd.DataFrame({
-    'Feature': feature_names[sorted_idx],
-    'Importance': importance_scores[sorted_idx]
-})
+    # feature_names = X.columns
+    # importance_df = pd.DataFrame({
+    #     'Feature': feature_names[sorted_idx],
+    #     'Importance': importance_scores[sorted_idx]
+    # })
 
-# Select the top N features
-top_features_df = importance_df.tail(10)
+    # # Select the top N features
+    # top_features_df = importance_df.tail(10)
 
-# Plot the importance scores for the top N features
-plt.figure(figsize=(10, 12))
-plt.barh(importance_df['Feature'],
-         importance_df['Importance'], color='skyblue')
-plt.xlabel('Importance Score', fontsize=12)
-plt.ylabel('Features', fontsize=12)
-plt.title('Top 10 Feature Importances', fontsize=16)
-plt.grid(axis='x', linestyle='--', alpha=0.7)
-plt.tight_layout()
-plt.show()
+    # # Plot the importance scores for the top N features
+    # plt.figure(figsize=(10, 12))
+    # plt.barh(importance_df['Feature'],
+    #          importance_df['Importance'], color='skyblue')
+    # plt.xlabel('Importance Score', fontsize=12)
+    # plt.ylabel('Features', fontsize=12)
+    # plt.title('Top 10 Feature Importances', fontsize=16)
+    # plt.grid(axis='x', linestyle='--', alpha=0.7)
+    # plt.tight_layout()
+    # plt.show()
 
-
-N = 10  # Number of top features you want to select
-top_features = sorted_idx[-N:]
-X_train_selected = X_train.iloc[:, top_features]
-X_test_selected = X_test.iloc[:, top_features]
+    # N = 10  # Number of top features you want to select
+    # top_features = sorted_idx[-N:]
+    # X_train_selected = X_train.iloc[:, top_features]
+    # X_test_selected = X_test.iloc[:, top_features]
 
 
 # -------------------------------------------------------
@@ -807,8 +809,7 @@ X_test_selected = X_test.iloc[:, top_features]
 
 # ....... 1. SNOW LOAD DUE SNOWFALL ...........................
 
-s0 = ['Precip_5d', 'Tmin_delta_3d']
-s0 = ['Tmin_delta_3d', 'Precip_5d']
+s0 = ['Tsnow_delta_3d', 'PR']
 res0 = evaluate_svm_with_feature_selection(mod1, s0)
 
 s1 = ['HSnum', 'HN_5d']

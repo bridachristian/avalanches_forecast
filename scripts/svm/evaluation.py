@@ -161,7 +161,7 @@ def permutation_ranking(classifier, X_test, y_test):
 
     # Compute permutation importance
     perm_importance = permutation_importance(
-        classifier, X_test, y_test, n_repeats=30, random_state=42)
+        classifier, X_test, y_test, n_repeats=30, random_state=42, scoring='f1_macro')
 
     # Sort features by mean importance score
     sorted_idx = perm_importance.importances_mean.argsort()
