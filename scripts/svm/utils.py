@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
 from sklearn.svm import SVC
 from sklearn.inspection import permutation_importance
-from sklearn.feature_selection import RFECV
+from sklearn.feature_selection import RFECV, VarianceThreshold
 from sklearn.base import BaseEstimator, MetaEstimatorMixin
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
@@ -414,4 +414,29 @@ def remove_correlated_features(X, y):
         else:
             features_to_remove.add(feature1)
 
-    return features_to_remove
+    return list(features_to_remove)
+
+
+def remove_low_variance(X, threshold=0.01):
+    """
+    Identify features with variance below a specified threshold.
+
+    Parameters:
+    - X: pandas DataFrame, feature matrix.
+    - threshold: float, the variance threshold below which features are identified.
+
+    Returns:
+    - features_removed: list, names of the features to drop (if X is a DataFrame).
+    """
+    if not isinstance(X, pd.DataFrame):
+        raise ValueError(
+            "Input X must be a pandas DataFrame to return feature names.")
+
+    # Fit the VarianceThreshold selector
+    selector = VarianceThreshold(threshold=threshold)
+    selector.fit(X)
+
+    # Identify low-variance features
+    features_removed = X.columns[~selector.get_support()].tolist()
+
+    return features_removed

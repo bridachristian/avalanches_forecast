@@ -21,7 +21,8 @@ from scripts.svm.oversampling_methods import oversampling_random, oversampling_s
 from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm, train_evaluate_final_svm
 from scripts.svm.evaluation import (plot_learning_curve, plot_confusion_matrix,
                                     plot_roc_curve, permutation_ranking, evaluate_svm_with_feature_selection)
-from scripts.svm.utils import save_outputfile, get_adjacent_values, PermutationImportanceWrapper, remove_correlated_features
+from scripts.svm.utils import (save_outputfile, get_adjacent_values, PermutationImportanceWrapper,
+                               remove_correlated_features, remove_low_variance)
 
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
@@ -340,7 +341,7 @@ if __name__ == '__main__':
         'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
         'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
         'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-        'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
+        # 'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
         'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
         'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
         'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
@@ -357,6 +358,10 @@ if __name__ == '__main__':
     y = mod1_clean['AvalDay']
 
     features_to_remove = remove_correlated_features(X, y)
+    features_to_remove_2 = remove_low_variance(X, threshold=0.1)
+
+    combined_list = features_to_remove + \
+        features_to_remove_2  # Concatenate the two lists
 
     X_new = X.drop(columns=features_to_remove)
 
@@ -827,7 +832,7 @@ if __name__ == '__main__':
         'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
     ]
 
-s0 = ['HS_delta_5d', 'HS_delta_1d']
+s0 = ['MF_Crust_Present']
 res0 = evaluate_svm_with_feature_selection(mod1, s0)
 
 s1 = ['HSnum', 'HN_5d']
