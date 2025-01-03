@@ -501,182 +501,229 @@ if __name__ == '__main__':
     # ---------------------------------------------------------------
 
     # candidate_features = ['HSnum', 'HN_3d']
+    # List of candidate features
     candidate_features = [
-            'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
-            'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
-            'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
-            'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-            'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-            'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
-            'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
-            'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
-            'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
-            'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-            'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
-            'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
-            'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
-            'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-            'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
-            'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
-            'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
-        ]
+        'N', 'V', 'TaG', 'TminG', 'TmaxG', 'HSnum', 'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason',
+        'HS_delta_1d', 'HS_delta_2d', 'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d', 'Tmin_5d', 'Tmax_5d',
+        'TempAmplitude_1d', 'TempAmplitude_2d', 'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d',
+        'TaG_delta_2d', 'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
+        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d', 'TmaxG_delta_3d',
+        'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos', 'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d',
+        'DegreeDays_cumsum_5d', 'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
+        'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d',
+        'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh',
+        'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d', 'Tsnow_delta_5d',
+        'SnowConditionIndex', 'ConsecWetSnowDays', 'MF_Crust_Present', 'New_MF_Crust',
+        'ConsecCrustDays', 'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
+    ]
+
+    # Data preparation
     feature_plus = candidate_features + ['AvalDay']
-    mod1_clean = mod1[feature_plus]
-    mod1_clean = mod1_clean.dropna()
-
-    # Supponiamo che `mod1_clean` contenga il dataset pre-pulito
+    mod1_clean = mod1[feature_plus].dropna()
     X = mod1_clean[candidate_features]
-    y = mod1_clean['AvalDay']  # Target
+    y = mod1_clean['AvalDay']
 
+    # Remove correlated features
     features_to_remove = remove_correlated_features(X, y)
+    features_to_remove_2 = remove_low_variance(X)
+    combined_list = features_to_remove + \
+        features_to_remove_2  # Concatenate the two lists
 
-    X_new = X.drop(columns=features_to_remove)
-    # Random undersampling
+    X_new = X.drop(columns=combined_list)
+
+    # Apply random undersampling
     X_resampled, y_resampled = undersampling_nearmiss(
         X_new, y, version=3, n_neighbors=10)
 
-    # # # Divisione train-test
-    # X_train, X_test, y_train, y_test = train_test_split(
-    #     X_resampled, y_resampled, test_size=0.25, random_state=42)
-
-    # scaler = StandardScaler()
-    # X_train = pd.DataFrame(scaler.fit_transform(
-    #     X_train), columns=X_train.columns, index=X_train.index)
-    # X_test = pd.DataFrame(scaler.transform(
-    #     X_test), columns=X_test.columns, index=X_test.index)
-
-    # Initialize the SVM model
-    svc = svm.SVC(kernel='linear')
-
-    # Range of n_features_to_select to test
-    n_features_range = list(range(2, X_resampled.shape[1] + 1))
-
-    # To store the results of each iteration
-    results = {}
-
-    # Loop over the range of possible feature selections
-    for n_features in n_features_range:
-        print(f"Evaluating with n_features_to_select = {n_features}")
-
-        # Recursive Feature Elimination (RFE) to select the best features
-        selector = RFE(svc, n_features_to_select=n_features, step=1)
-        selector = selector.fit(X_resampled, y_resampled)
-
-        cand_feature_filt = X_resampled.columns
-        # Get the selected features
-        selected_features = [f for f, s in zip(
-            cand_feature_filt, selector.support_) if s]
-        print(f"Selected features for n={n_features}: {selected_features}")
-
-        # Create the new dataset with selected features
-        X_filt = X_resampled[selected_features]
-
-        # Split into training and testing sets before applying LDA
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_filt, y_resampled, test_size=0.25, random_state=42)
-
-        scaler = StandardScaler()
-        X_train = pd.DataFrame(scaler.fit_transform(
-            X_train), columns=X_train.columns, index=X_train.index)
-        X_test = pd.DataFrame(scaler.transform(
-            X_test), columns=X_test.columns, index=X_test.index)
-
-        # Apply LDA
-        lda = LinearDiscriminantAnalysis(n_components=None)
-        X_train_lda = pd.DataFrame(lda.fit_transform(
-            X_train, y_train), columns=['LDA'])
-        X_test_lda = pd.DataFrame(lda.transform(X_test), columns=['LDA'])
-
-        # Evaluate the model with the selected features using SVM
-        result_1iter = tune_train_evaluate_svm(
-            X_train_lda, y_train, X_test_lda, y_test, param_grid,
-            resampling_method='Nearmiss3'
-        )
-
-        # Train and evaluate the final SVM model with the best parameters found
-        classifier, evaluation_metrics = train_evaluate_final_svm(
-            X_train_lda, y_train, X_test_lda, y_test, result_1iter['best_params']
-        )
-
-        # Store the results, such as accuracy, F1-score, etc.
-        results[n_features] = evaluation_metrics
-        print(f"Evaluation metrics for n={n_features}: {evaluation_metrics}")
-
-    results_df = pd.DataFrame(results)
-    results_df = results_df.T
-    results_df = results_df.drop(columns=['best_params'])
-
-    # Plotting
-    plt.figure(figsize=(8, 6))
-    for metric in results_df.columns:
-        plt.plot(results_df.index,
-                 results_df[metric], marker='o', label=metric)
-
-    # Add labels, title, and legend
-    plt.title('Metrics Comparison Across Experiments', fontsize=14)
-    plt.xlabel('Experiment', fontsize=12)
-    plt.ylabel('Score', fontsize=12)
-    plt.xticks(results_df.index)
-    plt.legend(title='Metrics', fontsize=10)
-    plt.grid(True)
-
-    # Show the plot
-    plt.tight_layout()
-    plt.show()
-
-    # After the loop, you can analyze the results to choose the best number of features
-    # You can adjust the key as needed (e.g., based on accuracy, F1-score, etc.)
-    best_n_features = max(results, key=lambda k: results[k]['f1'])
-    print(
-        f"Best number of features: {best_n_features} with accuracy: {results[best_n_features]['accuracy']}"
-    )
-
-    # svc = svm.SVC(kernel='linear')  # Using a linear kernel for simplicity
-
-    # # Initialize RFE and fit it to the model
-    # # Select the top 10 features
-    selector = RFE(svc, n_features_to_select=best_n_features, step=1)
-    selector = selector.fit(X_resampled, y_resampled)
-
-    cand_feature_filt = X_resampled.columns
-
-    # Get the selected features
-    selected_features = [f for f, s in zip(
-        cand_feature_filt, selector.support_) if s]
-    print("Selected Features: ", selected_features)
-
-    X_filtered_2 = X_resampled[selected_features]
+    # Divisione in training e test set
     X_train, X_test, y_train, y_test = train_test_split(
-        X_filtered_2, y_resampled, test_size=0.25, random_state=42)
+        X_resampled, y_resampled, test_size=0.25, random_state=42)
 
-    from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+    # Standardizzazione dei dati
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
 
-    # Applicazione della LDA
-    # Mantiene tutte le componenti significative
-    lda = LinearDiscriminantAnalysis(n_components=None)
-    X_train_lda = lda.fit_transform(X_train, y_train)
-    X_test_lda = lda.transform(X_test)
+    # **Applicazione di LDA per Feature Extraction**
+    # Ridurre a 1 dimensione, ad esempio
+    lda = LinearDiscriminantAnalysis(n_components=1)
+    X_train_lda = lda.fit_transform(X_train_scaled, y_train)
+    X_test_lda = lda.transform(X_test_scaled)
 
-    # Varianza spiegata
-    explained_variance = lda.explained_variance_ratio_
-    print(
-        f"Varianza spiegata da ciascuna componente LDA: {explained_variance}")
-    from sklearn import svm
+    # Adesso puoi utilizzare le nuove feature estratte da LDA
+    # SVM come classificatore
+    svc = SVC(kernel='rbf', random_state=42)
+    svc.fit(X_train_lda, y_train)
 
-    result_1iter = tune_train_evaluate_svm(
-        X_train, y_train, X_test, y_test, param_grid,
-        resampling_method='Condensed Nearest Neighbour Undersampling')
+    # Predizioni sul test set
+    y_pred = svc.predict(X_test_lda)
 
-    result_1iter_lda = tune_train_evaluate_svm(
-        X_train_lda, y_train, X_test_lda, y_test, param_grid,
-        resampling_method='Condensed Nearest Neighbour Undersampling')
+    # Valutazione del modello
+    print("LDA + SVM Model Evaluation:")
+    print("Accuracy:", accuracy_score(y_test, y_pred))
 
-    classifier, evaluation_metrics = train_evaluate_final_svm(
-        X_train, y_train, X_test, y_test, result_1iter['best_params']
-    )
-    classifier_lda, evaluation_metrics_lda = train_evaluate_final_svm(
-        X_train_lda, y_train, X_test_lda, y_test, result_1iter_lda['best_params']
-    )
+    X_train_lda = pd.DataFrame(X_train_lda, columns=['LDA'])
+    X_test_lda = pd.DataFrame(X_test_lda, columns=['LDA'])
+
+    result_SVM = tune_train_evaluate_svm(
+        X_train, y_train, X_test, y_test, param_grid, resampling_method='Nearmiss3')
+
+    classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
+        X_train, y_train, X_test, y_test, result_SVM['best_params'])
+
+    # Evaluate model with selected features
+    result_LDA = tune_train_evaluate_svm(
+        X_train_lda, y_train, X_test_lda, y_test, param_grid, resampling_method='Nearmiss3')
+
+    classifier_LDA, evaluation_metrics_LDA = train_evaluate_final_svm(
+        X_train_lda, y_train, X_test_lda, y_test, result_LDA['best_params'])
+
+    # print("Classification Report:")
+    # print(classification_report(y_test, y_pred))
+    # # Train-test split
+    # X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled, test_size=0.25, random_state=42)
+
+    # # Standardize features
+    # scaler = StandardScaler()
+    # X_train = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns, index=X_train.index)
+    # X_test = pd.DataFrame(scaler.transform(X_test), columns=X_test.columns, index=X_test.index)
+
+    # # Train SVM model with RBF kernel
+    # svc = SVC(kernel='rbf', random_state=42)
+    # svc.fit(X_train, y_train)
+
+    # # Compute permutation importance
+    # perm_importance = permutation_importance(svc, X_test, y_test, n_repeats=30, random_state=42)
+
+    # # Extract and sort importances
+    # importance_df = pd.DataFrame({
+    #     'Feature': X_resampled.columns,
+    #     'Importance': perm_importance.importances_mean
+    # }).sort_values(by='Importance', ascending=False).reset_index(drop=True)
+
+    # # Prepare data for RFE
+    # # Ensure alignment between importance_df and X_resampled_sorted columns
+    # sorted_features = importance_df.loc[importance_df['Feature'].isin(X_resampled_sorted.columns), 'Feature']
+    # X_resampled_sorted = X_resampled[sorted_features]
+
+    # # Update precomputed importances
+    # precomputed_importances = importance_df.set_index('Feature').loc[sorted_features, 'Importance'].values
+
+    # # Ensure the length matches the number of features
+    # if len(precomputed_importances) != X_resampled_sorted.shape[1]:
+    #     raise ValueError("Mismatch between precomputed importances and sorted features.")
+
+    # # Define custom importance getter
+    # def importance_getter(estimator):
+    #     return precomputed_importances
+
+    # # Continue with RFE
+    # for n_features in n_features_range:
+    #     print(f"Evaluating with n_features_to_select = {n_features}")
+
+    #     selector = RFE(svc, n_features_to_select=n_features, step=1, importance_getter=importance_getter)
+    #     selector = selector.fit(X_resampled_sorted, y_resampled)
+
+    #     # Check selected features
+    #     selected_features = X_resampled_sorted.columns[selector.support_]
+    #     print(f"Selected features for n={n_features}: {selected_features.tolist()}")
+
+    #     # Prepare dataset with selected features
+    #     X_filt = X_resampled_sorted[selected_features]
+    #     X_train, X_test, y_train, y_test = train_test_split(X_filt, y_resampled, test_size=0.25, random_state=42)
+
+    #     # Standardize features
+    #     X_train = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns, index=X_train.index)
+    #     X_test = pd.DataFrame(scaler.transform(X_test), columns=X_test.columns, index=X_test.index)
+
+    #     # Apply LDA
+    #     lda = LinearDiscriminantAnalysis(n_components=None)
+    #     X_train_lda = pd.DataFrame(lda.fit_transform(X_train, y_train), columns=['LDA'])
+    #     X_test_lda = pd.DataFrame(lda.transform(X_test), columns=['LDA'])
+
+    #     # Evaluate model with selected features
+    #     result_1iter = tune_train_evaluate_svm(X_train_lda, y_train, X_test_lda, y_test, param_grid, resampling_method='Nearmiss3')
+    #     classifier, evaluation_metrics = train_evaluate_final_svm(X_train_lda, y_train, X_test_lda, y_test, result_1iter['best_params'])
+
+    #     # Store evaluation metrics
+    #     results[n_features] = evaluation_metrics
+    #     print(f"Evaluation metrics for n={n_features}: {evaluation_metrics}")
+
+    # # Convert results to a DataFrame and drop unnecessary columns
+    # results_df = pd.DataFrame(results).T.drop(columns=['best_params'], errors='ignore')
+
+    # # Plotting
+    # plt.figure(figsize=(8, 6))
+    # for metric in results_df.columns:
+    #     plt.plot(results_df.index,
+    #              results_df[metric], marker='o', label=metric)
+
+    # # Add labels, title, and legend
+    # plt.title('Metrics Comparison Across Experiments', fontsize=14)
+    # plt.xlabel('Experiment', fontsize=12)
+    # plt.ylabel('Score', fontsize=12)
+    # plt.xticks(results_df.index)
+    # plt.legend(title='Metrics', fontsize=10)
+    # plt.grid(True)
+
+    # # Show the plot
+    # plt.tight_layout()
+    # plt.show()
+
+    # # After the loop, you can analyze the results to choose the best number of features
+    # # You can adjust the key as needed (e.g., based on accuracy, F1-score, etc.)
+    # best_n_features = max(results, key=lambda k: results[k]['f1'])
+    # print(
+    #     f"Best number of features: {best_n_features} with accuracy: {results[best_n_features]['accuracy']}"
+    # )
+
+    # # svc = svm.SVC(kernel='linear')  # Using a linear kernel for simplicity
+
+    # # # Initialize RFE and fit it to the model
+    # # # Select the top 10 features
+    # selector = RFE(svc, n_features_to_select=best_n_features, step=1)
+    # selector = selector.fit(X_resampled, y_resampled)
+
+    # cand_feature_filt = X_resampled.columns
+
+    # # Get the selected features
+    # selected_features = [f for f, s in zip(
+    #     cand_feature_filt, selector.support_) if s]
+    # print("Selected Features: ", selected_features)
+
+    # X_filtered_2 = X_resampled[selected_features]
+    # X_train, X_test, y_train, y_test = train_test_split(
+    #     X_filtered_2, y_resampled, test_size=0.25, random_state=42)
+
+    # from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+
+    # # Applicazione della LDA
+    # # Mantiene tutte le componenti significative
+    # lda = LinearDiscriminantAnalysis(n_components=None)
+    # X_train_lda = lda.fit_transform(X_train, y_train)
+    # X_test_lda = lda.transform(X_test)
+
+    # # Varianza spiegata
+    # explained_variance = lda.explained_variance_ratio_
+    # print(
+    #     f"Varianza spiegata da ciascuna componente LDA: {explained_variance}")
+    # from sklearn import svm
+
+    # result_1iter = tune_train_evaluate_svm(
+    #     X_train, y_train, X_test, y_test, param_grid,
+    #     resampling_method='Condensed Nearest Neighbour Undersampling')
+
+    # result_1iter_lda = tune_train_evaluate_svm(
+    #     X_train_lda, y_train, X_test_lda, y_test, param_grid,
+    #     resampling_method='Condensed Nearest Neighbour Undersampling')
+
+    # classifier, evaluation_metrics = train_evaluate_final_svm(
+    #     X_train, y_train, X_test, y_test, result_1iter['best_params']
+    # )
+    # classifier_lda, evaluation_metrics_lda = train_evaluate_final_svm(
+    #     X_train_lda, y_train, X_test_lda, y_test, result_1iter_lda['best_params']
+    # )
 
     # # Output delle feature rimosse
     # print(f"Feature rimosse: {features_to_remove}")
