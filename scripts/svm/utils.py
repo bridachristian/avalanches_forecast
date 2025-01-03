@@ -7,8 +7,8 @@ from sklearn.svm import SVC
 from sklearn.inspection import permutation_importance
 from sklearn.feature_selection import RFECV, VarianceThreshold
 from sklearn.base import BaseEstimator, MetaEstimatorMixin
-import numpy as np
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.feature_selection import SelectKBest, f_classif, mutual_info_classif
 
 
 def save_outputfile(df, output_filepath):
@@ -440,3 +440,29 @@ def remove_low_variance(X, threshold=0.01):
     features_removed = X.columns[~selector.get_support()].tolist()
 
     return features_removed
+
+
+def select_k_best(X, y, k=5):
+    """
+    Perform feature selection using SelectKBest with ANOVA F-test to select the top `k` features.
+
+    Parameters:
+    - X: pandas DataFrame, feature matrix.
+    - y: pandas Series or array, target variable.
+    - k: int, number of top features to select using SelectKBest (default=5).
+
+    Returns:
+    - selected_features: list, names of the selected features.
+    """
+    if not isinstance(X, pd.DataFrame):
+        raise ValueError(
+            "Input X must be a pandas DataFrame to return feature names.")
+
+    # Apply SelectKBest (ANOVA F-test)
+    selector = SelectKBest(score_func=mutual_info_classif, k=k)
+    X_selected = selector.fit_transform(X, y)
+
+    # Get the selected feature names
+    selected_features = X.columns[selector.get_support()].tolist()
+
+    return selected_features

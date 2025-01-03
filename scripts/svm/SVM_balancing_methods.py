@@ -22,7 +22,7 @@ from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm
 from scripts.svm.evaluation import (plot_learning_curve, plot_confusion_matrix,
                                     plot_roc_curve, permutation_ranking, evaluate_svm_with_feature_selection)
 from scripts.svm.utils import (save_outputfile, get_adjacent_values, PermutationImportanceWrapper,
-                               remove_correlated_features, remove_low_variance)
+                               remove_correlated_features, remove_low_variance, select_k_best)
 
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
@@ -443,7 +443,6 @@ if __name__ == '__main__':
             'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
             'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
             'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-            'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
             'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
             'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
             'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
@@ -497,26 +496,28 @@ if __name__ == '__main__':
     save_outputfile(df, common_path / 'precision_features_NEW.csv')
 
     # ---------------------------------------------------------------
-    # --- c) FEATURE EXTRACTION: LINEAR DISCRIMINANT ANALYSIS (LDA)  ---
+    # --- c) FEATURE SELECTION USING SELECT K BEST AND ANOVA      ---
     # ---------------------------------------------------------------
 
     # candidate_features = ['HSnum', 'HN_3d']
     # List of candidate features
     candidate_features = [
-        'N', 'V', 'TaG', 'TminG', 'TmaxG', 'HSnum', 'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason',
-        'HS_delta_1d', 'HS_delta_2d', 'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
-        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d', 'Tmin_5d', 'Tmax_5d',
-        'TempAmplitude_1d', 'TempAmplitude_2d', 'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d',
-        'TaG_delta_2d', 'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
-        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d', 'TmaxG_delta_3d',
-        'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos', 'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d',
-        'DegreeDays_cumsum_5d', 'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
-        'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d',
-        'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh',
-        'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d', 'Tsnow_delta_5d',
-        'SnowConditionIndex', 'ConsecWetSnowDays', 'MF_Crust_Present', 'New_MF_Crust',
-        'ConsecCrustDays', 'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
-    ]
+            'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+            'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
+            'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+            'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+            'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+            'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
+            'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
+            'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
+            'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
+            'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+            'Precip_1d', 'Precip_2d', 'Precip_3d',
+            'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
+            'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+            'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
+            'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays'
+           ]
 
     # Data preparation
     feature_plus = candidate_features + ['AvalDay']
@@ -532,15 +533,102 @@ if __name__ == '__main__':
 
     X_new = X.drop(columns=combined_list)
 
-    # Apply random undersampling
-    X_resampled, y_resampled = undersampling_nearmiss(
-        X_new, y, version=3, n_neighbors=10)
+    # Create a range for k from 1 to num_columns (inclusive)
+    k_range = list(range(1, X_new.shape[1]+1))
+    results = []
+    param_grid = {
+        'C': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000],
+        'gamma': [100, 50, 10, 5, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
+    }
 
-    # Divisione in training e test set
+    for k in k_range:
+        # Select the top k features using SelectKBest
+        features_selected = select_k_best(X_new, y, k=k)
+
+        print(f'k = {k}, Features Selected: {features_selected}')
+
+        X_selected = X_new[features_selected]
+        # Apply random undersampling
+        X_resampled, y_resampled = undersampling_nearmiss(
+            X_selected, y, version=3, n_neighbors=10)
+
+        # Split into training and test set
+        X_train, X_test, y_train, y_test = train_test_split(
+            X_resampled, y_resampled, test_size=0.25, random_state=42)
+
+        # Normalization
+        scaler = MinMaxScaler()
+        X_train_scaled = pd.DataFrame(
+            scaler.fit_transform(X_train), columns=X_train.columns)
+        X_test_scaled = pd.DataFrame(
+            scaler.fit_transform(X_test), columns=X_test.columns)
+
+        # SVM model tuning, training and evaluation
+        result_SVM = tune_train_evaluate_svm(
+            X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method='Nearmiss3')
+
+        # Final SVM classifier and evaluation
+        classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
+            X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params'])
+
+        # Store results
+        results.append({
+            'num_features': k,
+            # List of selected features for the current k
+            'features_selected': features_selected,
+            'precision': evaluation_metrics_SVM['precision'],
+            'accuracy': evaluation_metrics_SVM['accuracy'],
+            'recall': evaluation_metrics_SVM['recall'],
+            'f1': evaluation_metrics_SVM['f1'],
+            'best_params': evaluation_metrics_SVM['best_params']
+        })
+
+    # Convert results to a DataFrame for easy viewing
+    results_df = pd.DataFrame(results)
+
+    # Plotting
+    plt.figure(figsize=(10, 6))
+
+    # Plot each metric
+    for metric in ['precision', 'accuracy', 'recall', 'f1']:
+        plt.plot(results_df['num_features'],
+                 results_df[metric], marker='o', label=metric)
+
+    # Add labels, title, and legend
+    plt.title('Metrics Comparison Across Experiments', fontsize=14)
+    plt.xlabel('Number of Features', fontsize=12)
+    plt.ylabel('Score', fontsize=12)
+    plt.xticks(results_df['num_features'])
+    plt.legend(title='Metrics', fontsize=10)
+    plt.grid(True)
+
+    # Show the plot
+    plt.tight_layout()
+    plt.show()
+
+    # ---------------------------------------------------------------
+    # --- D) FEATURE EXTRACTION USING LINEAR DISCRIMINANT ANALYSIS (LDA)
+    #        on SELECTED FEATURES ---
+    # ---------------------------------------------------------------
+    # Standardizzazione dei dati
+
+    # best_features = results_df.loc[3]['features_selected']
+    best_features = ['HSnum', 'Precip_2d', 'Precip_3d',
+        'Precip_5d', 'TH30_tanh', 'AvalDay_2d', 'AvalDay_5d']
+
+    # Data preparation
+    feature_plus = best_features + ['AvalDay']
+    mod1_clean = mod1[feature_plus].dropna()
+    X = mod1_clean[best_features]
+    y = mod1_clean['AvalDay']
+
+    X_resampled, y_resampled = undersampling_nearmiss(
+        X, y, version=3, n_neighbors=10)
+
+    # Split into training and test set
     X_train, X_test, y_train, y_test = train_test_split(
         X_resampled, y_resampled, test_size=0.25, random_state=42)
 
-    # Standardizzazione dei dati
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
@@ -551,26 +639,19 @@ if __name__ == '__main__':
     X_train_lda = lda.fit_transform(X_train_scaled, y_train)
     X_test_lda = lda.transform(X_test_scaled)
 
-    # Adesso puoi utilizzare le nuove feature estratte da LDA
-    # SVM come classificatore
-    svc = SVC(kernel='rbf', random_state=42)
-    svc.fit(X_train_lda, y_train)
-
-    # Predizioni sul test set
-    y_pred = svc.predict(X_test_lda)
-
-    # Valutazione del modello
-    print("LDA + SVM Model Evaluation:")
-    print("Accuracy:", accuracy_score(y_test, y_pred))
+    X_train_scaled = pd.DataFrame(
+        X_train_scaled, columns=X_train.columns, index=X_train.index)
+    X_test_scaled = pd.DataFrame(
+        X_test_scaled, columns=X_test.columns, index=X_test.index)
 
     X_train_lda = pd.DataFrame(X_train_lda, columns=['LDA'])
     X_test_lda = pd.DataFrame(X_test_lda, columns=['LDA'])
 
     result_SVM = tune_train_evaluate_svm(
-        X_train, y_train, X_test, y_test, param_grid, resampling_method='Nearmiss3')
+        X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method='Nearmiss3')
 
     classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
-        X_train, y_train, X_test, y_test, result_SVM['best_params'])
+        X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params'])
 
     # Evaluate model with selected features
     result_LDA = tune_train_evaluate_svm(
