@@ -11,6 +11,9 @@ from sklearn import svm
 from sklearn import svm
 from sklearn.feature_selection import RFE
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import GridSearchCV
+
 
 from scripts.svm.data_loading import load_data
 from scripts.svm.undersampling_methods import (undersampling_random, undersampling_random_timelimited,
@@ -605,6 +608,96 @@ if __name__ == '__main__':
     # Show the plot
     plt.tight_layout()
     plt.show()
+
+    # ---------------------------------------------------------------
+    # --- d) FEATURE SELECTION USING BACKWARD FEATURE ELIMINATION      ---
+    # ---------------------------------------------------------------
+
+    # candidate_features = ['HSnum', 'HN_3d']
+    # List of candidate features
+    candidate_features = [
+            'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+            'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
+            'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+            'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+            'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+            'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
+            'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
+            'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
+            'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
+            'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+            'Precip_1d', 'Precip_2d', 'Precip_3d',
+            'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
+            'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+            'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
+            'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays'
+           ]
+
+    # Data preparation
+    feature_plus = candidate_features + ['AvalDay']
+    mod1_clean = mod1[feature_plus].dropna()
+    X = mod1_clean[candidate_features]
+    y = mod1_clean['AvalDay']
+
+    # Remove correlated features
+    features_to_remove = remove_correlated_features(X, y)
+    features_to_remove_2 = remove_low_variance(X)
+    combined_list = features_to_remove + \
+        features_to_remove_2  # Concatenate the two lists
+
+    X_new = X.drop(columns=combined_list)
+
+    # Funzione per Backward Feature Elimination
+
+    def backward_feature_elimination(X, y, model, scoring='f1_macro', cv=5, param_grid=None):
+        n_features = X.shape[1]
+        selected_features = list(range(n_features))
+        performance_history = []
+
+        while len(selected_features) > 1:
+            scores = []
+            for i in range(len(selected_features)):
+                subset_features = selected_features[:i] + \
+                    selected_features[i+1:]
+                X_subset = X.iloc[:, subset_features] if isinstance(
+                    X, pd.DataFrame) else X[:, subset_features]
+
+                # If param_grid provided, optimize C and gamma
+                if param_grid:
+                    grid_search = GridSearchCV(
+                        svm.SVC(kernel='rbf'), param_grid, cv=cv, scoring=scoring
+                    )
+                    grid_search.fit(X_subset, y)
+                    best_model = grid_search.best_estimator_
+                else:
+                    best_model = model
+
+                score = cross_val_score(
+                    best_model, X_subset, y, cv=cv, scoring=scoring).mean()
+                scores.append(score)
+
+            worst_feature_index = np.argmin(scores)
+            worst_feature = selected_features[worst_feature_index]
+            performance_history.append(scores[worst_feature_index])
+
+            print(
+                f"Feature removed: {worst_feature}, Score: {scores[worst_feature_index]}")
+            selected_features.remove(worst_feature)
+
+        return selected_features, performance_history
+
+    # Applicare il metodo
+    # svc = svm.SVC(kernel='rbf', C=1)
+    param_grid = {
+        'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
+        'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
+    }
+    svc = svm.SVC(kernel='rbf')
+
+    selected_features, history = backward_feature_elimination(
+        X_new, y, svc, param_grid=param_grid)
+
+    print("Feature selezionate:", selected_features)
 
     # ---------------------------------------------------------------
     # --- D) FEATURE EXTRACTION USING LINEAR DISCRIMINANT ANALYSIS (LDA)
