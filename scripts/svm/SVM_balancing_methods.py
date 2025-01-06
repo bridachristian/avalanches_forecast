@@ -28,6 +28,7 @@ from scripts.svm.utils import (save_outputfile, get_adjacent_values, Permutation
                                remove_correlated_features, remove_low_variance, select_k_best)
 
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from mlxtend.feature_selection import SequentialFeatureSelector as SFS
 
 
 if __name__ == '__main__':
@@ -647,44 +648,96 @@ if __name__ == '__main__':
 
     X_new = X.drop(columns=combined_list)
 
-    # Funzione per Backward Feature Elimination
+    X_resampled, y_resampled = undersampling_nearmiss(
+        X_new, y, version=3, n_neighbors=10)
 
-    def backward_feature_elimination(X, y, model, scoring='f1_macro', cv=5, param_grid=None):
-        n_features = X.shape[1]
-        selected_features = list(range(n_features))
-        performance_history = []
+    from sklearn.pipeline import Pipeline
 
-        while len(selected_features) > 1:
-            scores = []
-            for i in range(len(selected_features)):
-                subset_features = selected_features[:i] + \
-                    selected_features[i+1:]
-                X_subset = X.iloc[:, subset_features] if isinstance(
-                    X, pd.DataFrame) else X[:, subset_features]
+    # Define the parameter grid for tuning
+    # param_grid = {
+    #     'svc__C': [0.1, 1, 10, 100],
+    #     'svc__gamma': [0.01, 0.1, 1, 10]
+    # }
+    param_grid = {
+        'svc__C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
+        'svc__gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
+    }
 
-                # If param_grid provided, optimize C and gamma
-                if param_grid:
-                    grid_search = GridSearchCV(
-                        svm.SVC(kernel='rbf'), param_grid, cv=cv, scoring=scoring
-                    )
-                    grid_search.fit(X_subset, y)
-                    best_model = grid_search.best_estimator_
-                else:
-                    best_model = model
+    # Create a pipeline with SVC
+    pipeline = Pipeline([
+        ('svc', svm.SVC(kernel='rbf'))
+    ])
 
-                score = cross_val_score(
-                    best_model, X_subset, y, cv=cv, scoring=scoring).mean()
-                scores.append(score)
+    # Use GridSearchCV to tune hyperparameters during SFS
+    grid_search = GridSearchCV(
+        estimator=pipeline,
+        param_grid=param_grid,
+        scoring='f1_macro',
+        cv=5,
+        n_jobs=-1
+    )
 
-            worst_feature_index = np.argmin(scores)
-            worst_feature = selected_features[worst_feature_index]
-            performance_history.append(scores[worst_feature_index])
+    # Perform Sequential Feature Selection (SFS)
+    sfs = SFS(
+        estimator=grid_search,
+        k_features=2,          # Select the top 2 features
+        forward=True,          # Forward selection
+        floating=False,        # Disable floating step
+        cv=5,                  # 5-fold cross-validation
+        scoring='f1_macro',    # Use F1 macro as the scoring metric
+        n_jobs=-1              # Use all available CPU cores
+    )
 
-            print(
-                f"Feature removed: {worst_feature}, Score: {scores[worst_feature_index]}")
-            selected_features.remove(worst_feature)
+    # Fit SFS to the data
+    sfs.fit(X_resampled, y_resampled)
 
-        return selected_features, performance_history
+    # Retrieve the names of the selected features
+    if isinstance(X_new, pd.DataFrame):
+        selected_feature_names = [X_new.columns[i] for i in sfs.k_feature_idx_]
+    else:
+        selected_feature_names = list(sfs.k_feature_idx_)
+
+    print("Selected Features:", selected_feature_names)
+    print("Best Parameters for Each Subset:", sfs.estimator_.best_params_)
+
+    # # Funzione per Backward Feature Elimination
+
+    # def backward_feature_elimination(X, y, model, scoring='f1_macro', cv=5, param_grid=None):
+    #     n_features = X.shape[1]
+    #     selected_features = list(range(n_features))
+    #     performance_history = []
+
+    #     while len(selected_features) > 1:
+    #         scores = []
+    #         for i in range(len(selected_features)):
+    #             subset_features = selected_features[:i] + \
+    #                 selected_features[i+1:]
+    #             X_subset = X.iloc[:, subset_features] if isinstance(
+    #                 X, pd.DataFrame) else X[:, subset_features]
+
+    #             # If param_grid provided, optimize C and gamma
+    #             if param_grid:
+    #                 grid_search = GridSearchCV(
+    #                     svm.SVC(kernel='rbf'), param_grid, cv=cv, scoring=scoring
+    #                 )
+    #                 grid_search.fit(X_subset, y)
+    #                 best_model = grid_search.best_estimator_
+    #             else:
+    #                 best_model = model
+
+    #             score = cross_val_score(
+    #                 best_model, X_subset, y, cv=cv, scoring=scoring).mean()
+    #             scores.append(score)
+
+    #         worst_feature_index = np.argmin(scores)
+    #         worst_feature = selected_features[worst_feature_index]
+    #         performance_history.append(scores[worst_feature_index])
+
+    #         print(
+    #             f"Feature removed: {worst_feature}, Score: {scores[worst_feature_index]}")
+    #         selected_features.remove(worst_feature)
+
+    #     return selected_features, performance_history
 
     # Applicare il metodo
     # svc = svm.SVC(kernel='rbf', C=1)
@@ -1054,6 +1107,7 @@ if __name__ == '__main__':
     ]
 
 s0 = ['MF_Crust_Present', 'TH01G']
+s0 = ['TmaxG_delta_3d', 'TH10_tanh']
 res0 = evaluate_svm_with_feature_selection(mod1, s0)
 
 s1 = ['HSnum', 'HN_5d']
