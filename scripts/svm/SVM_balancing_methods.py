@@ -737,6 +737,7 @@ if __name__ == '__main__':
 
     BestFeatures_BW_27 = ['N', 'TaG', 'HNnum', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_3d', 'HS_delta_5d', 'DaysSinceLastSnow', 'Tmin_2d', 'TempAmplitude_1d', 'TempAmplitude_2d', 'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_2d',
         'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d', 'DegreeDays_Pos', 'Precip_1d', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_3d', 'Tsnow_delta_5d', 'ConsecWetSnowDays']
+
     # ---------------------------------------------------------------
     # --- e) FEATURE SELECTION USING FORWARD FEATURE ELIMINATION      ---
     # ---------------------------------------------------------------
@@ -777,8 +778,6 @@ if __name__ == '__main__':
 
     # X_resampled, y_resampled = undersampling_nearmiss(
     #     X_new, y, version=3, n_neighbors=10)
-
-    from sklearn.pipeline import Pipeline
 
     param_grid = {
         'svc__C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
@@ -858,6 +857,9 @@ if __name__ == '__main__':
     plt.title("Feature Subset Performance - Forward Selection")
     plt.grid(True)
     plt.show()
+
+    BestFeatures_FW_20 = ['N', 'V', 'HNnum', 'PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'Precip_1d', 'Precip_2d', 'Penetration_ratio',
+        'WetSnow_CS', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex', 'MF_Crust_Present', 'New_MF_Crust']
 
     # ---------------------------------------------------------------
     # --- D) FEATURE EXTRACTION USING LINEAR DISCRIMINANT ANALYSIS (LDA)
@@ -1221,10 +1223,11 @@ if __name__ == '__main__':
         'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
     ]
 
-s0 = ['HS_delta_2d', 'TaG_delta_2d']
-s0 = ['HS_delta_2d', 'HS_delta_3d', 'HS_delta_5d', 'TaG_delta_2d', 'TmaxG_delta_2d',
-    'TmaxG_delta_3d', 'Precip_2d', 'Precip_3d', 'Precip_5d', 'TH30_tanh']
-res0 = evaluate_svm_with_feature_selection(mod1, s0)
+# s0 = ['HS_delta_2d', 'TaG_delta_2d']
+# s0 = ['HS_delta_2d', 'HS_delta_3d', 'HS_delta_5d', 'TaG_delta_2d', 'TmaxG_delta_2d',
+#     'TmaxG_delta_3d', 'Precip_2d', 'Precip_3d', 'Precip_5d', 'TH30_tanh']
+resBW = evaluate_svm_with_feature_selection(mod1, BestFeatures_BW_27)
+resFW = evaluate_svm_with_feature_selection(mod1, BestFeatures_FW_20)
 
 s1 = ['HSnum', 'HN_5d']
 res1 = evaluate_svm_with_feature_selection(mod1, s1)
