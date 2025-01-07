@@ -738,6 +738,32 @@ if __name__ == '__main__':
     BestFeatures_BW_27 = ['N', 'TaG', 'HNnum', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_3d', 'HS_delta_5d', 'DaysSinceLastSnow', 'Tmin_2d', 'TempAmplitude_1d', 'TempAmplitude_2d', 'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_2d',
         'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d', 'DegreeDays_Pos', 'Precip_1d', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_3d', 'Tsnow_delta_5d', 'ConsecWetSnowDays']
 
+    # NEW evaluation based on the best 6 feature (BASED ON PLOT)
+    # Perform Sequential Feature Selection (SFS)
+    sfs_BW_6 = SFS(
+        estimator=grid_search,
+        # k_features=10,          # Select the top 10 features
+        # Explore all possible subset sizes
+        k_features=6,
+        forward=False,         # Forward selection
+        floating=False,        # Disable floating step
+        cv=5,                  # 5-fold cross-validation
+        scoring='f1_macro',    # Use F1 macro as the scoring metric
+        n_jobs=-1              # Use all available CPU cores
+    )
+
+    # Fit SFS to the data
+    # sfs_BW.fit(X_resampled, y_resampled)
+    sfs_BW_6.fit(X_new, y)
+
+    # Retrieve the names of the selected features
+    if isinstance(X_new, pd.DataFrame):
+        selected_feature_names_BW_6 = [X_new.columns[i]
+            for i in sfs_BW_6.k_feature_idx_]
+    else:
+        selected_feature_names_BW_6 = list(sfs_BW_6.k_feature_idx_)
+
+    print("Selected Features:", selected_feature_names_BW_6)
     # ---------------------------------------------------------------
     # --- e) FEATURE SELECTION USING FORWARD FEATURE ELIMINATION      ---
     # ---------------------------------------------------------------
@@ -861,6 +887,30 @@ if __name__ == '__main__':
     BestFeatures_FW_20 = ['N', 'V', 'HNnum', 'PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'Precip_1d', 'Precip_2d', 'Penetration_ratio',
         'WetSnow_CS', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex', 'MF_Crust_Present', 'New_MF_Crust']
 
+    sfs_FW_11 = SFS(
+        estimator=grid_search,
+        # k_features=10,          # Select the top 10 features
+        # Explore all possible subset sizes
+        k_features=11,
+        forward=True,         # Forward selection
+        floating=False,        # Disable floating step
+        cv=5,                  # 5-fold cross-validation
+        scoring='f1_macro',    # Use F1 macro as the scoring metric
+        n_jobs=-1              # Use all available CPU cores
+    )
+
+    # Fit SFS to the data
+    # sfs_BW.fit(X_resampled, y_resampled)
+    sfs_FW_11.fit(X_new, y)
+
+    # Retrieve the names of the selected features
+    if isinstance(X_new, pd.DataFrame):
+        selected_feature_names_FW_11 = [X_new.columns[i]
+            for i in sfs_FW_11.k_feature_idx_]
+    else:
+        selected_feature_names_FW_11 = list(sfs_FW_11.k_feature_idx_)
+
+    print("Selected Features:", selected_feature_names_FW_11)
     # ---------------------------------------------------------------
     # --- D) FEATURE EXTRACTION USING LINEAR DISCRIMINANT ANALYSIS (LDA)
     #        on SELECTED FEATURES ---
@@ -1223,11 +1273,26 @@ if __name__ == '__main__':
         'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
     ]
 
-# s0 = ['HS_delta_2d', 'TaG_delta_2d']
+
+BestFeatures_BW_27 = ['N', 'TaG', 'HNnum', 'DayOfSeason',
+                      'HS_delta_1d', 'HS_delta_3d', 'HS_delta_5d',
+                      'DaysSinceLastSnow',
+                      'Tmin_2d', 'TempAmplitude_1d', 'TempAmplitude_2d', 'TempAmplitude_3d', 'TempAmplitude_5d',
+                      'TaG_delta_2d', 'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d',
+                      'DegreeDays_Pos', 'Precip_1d', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_3d', 'Tsnow_delta_5d', 'ConsecWetSnowDays']
+
+BestFeatures_FW_20 = ['N', 'V', 'HNnum', 'PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'Precip_1d', 'Precip_2d', 'Penetration_ratio',
+     'WetSnow_CS', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex', 'MF_Crust_Present', 'New_MF_Crust']
+
+
+BestFeatures_Combined = list(set(BestFeatures_BW_27 + BestFeatures_FW_20))
+
+print(BestFeatures_Combined)  # s0 = ['HS_delta_2d', 'TaG_delta_2d']
 # s0 = ['HS_delta_2d', 'HS_delta_3d', 'HS_delta_5d', 'TaG_delta_2d', 'TmaxG_delta_2d',
 #     'TmaxG_delta_3d', 'Precip_2d', 'Precip_3d', 'Precip_5d', 'TH30_tanh']
 resBW = evaluate_svm_with_feature_selection(mod1, BestFeatures_BW_27)
 resFW = evaluate_svm_with_feature_selection(mod1, BestFeatures_FW_20)
+resComb = evaluate_svm_with_feature_selection(mod1, BestFeatures_Combined)
 
 s1 = ['HSnum', 'HN_5d']
 res1 = evaluate_svm_with_feature_selection(mod1, s1)
