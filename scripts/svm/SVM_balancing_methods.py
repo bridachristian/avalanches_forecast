@@ -7,13 +7,15 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 from sklearn import svm
-# Initialize the SVM classifier (you can choose kernel type based on your dataset)
 from sklearn import svm
 from sklearn.feature_selection import RFE
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import GridSearchCV
-
+from sklearn.preprocessing import FunctionTransformer
+# from sklearn.pipeline import Pipeline
+from imblearn.pipeline import Pipeline  # Use imblearn's Pipeline
+from imblearn.under_sampling import NearMiss
 
 from scripts.svm.data_loading import load_data
 from scripts.svm.undersampling_methods import (undersampling_random, undersampling_random_timelimited,
@@ -648,16 +650,136 @@ if __name__ == '__main__':
 
     X_new = X.drop(columns=combined_list)
 
-    X_resampled, y_resampled = undersampling_nearmiss(
-        X_new, y, version=3, n_neighbors=10)
+    # undersample = NearMiss(version=3, n_neighbors=10)
+
+    # X_resampled, y_resampled = undersampling_nearmiss(
+    #     X_new, y, version=3, n_neighbors=10)
+
+    param_grid = {
+        'svc__C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
+        'svc__gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
+    }
+
+        # Create a pipeline with undersampling and SVC
+    pipeline = Pipeline([
+        ('undersample', NearMiss(version=3, n_neighbors=10)),  # Apply NearMiss
+        ('svc', svm.SVC(kernel='rbf'))
+    ])
+
+    # Use GridSearchCV to tune hyperparameters during SFS
+    grid_search = GridSearchCV(
+        estimator=pipeline,
+        param_grid=param_grid,
+        scoring='f1_macro',
+        cv=5,
+        n_jobs=-1
+    )
+
+    # Perform Sequential Feature Selection (SFS)
+    sfs_BW = SFS(
+        estimator=grid_search,
+        # k_features=10,          # Select the top 10 features
+        # Explore all possible subset sizes
+        k_features=(1, X_new.shape[1]),
+        forward=False,         # Forward selection
+        floating=False,        # Disable floating step
+        cv=5,                  # 5-fold cross-validation
+        scoring='f1_macro',    # Use F1 macro as the scoring metric
+        n_jobs=-1              # Use all available CPU cores
+    )
+
+    # Fit SFS to the data
+    # sfs_BW.fit(X_resampled, y_resampled)
+    sfs_BW.fit(X_new, y)
+
+    # Retrieve the names of the selected features
+    if isinstance(X_new, pd.DataFrame):
+        selected_feature_names_BW = [X_new.columns[i]
+            for i in sfs_BW.k_feature_idx_]
+    else:
+        selected_feature_names_BW = list(sfs_BW.k_feature_idx_)
+
+    print("Selected Features:", selected_feature_names_BW)
+
+    # Retrieve information about subsets
+    subsets_BW = sfs_BW.subsets_
+
+    # Extract the best subset
+    best_subset_BW = max(subsets_BW.items(), key=lambda x: x[1]['avg_score'])
+
+    # Retrieve the indices and names of the best features
+    best_feature_indices_BW = best_subset_BW[1]['feature_idx']
+    if isinstance(X_new, pd.DataFrame):
+        best_feature_names_BW = [X_new.columns[i]
+            for i in best_feature_indices_BW]
+    else:
+        best_feature_names_BW = list(best_feature_indices_BW)
+
+    # Print the results
+    print(f"Best Feature Subset Size: {len(best_feature_names_BW)}")
+    print(f"Best Features: {best_feature_names_BW}")
+    print(f"Best Average Score (F1 Macro): {best_subset_BW[1]['avg_score']}")
+
+    # Extract data for visualization
+    subset_sizes_BW = [len(subset_BW['feature_idx'])
+                           for subset_BW in subsets_BW.values()]
+    avg_scores_BW = [subset_BW['avg_score']
+        for subset_BW in subsets_BW.values()]
+
+    # Plot
+    plt.figure(figsize=(10, 6))
+    plt.plot(subset_sizes_BW, avg_scores_BW, marker='o')
+    plt.xlabel("Number of Selected Features")
+    plt.ylabel("Average F1 Macro Score")
+    plt.title("Feature Subset Performance - Backward feature elimination")
+    plt.grid(True)
+    plt.show()
+
+    BestFeatures_BW_27 = ['N', 'TaG', 'HNnum', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_3d', 'HS_delta_5d', 'DaysSinceLastSnow', 'Tmin_2d', 'TempAmplitude_1d', 'TempAmplitude_2d', 'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_2d',
+        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d', 'DegreeDays_Pos', 'Precip_1d', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_3d', 'Tsnow_delta_5d', 'ConsecWetSnowDays']
+    # ---------------------------------------------------------------
+    # --- e) FEATURE SELECTION USING FORWARD FEATURE ELIMINATION      ---
+    # ---------------------------------------------------------------
+
+    # candidate_features = ['HSnum', 'HN_3d']
+    # List of candidate features
+    candidate_features = [
+            'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+            'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
+            'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+            'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+            'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+            'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
+            'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
+            'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
+            'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
+            'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+            'Precip_1d', 'Precip_2d', 'Precip_3d',
+            'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
+            'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+            'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
+            'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays'
+           ]
+
+    # Data preparation
+    feature_plus = candidate_features + ['AvalDay']
+    mod1_clean = mod1[feature_plus].dropna()
+    X = mod1_clean[candidate_features]
+    y = mod1_clean['AvalDay']
+
+    # Remove correlated features
+    features_to_remove = remove_correlated_features(X, y)
+    features_to_remove_2 = remove_low_variance(X)
+    combined_list = features_to_remove + \
+        features_to_remove_2  # Concatenate the two lists
+
+    X_new = X.drop(columns=combined_list)
+
+    # X_resampled, y_resampled = undersampling_nearmiss(
+    #     X_new, y, version=3, n_neighbors=10)
 
     from sklearn.pipeline import Pipeline
 
-    # Define the parameter grid for tuning
-    # param_grid = {
-    #     'svc__C': [0.1, 1, 10, 100],
-    #     'svc__gamma': [0.01, 0.1, 1, 10]
-    # }
     param_grid = {
         'svc__C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
         'svc__gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
@@ -665,6 +787,7 @@ if __name__ == '__main__':
 
     # Create a pipeline with SVC
     pipeline = Pipeline([
+        ('undersample', NearMiss(version=3, n_neighbors=10)),  # Apply NearMiss
         ('svc', svm.SVC(kernel='rbf'))
     ])
 
@@ -680,8 +803,10 @@ if __name__ == '__main__':
     # Perform Sequential Feature Selection (SFS)
     sfs = SFS(
         estimator=grid_search,
-        k_features=2,          # Select the top 2 features
-        forward=True,          # Forward selection
+        # k_features=10,          # Select the top 10 features
+        # Explore all possible subset sizes
+        k_features=(1, X_new.shape[1]),
+        forward=True,         # Forward selection
         floating=False,        # Disable floating step
         cv=5,                  # 5-fold cross-validation
         scoring='f1_macro',    # Use F1 macro as the scoring metric
@@ -689,68 +814,50 @@ if __name__ == '__main__':
     )
 
     # Fit SFS to the data
-    sfs.fit(X_resampled, y_resampled)
+    sfs.fit(X_new, y)
 
     # Retrieve the names of the selected features
     if isinstance(X_new, pd.DataFrame):
-        selected_feature_names = [X_new.columns[i] for i in sfs.k_feature_idx_]
+        selected_feature_names_FW = [X_new.columns[i]
+            for i in sfs.k_feature_idx_]
     else:
-        selected_feature_names = list(sfs.k_feature_idx_)
+        selected_feature_names_FW = list(sfs.k_feature_idx_)
 
-    print("Selected Features:", selected_feature_names)
-    print("Best Parameters for Each Subset:", sfs.estimator_.best_params_)
+    print("Selected Features:", selected_feature_names_FW)
 
-    # # Funzione per Backward Feature Elimination
+    # Retrieve information about subsets
+    subsets_FW = sfs.subsets_
 
-    # def backward_feature_elimination(X, y, model, scoring='f1_macro', cv=5, param_grid=None):
-    #     n_features = X.shape[1]
-    #     selected_features = list(range(n_features))
-    #     performance_history = []
+    # Extract the best subset
+    best_subset_FW = max(subsets_FW.items(), key=lambda x: x[1]['avg_score'])
 
-    #     while len(selected_features) > 1:
-    #         scores = []
-    #         for i in range(len(selected_features)):
-    #             subset_features = selected_features[:i] + \
-    #                 selected_features[i+1:]
-    #             X_subset = X.iloc[:, subset_features] if isinstance(
-    #                 X, pd.DataFrame) else X[:, subset_features]
+    # Retrieve the indices and names of the best features
+    best_feature_indices_FW = best_subset_FW[1]['feature_idx']
+    if isinstance(X_new, pd.DataFrame):
+        best_feature_names_FW = [X_new.columns[i]
+            for i in best_feature_indices_FW]
+    else:
+        best_feature_names_FW = list(best_feature_indices_FW)
 
-    #             # If param_grid provided, optimize C and gamma
-    #             if param_grid:
-    #                 grid_search = GridSearchCV(
-    #                     svm.SVC(kernel='rbf'), param_grid, cv=cv, scoring=scoring
-    #                 )
-    #                 grid_search.fit(X_subset, y)
-    #                 best_model = grid_search.best_estimator_
-    #             else:
-    #                 best_model = model
+    # Print the results
+    print(f"Best Feature Subset Size: {len(best_feature_names_FW)}")
+    print(f"Best Features: {best_feature_names_FW}")
+    print(f"Best Average Score (F1 Macro): {best_subset_FW[1]['avg_score']}")
 
-    #             score = cross_val_score(
-    #                 best_model, X_subset, y, cv=cv, scoring=scoring).mean()
-    #             scores.append(score)
+    # Extract data for visualization
+    subset_sizes_FW = [len(subset_FW['feature_idx'])
+                           for subset_FW in subsets_FW.values()]
+    avg_scores_FW = [subset_FW['avg_score']
+        for subset_FW in subsets_FW.values()]
 
-    #         worst_feature_index = np.argmin(scores)
-    #         worst_feature = selected_features[worst_feature_index]
-    #         performance_history.append(scores[worst_feature_index])
-
-    #         print(
-    #             f"Feature removed: {worst_feature}, Score: {scores[worst_feature_index]}")
-    #         selected_features.remove(worst_feature)
-
-    #     return selected_features, performance_history
-
-    # Applicare il metodo
-    # svc = svm.SVC(kernel='rbf', C=1)
-    param_grid = {
-        'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
-        'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
-    }
-    svc = svm.SVC(kernel='rbf')
-
-    selected_features, history = backward_feature_elimination(
-        X_new, y, svc, param_grid=param_grid)
-
-    print("Feature selezionate:", selected_features)
+    # Plot
+    plt.figure(figsize=(10, 6))
+    plt.plot(subset_sizes_FW, avg_scores_FW, marker='o')
+    plt.xlabel("Number of Selected Features")
+    plt.ylabel("Average F1 Macro Score")
+    plt.title("Feature Subset Performance - Forward Selection")
+    plt.grid(True)
+    plt.show()
 
     # ---------------------------------------------------------------
     # --- D) FEATURE EXTRACTION USING LINEAR DISCRIMINANT ANALYSIS (LDA)
@@ -759,8 +866,16 @@ if __name__ == '__main__':
     # Standardizzazione dei dati
 
     # best_features = results_df.loc[3]['features_selected']
-    best_features = ['HSnum', 'Precip_2d', 'Precip_3d',
-        'Precip_5d', 'TH30_tanh', 'AvalDay_2d', 'AvalDay_5d']
+    best_features = ['HS_delta_2d',
+     'HS_delta_3d',
+     'HS_delta_5d',
+     'TaG_delta_2d',
+     'TmaxG_delta_2d',
+     'TmaxG_delta_3d',
+     'Precip_2d',
+     'Precip_3d',
+     'Precip_5d',
+     'TH30_tanh']
 
     # Data preparation
     feature_plus = best_features + ['AvalDay']
@@ -1106,8 +1221,9 @@ if __name__ == '__main__':
         'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
     ]
 
-s0 = ['MF_Crust_Present', 'TH01G']
-s0 = ['TmaxG_delta_3d', 'TH10_tanh']
+s0 = ['HS_delta_2d', 'TaG_delta_2d']
+s0 = ['HS_delta_2d', 'HS_delta_3d', 'HS_delta_5d', 'TaG_delta_2d', 'TmaxG_delta_2d',
+    'TmaxG_delta_3d', 'Precip_2d', 'Precip_3d', 'Precip_5d', 'TH30_tanh']
 res0 = evaluate_svm_with_feature_selection(mod1, s0)
 
 s1 = ['HSnum', 'HN_5d']
