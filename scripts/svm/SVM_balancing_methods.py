@@ -764,6 +764,10 @@ if __name__ == '__main__':
         selected_feature_names_BW_6 = list(sfs_BW_6.k_feature_idx_)
 
     print("Selected Features:", selected_feature_names_BW_6)
+
+    BestFeatures_BW_6 = ['TaG', 'DayOfSeason', 'Tmin_2d',
+        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_5d']
+
     # ---------------------------------------------------------------
     # --- e) FEATURE SELECTION USING FORWARD FEATURE ELIMINATION      ---
     # ---------------------------------------------------------------
@@ -911,6 +915,9 @@ if __name__ == '__main__':
         selected_feature_names_FW_11 = list(sfs_FW_11.k_feature_idx_)
 
     print("Selected Features:", selected_feature_names_FW_11)
+
+    BestFeatures_FW_11 = ['PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'WetSnow_Temperature',
+        'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex']
     # ---------------------------------------------------------------
     # --- D) FEATURE EXTRACTION USING LINEAR DISCRIMINANT ANALYSIS (LDA)
     #        on SELECTED FEATURES ---
@@ -1280,18 +1287,25 @@ BestFeatures_BW_27 = ['N', 'TaG', 'HNnum', 'DayOfSeason',
                       'Tmin_2d', 'TempAmplitude_1d', 'TempAmplitude_2d', 'TempAmplitude_3d', 'TempAmplitude_5d',
                       'TaG_delta_2d', 'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d',
                       'DegreeDays_Pos', 'Precip_1d', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_3d', 'Tsnow_delta_5d', 'ConsecWetSnowDays']
+BestFeatures_BW_6 = ['TaG', 'DayOfSeason', 'Tmin_2d',
+    'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_5d']
 
 BestFeatures_FW_20 = ['N', 'V', 'HNnum', 'PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'Precip_1d', 'Precip_2d', 'Penetration_ratio',
      'WetSnow_CS', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex', 'MF_Crust_Present', 'New_MF_Crust']
+BestFeatures_FW_11 = ['PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'WetSnow_Temperature',
+    'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex']
 
-
-BestFeatures_Combined = list(set(BestFeatures_BW_27 + BestFeatures_FW_20))
+BestFeatures_Combined = list(set(BestFeatures_FW_20 + BestFeatures_FW_11))
 
 print(BestFeatures_Combined)  # s0 = ['HS_delta_2d', 'TaG_delta_2d']
 # s0 = ['HS_delta_2d', 'HS_delta_3d', 'HS_delta_5d', 'TaG_delta_2d', 'TmaxG_delta_2d',
 #     'TmaxG_delta_3d', 'Precip_2d', 'Precip_3d', 'Precip_5d', 'TH30_tanh']
-resBW = evaluate_svm_with_feature_selection(mod1, BestFeatures_BW_27)
-resFW = evaluate_svm_with_feature_selection(mod1, BestFeatures_FW_20)
+resBW27 = evaluate_svm_with_feature_selection(mod1, BestFeatures_BW_27)
+resBW6 = evaluate_svm_with_feature_selection(mod1, BestFeatures_BW_6)
+
+resFW20 = evaluate_svm_with_feature_selection(mod1, BestFeatures_FW_20)
+resFW11 = evaluate_svm_with_feature_selection(mod1, BestFeatures_FW_11)
+
 resComb = evaluate_svm_with_feature_selection(mod1, BestFeatures_Combined)
 
 s1 = ['HSnum', 'HN_5d']
