@@ -494,6 +494,7 @@ def main():
     filepath = common_path / 'mod1_gapfillled.csv'
 
     output_filepath = common_path / 'mod1_newfeatures_NEW.csv'
+    summary_filepath = common_path / 'mod1_newfeatures_NEW_summary.csv'
 
     # --- DATA IMPORT ---
 
@@ -579,12 +580,11 @@ def main():
 
     # --- BASIC STATISTICS OF FEATURES ---
     summary_stats = mod1_features.describe().transpose()
-    sns.pairplot(mod1_features)
-    plt.suptitle("Pair Plots of Features", y=1.02)
-    plt.show()
+
     # --- DATA SAVING ---
 
     save_mod1_features(mod1_features, output_filepath)
+    save_mod1_features(summary_stats, summary_filepath)
 
 
 if __name__ == '__main__':
