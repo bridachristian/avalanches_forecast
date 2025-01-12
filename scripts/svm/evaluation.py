@@ -135,7 +135,7 @@ def plot_roc_curve(X_test, y_test, clf):
     plt.show()
 
 
-def permutation_ranking(classifier, X_test, y_test):
+def permutation_ranking(classifier, X, y):
     """
     Computes and visualizes the permutation feature importance for a given classifier.
 
@@ -160,15 +160,17 @@ def permutation_ranking(classifier, X_test, y_test):
     """
 
     # Compute permutation importance
+    # perm_importance = permutation_importance(
+    #     classifier, X, y, n_repeats=100, random_state=42, scoring='f1_macro', n_jobs=-1)
     perm_importance = permutation_importance(
-        classifier, X_test, y_test, n_repeats=30, random_state=42, scoring='f1_macro')
+        classifier, X, y, n_repeats=100, random_state=42, scoring='recall_macro', n_jobs=-1)
 
     # Sort features by mean importance score
     sorted_idx = perm_importance.importances_mean.argsort()
 
     # Create DataFrame with sorted feature importance
     feature_importance_df = pd.DataFrame({
-        'Feature': X_test.columns[sorted_idx],
+        'Feature': X.columns[sorted_idx],
         'Ranking': range(1, len(sorted_idx) + 1),
         'Importance_Mean': perm_importance.importances_mean[sorted_idx],
         'Importance_Std': perm_importance.importances_std[sorted_idx]
@@ -183,7 +185,7 @@ def permutation_ranking(classifier, X_test, y_test):
         align='center',
         capsize=5,  # Adding caps to error bars for clarity
     )
-    plt.yticks(range(len(sorted_idx)), X_test.columns[sorted_idx])
+    plt.yticks(range(len(sorted_idx)), X.columns[sorted_idx])
     plt.title("Feature Importance (Permutation Importance)")
     plt.xlabel("Mean Decrease in Accuracy")
     plt.show()

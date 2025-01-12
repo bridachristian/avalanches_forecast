@@ -76,7 +76,7 @@ def cross_validate_svm(X, y, param_grid, cv=5, title='CV scores', scoring='f1_ma
     """
     # Initialize GridSearchCV for hyperparameter tuning
     grid = GridSearchCV(svm.SVC(kernel='rbf'), param_grid,
-                        cv=cv, scoring=scoring, verbose=3)
+                        cv=cv, scoring=scoring, verbose=3, n_jobs=-1)
     grid.fit(X, y)
 
     # Extract the best parameters and model
