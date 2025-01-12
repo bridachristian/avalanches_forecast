@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import zscore
+import seaborn as sns
 
 
 def load_data(filepath):
@@ -457,6 +458,32 @@ def save_mod1_features(df, output_filepath):
     df.to_csv(output_filepath, index=True, sep=';', na_rep='NaN')
 
 
+def plot_boxplot(df, title, figsize=(10, 6)):
+    plt.figure(figsize=figsize)
+    sns.violinplot(data=df)
+    plt.title("Boxplot of DataFrame Features", fontsize=14)
+    plt.ylabel("Values", fontsize=12)
+    plt.xlabel("Features", fontsize=12)
+    plt.xticks(rotation=45)
+    plt.show()
+
+
+def plot_new_columns(df_before, df_after, title, figsize=(10, 6)):
+    """Plot boxplots of only the new columns added to the DataFrame."""
+    new_columns = list(set(df_after.columns) - set(df_before.columns))
+    if not new_columns:
+        print(f"No new columns added for {title}.")
+        return
+
+    plt.figure(figsize=figsize)
+    sns.violinplot(data=df_after[new_columns])
+    plt.title(title, fontsize=14)
+    plt.ylabel("Values", fontsize=12)
+    plt.xlabel("Features", fontsize=12)
+    plt.xticks(rotation=45)
+    plt.show()
+
+
 def main():
     # --- PATHS ---
 
@@ -476,31 +503,85 @@ def main():
 
     # --- NEW FEATURES CREATION ---
 
-    # Add new variables to the dataset
+    # Initial measured values
     mod1_features = mod1[['Stagione', 'N', 'V', 'VQ1', 'VQ2', 'TaG', 'TminG',
                           'TmaxG', 'HSnum', 'HNnum', 'rho', 'TH01G', 'TH03G', 'PR', 'CS', 'B', 'L1', 'L2']]
+
+    plot_boxplot(mod1_features, title="Boxplot of Measured Values")
+
+    # Step-by-step feature calculations with appropriate titles
+    df_before = mod1_features.copy()
     mod1_features = calculate_day_of_season(
         mod1_features, season_start_date='12-01')
+    plot_new_columns(df_before, mod1_features,
+                     title="Boxplot of Day of Season Features")
+
+    df_before = mod1_features.copy()
     mod1_features = calculate_snow_height_differences(mod1_features)
+    plot_new_columns(df_before, mod1_features,
+                     title="Boxplot of Snow Height Differences")
+
+    df_before = mod1_features.copy()
     mod1_features = calculate_new_snow(mod1_features)
+    plot_new_columns(df_before, mod1_features,
+                     title="Boxplot of New Snow Features")
+
+    df_before = mod1_features.copy()
     mod1_features = calculate_temperature(mod1_features)
+    plot_new_columns(df_before, mod1_features,
+                     title="Boxplot of Temperature Features")
+
+    df_before = mod1_features.copy()
     mod1_features = calculate_degreedays(mod1_features)
+    plot_new_columns(df_before, mod1_features, title="Boxplot of Degree Days")
+
+    df_before = mod1_features.copy()
     mod1_features = calculate_wind_snow_drift(mod1_features)
+    plot_new_columns(df_before, mod1_features,
+                     title="Boxplot of Wind and Snow Drift Features")
+
+    df_before = mod1_features.copy()
     mod1_features = calculate_swe(mod1_features)
+    plot_new_columns(df_before, mod1_features,
+                     title="Boxplot of SWE (Snow Water Equivalent) Features")
+
+    df_before = mod1_features.copy()
     mod1_features = calculate_penetration(mod1_features)
+    plot_new_columns(df_before, mod1_features,
+                     title="Boxplot of Snow Penetration Features")
+
+    df_before = mod1_features.copy()
     mod1_features = calculate_wet_snow(mod1_features)
+    plot_new_columns(df_before, mod1_features,
+                     title="Boxplot of Wet Snow Features")
+
+    df_before = mod1_features.copy()
     mod1_features = calculate_temperature_gradient(mod1_features)
+    plot_new_columns(df_before, mod1_features,
+                     title="Boxplot of Temperature Gradient Features")
+
+    df_before = mod1_features.copy()
     mod1_features = calculate_snow_temperature(mod1_features)
+    plot_new_columns(df_before, mod1_features,
+                     title="Boxplot of Snow Temperature Features")
+
+    df_before = mod1_features.copy()
     mod1_features = calculate_MFcrust(mod1_features)
+    plot_new_columns(df_before, mod1_features,
+                     title="Boxplot of Melt-Freeze Crust Features")
+
+    df_before = mod1_features.copy()
     mod1_features = calculate_avalanche_days(mod1_features)
+    plot_new_columns(df_before, mod1_features,
+                     title="Boxplot of Avalanche Days Features")
 
     mod1_features = mod1_features.drop(columns=['rho', 'B', 'L1', 'L2'])
 
-    # --- DROP NON-SENSE FEATURES ---
-
-    # mod1_features = mod1_features.drop(
-    #     columns=['rho', 'B', 'L1', 'L2', 'rho_adjusted'])
-
+    # --- BASIC STATISTICS OF FEATURES ---
+    summary_stats = mod1_features.describe().transpose()
+    sns.pairplot(mod1_features)
+    plt.suptitle("Pair Plots of Features", y=1.02)
+    plt.show()
     # --- DATA SAVING ---
 
     save_mod1_features(mod1_features, output_filepath)
