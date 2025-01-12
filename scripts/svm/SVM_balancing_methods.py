@@ -1010,124 +1010,159 @@ if __name__ == '__main__':
         X_train_lda, y_train, X_test_lda, y_test, result_LDA['best_params'])
 
     # ---------------------------------------------------------------
-    # --- d) RECURSIVE FEATURE EXTRACTION WITH CROSS VALIDATION  ---
+    # --- e) RECURSIVE FEATURE EXTRACTION: RFE  ---
     # ---------------------------------------------------------------
-    # from sklearn.feature_selection import RFECV
-    # from sklearn.model_selection import StratifiedKFold
+    from sklearn.svm import SVC
+    from sklearn.feature_selection import RFE
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.svm import LinearSVC
+    from sklearn.feature_selection import RFECV
+    from sklearn.model_selection import StratifiedKFold
 
-    # # candidate_features = ['HSnum', 'HN_3d']
-    # candidate_features = [
-    #     'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
-    #     'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
-    #     'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
-    #     'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-    #     'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-    #     'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
-    #     'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
-    #     'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
-    #     'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
-    #     'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-    #     'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
-    #     'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
-    #     'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
-    #     'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-    #     'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
-    #     'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
-    #     'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
-    # ]
+    candidate_features = [
+        'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
+        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+        'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
+        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
+        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
+        'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
+        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+        'Precip_1d', 'Precip_2d', 'Precip_3d',
+        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
+        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
+        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays'
+    ]
 
-    # feature_plus = candidate_features + ['AvalDay']
-    # mod1_clean = mod1[feature_plus]
-    # mod1_clean = mod1_clean.dropna()
+    # Data preparation
+    feature_plus = candidate_features + ['AvalDay']
+    mod1_clean = mod1[feature_plus].dropna()
+    X = mod1_clean[candidate_features]
+    y = mod1_clean['AvalDay']
 
-    # # Supponiamo che `mod1_clean` contenga il dataset pre-pulito
-    # X = mod1_clean[candidate_features]
-    # y = mod1_clean['AvalDay']  # Target
+    X_resampled, y_resampled = undersampling_nearmiss(
+        X, y, version=3, n_neighbors=10)
 
-    # # Standardizzazione
-    # # scaler = StandardScaler()
-    # scaler = MinMaxScaler()
-    # X_scaled = pd.DataFrame(scaler.fit_transform(
-    #     X), columns=X.columns, index=X.index)
+    # Split into training and testing datasets
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_resampled, y_resampled, test_size=0.25, random_state=42)
 
-    # # Calcola la matrice di correlazione
-    # corr_matrix = pd.concat([X_scaled, y], axis=1).corr()
+    # Scale the data (important for SVM with RBF kernel)
+    # scaler = StandardScaler()
+    scaler = MinMaxScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
 
-    # # Correlazione reciproca tra feature
-    # feature_corr = corr_matrix.loc[X.columns, X.columns]
+    # Initialize the LinearSVC estimator
+    linear_svm = LinearSVC(penalty="l1", dual=False, max_iter=10000)
 
-    # # Correlazione con il target
-    # target_corr = corr_matrix.loc[X.columns, y.name]
+    # Initialize RFECV with cross-validation (using Stratified K-Folds)
+    selector = RFECV(estimator=linear_svm, step=1,
+                     cv=StratifiedKFold(5), scoring='recall_macro')
 
-    # # Trova le feature con alta correlazione reciproca (>0.9)
-    # high_corr_pairs = np.where((np.abs(feature_corr) > 0.9) & (
-    #     np.triu(np.ones(feature_corr.shape), k=1)))
+    # Fit the selector to the data
+    selector.fit(X_train_scaled, y_train)
 
-    # # Lista di coppie di feature altamente correlate
-    # high_corr_feature_pairs = [(X.columns[i], X.columns[j])
-    #                            for i, j in zip(*high_corr_pairs)]
+    # Print the optimal number of features
+    print(f"Optimal number of features: {selector.n_features_}")
 
-    # # Identifica le feature da rimuovere
-    # features_to_remove = set()
-    # for feature1, feature2 in high_corr_feature_pairs:
-    #     # Confronta la correlazione di entrambe le feature con il target
-    #     if abs(target_corr[feature1]) > abs(target_corr[feature2]):
-    #         features_to_remove.add(feature2)
-    #     else:
-    #         features_to_remove.add(feature1)
+    # Get the selected features
+    selected_features = X.columns[selector.support_]
+    print("Selected Features:", selected_features)
 
-    # # Rimuovi le feature selezionate
-    # X_filtered = X_scaled.drop(columns=features_to_remove)
+    # # Train and evaluate the model using the selected features
+    # X_train_selected = X_train_scaled[:, selector.support_]
+    # X_test_selected = X_test_scaled[:, selector.support_]
 
-    # # Random undersampling
-    # X_resampled, y_resampled = undersampling_cnn(X_filtered, y)
+    # param_grid = {
+    #     'C': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000],
+    #     'gamma': [100, 50, 10, 5, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
+    # }
+    # # Train a model with the selected features
+    # best_params = cross_validate_svm(
+    #     X_train_selected, y_train, param_grid, cv=5, title='CV scores', scoring='recall_macro')
+    # # svm_rbf = SVC(kernel='rbf', gamma='scale', C=1)
+    # svm_rbf = SVC(kernel='rbf', gamma=best_params['best_params']['gamma'],
+    #               C=best_params['best_params']['C'])
+    # svm_rbf.fit(X_train_selected, y_train)
 
-    # # Divisione train-test
-    # X_train, X_test, y_train, y_test = train_test_split(
-    #     X_resampled, y_resampled, test_size=0.25, random_state=42)
-    # from sklearn.inspection import permutation_importance
+    # y_pred = svm_rbf.predict(X_test_selected)
+    # from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, classification_report
 
-    # # Define SVC with RBF kernel
-    # svc = svm.SVC(kernel='rbf', C=1, gamma='scale', random_state=42)
+    # # Evaluate the model
+    # accuracy = svm_rbf.score(X_test_selected, y_test)
+    # print(f"Model Accuracy with Selected Features: {accuracy}")
+    # # Precision
+    # precision = precision_score(y_test, y_pred)
+    # print("Precision:", precision)
 
-    # # Fit the model initially to calculate feature importance
-    # svc.fit(X_train, y_train)
+    # # Recall
+    # recall = recall_score(y_test, y_pred)
+    # print("Recall:", recall)
 
-    # # Calculate permutation importance for feature selection
-    # perm_importance = permutation_importance(
-    #     svc, X_train, y_train, n_repeats=10, random_state=42)
+    # # F1 Score
+    # f1 = f1_score(y_test, y_pred)
+    # print("F1 Score:", f1)
 
-    # # Get the importance scores for features
-    # importance_scores = perm_importance.importances_mean
+    # # ROC AUC
+    # roc_auc = roc_auc_score(y_test, y_pred)
+    # print("ROC AUC:", roc_auc)
 
-    # # Sort features based on importance
-    # sorted_idx = importance_scores.argsort()
+    # # Confusion Matrix
+    # cm = confusion_matrix(y_test, y_pred)
+    # print("Confusion Matrix:")
+    # print(cm)
 
-    # feature_names = X.columns
-    # importance_df = pd.DataFrame({
-    #     'Feature': feature_names[sorted_idx],
-    #     'Importance': importance_scores[sorted_idx]
-    # })
+    # # Classification Report (summary of precision, recall, F1, support)
+    # print("\nClassification Report:")
+    # print(classification_report(y_test, y_pred))
 
-    # # Select the top N features
-    # top_features_df = importance_df.tail(10)
-
-    # # Plot the importance scores for the top N features
-    # plt.figure(figsize=(10, 12))
-    # plt.barh(importance_df['Feature'],
-    #          importance_df['Importance'], color='skyblue')
-    # plt.xlabel('Importance Score', fontsize=12)
-    # plt.ylabel('Features', fontsize=12)
-    # plt.title('Top 10 Feature Importances', fontsize=16)
-    # plt.grid(axis='x', linestyle='--', alpha=0.7)
-    # plt.tight_layout()
+    # # Plot the cross-validation scores for each number of features
+    # plt.figure(figsize=(8, 6))
+    # plt.plot(range(1, len(selector.cv_results_['mean_test_score']) + 1),
+    #          selector.cv_results_['mean_test_score'])
+    # plt.xlabel('Number of Features')
+    # plt.ylabel('Cross-validation score (Accuracy)')
+    # plt.title('RFECV - Cross-validation scores')
     # plt.show()
 
-    # N = 10  # Number of top features you want to select
-    # top_features = sorted_idx[-N:]
-    # X_train_selected = X_train.iloc[:, top_features]
-    # X_test_selected = X_test.iloc[:, top_features]
 
+# .......................
+
+    # Data preparation
+    feature_plus = list(selected_features) + ['AvalDay']
+    mod1_clean = mod1[feature_plus].dropna()
+    X = mod1_clean[selected_features]
+    y = mod1_clean['AvalDay']
+
+    X_resampled, y_resampled = undersampling_nearmiss(
+        X, y, version=3, n_neighbors=10)
+
+    # Split into training and testing datasets
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.25, random_state=42)
+
+    # Scale the data (important for SVM with RBF kernel)
+    # scaler = StandardScaler()
+    scaler = MinMaxScaler()
+    X_train_scaled = pd.DataFrame(
+        scaler.fit_transform(X_train), columns=X_train.columns)
+    X_test_scaled = pd.DataFrame(
+        scaler.transform(X_test), columns=X_test.columns)
+
+    param_grid = {
+        'C': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000],
+        'gamma': [100, 50, 10, 5, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
+    }
+    result_SVM = tune_train_evaluate_svm(
+        X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method='Nearmiss3')
+
+    classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
+        X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params'])
     # -------------------------------------------------------
     # TEST FEATURES PERFORMANCE
     # -------------------------------------------------------
@@ -1167,6 +1202,11 @@ if __name__ == '__main__':
     BestFeatures_FW_11 = ['PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'WetSnow_Temperature',
                           'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex']
 
+    Best_RFE = ['HSnum', 'TH03G', 'HS_delta_1d', 'HS_delta_2d', 'HN_2d', 'Tmax_2d',
+                'Tmin_5d', 'TempAmplitude_1d', 'TaG_delta_1d', 'TaG_delta_5d',
+                'TminG_delta_3d', 'TmaxG_delta_1d', 'TmaxG_delta_2d', 'Precip_2d',
+                'Tsnow_delta_2d']
+
     BestFeatures_Combined = list(set(BestFeatures_BW_6 + BestFeatures_FW_11))
 
     print(BestFeatures_Combined)  # s0 = ['HS_delta_2d', 'TaG_delta_2d']
@@ -1178,6 +1218,8 @@ if __name__ == '__main__':
     resFW11 = evaluate_svm_with_feature_selection(mod1, BestFeatures_FW_11)
 
     resComb = evaluate_svm_with_feature_selection(mod1, BestFeatures_Combined)
+
+    resRFE = evaluate_svm_with_feature_selection(mod1, Best_RFE)
 
     # --- Test Pairwise combination with features selected in BW_6 ----
 
