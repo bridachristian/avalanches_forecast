@@ -695,7 +695,7 @@ if __name__ == '__main__':
     shap_values = explainer.shap_values(X_train_scaled)
 
     # Global Feature Importance
-    shap.summary_plot(shap_values[1], X_train_scaled)
+    shap.summary_plot(shap_values, X_train_scaled)
 
     # ---------------------------------------------------------------
     # --- d) FEATURE SELECTION USING BACKWARD FEATURE ELIMINATION      ---
