@@ -632,6 +632,72 @@ if __name__ == '__main__':
     plt.show()
 
     # ---------------------------------------------------------------
+    # --- d) FEATURE SELECTION USING SHAP METHOD      ---
+    # ---------------------------------------------------------------
+
+    # candidate_features = ['HSnum', 'HN_3d']
+    # List of candidate features
+    candidate_features = [
+        'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
+        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+        'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
+        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
+        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
+        'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
+        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+        'Precip_1d', 'Precip_2d', 'Precip_3d',
+        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
+        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
+        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays'
+    ]
+
+    # Data preparation
+    feature_plus = candidate_features + ['AvalDay']
+    mod1_clean = mod1[feature_plus].dropna()
+    X = mod1_clean[candidate_features]
+    y = mod1_clean['AvalDay']
+
+    # Remove correlated features
+    features_low_variance = remove_low_variance(X)
+    X = X.drop(columns=features_low_variance)
+
+    features_correlated = remove_correlated_features(X, y)
+    X = X.drop(columns=features_correlated)
+
+    import shap
+
+    X_resampled, y_resampled = undersampling_nearmiss(
+        X, y, version=3, n_neighbors=10)
+
+    # Split into training and test set
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_resampled, y_resampled, test_size=0.25, random_state=42)
+
+    # Normalization
+    scaler = MinMaxScaler()
+    X_train_scaled = pd.DataFrame(
+        scaler.fit_transform(X_train), columns=X_train.columns)
+    X_test_scaled = pd.DataFrame(
+        scaler.fit_transform(X_test), columns=X_test.columns)
+
+    # Train SVM model
+    svm = svm.SVC(kernel='rbf', C=1, gamma=0.1, probability=True)
+    svm.fit(X_train_scaled, y_train)
+
+    # Use SHAP Kernel Explainer
+    explainer = shap.KernelExplainer(svm.predict_proba, X_train_scaled)
+
+    # Compute SHAP Values
+    shap_values = explainer.shap_values(X_train_scaled)
+
+    # Global Feature Importance
+    shap.summary_plot(shap_values[1], X_train_scaled)
+
+    # ---------------------------------------------------------------
     # --- d) FEATURE SELECTION USING BACKWARD FEATURE ELIMINATION      ---
     # ---------------------------------------------------------------
 
