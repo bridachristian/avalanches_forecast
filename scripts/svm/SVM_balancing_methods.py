@@ -638,7 +638,7 @@ if __name__ == '__main__':
     # candidate_features = ['HSnum', 'HN_3d']
     # List of candidate features
     candidate_features = [
-        'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+        'TaG', 'TminG', 'TmaxG', 'HSnum',
         'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
         'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
         'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
@@ -684,8 +684,17 @@ if __name__ == '__main__':
     X_test_scaled = pd.DataFrame(
         scaler.fit_transform(X_test), columns=X_test.columns)
 
-    # Train SVM model
-    svm = svm.SVC(kernel='rbf', C=1, gamma=0.1, probability=True)
+    param_grid = {
+        'C': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000],
+        'gamma': [100, 50, 10, 5, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
+    }
+    resampling_method = 'Nearmiss3'
+
+    res_svm = tune_train_evaluate_svm(X_train_scaled, y_train, X_test_scaled,
+                                      y_test, param_grid, resampling_method, cv=5)    # Train SVM model
+
+    svm = svm.SVC(kernel='rbf', C=res_svm['best_params']['C'],
+                  gamma=res_svm['best_params']['gamma'], probability=True)
     svm.fit(X_train_scaled, y_train)
 
     # Use SHAP Kernel Explainer
@@ -694,8 +703,38 @@ if __name__ == '__main__':
     # Compute SHAP Values
     shap_values = explainer.shap_values(X_train_scaled)
 
-    # Global Feature Importance
-    shap.summary_plot(shap_values, X_train_scaled)
+    print(f"SHAP values shape: {shap_values[0].shape}")
+    print(f"X_test shape: {X_test.shape}")
+
+    mean_shap_values = np.abs(shap_values[2])[:, 0]
+
+    shap_values_df = shap_values.to_dataframe()
+
+    # Extract SHAP values for class 1 (second column of the third dimension)
+    shap_class_1 = shap_values[:, :, 1]
+
+    # Compute the mean absolute SHAP value for each feature across all samples
+    mean_shap_class_1 = np.mean(np.abs(shap_class_1), axis=0)
+
+    # Assuming `X_test` is a pandas DataFrame, match the feature names
+    feature_names = X_test.columns
+
+    # Create a DataFrame for feature importance
+    feature_importance = pd.DataFrame({
+        'Feature': feature_names,
+        'Importance': mean_shap_class_1
+    }).sort_values(by='Importance', ascending=False)
+
+    # Plot the feature importance
+    plt.figure(figsize=(10, 15))
+    plt.barh(feature_importance['Feature'],
+             feature_importance['Importance'], color='skyblue')
+    plt.gca().invert_yaxis()  # Invert y-axis for better readability
+    plt.title("Feature Importance (First Column of SHAP Values)")
+    plt.xlabel("Mean |SHAP Value|")
+    plt.ylabel("Feature")
+    plt.tight_layout()
+    plt.show()
 
     # ---------------------------------------------------------------
     # --- d) FEATURE SELECTION USING BACKWARD FEATURE ELIMINATION      ---
