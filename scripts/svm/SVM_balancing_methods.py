@@ -550,13 +550,12 @@ if __name__ == '__main__':
     X = mod1_clean[candidate_features]
     y = mod1_clean['AvalDay']
 
-    # Remove correlated features
-    features_to_remove = remove_correlated_features(X, y)
-    features_to_remove_2 = remove_low_variance(X)
-    combined_list = features_to_remove + \
-        features_to_remove_2  # Concatenate the two lists
+    # Remove correlated features and with low variance
+    features_low_variance = remove_low_variance(X)
+    X = X.drop(columns=features_low_variance)
 
-    X_new = X.drop(columns=combined_list)
+    features_correlated = remove_correlated_features(X, y)
+    X_new = X.drop(columns=features_correlated)
 
     # Create a range for k from 1 to num_columns (inclusive)
     k_range = list(range(1, X_new.shape[1]+1))
@@ -661,7 +660,7 @@ if __name__ == '__main__':
     X = mod1_clean[candidate_features]
     y = mod1_clean['AvalDay']
 
-    # Remove correlated features
+    # Remove correlated features and with low variance
     features_low_variance = remove_low_variance(X)
     X = X.drop(columns=features_low_variance)
 
@@ -700,11 +699,22 @@ if __name__ == '__main__':
     # Use SHAP Kernel Explainer
     explainer = shap.KernelExplainer(svm.predict_proba, X_train_scaled)
 
-    # Compute SHAP Values
+    # Compute SHAP values
     shap_values = explainer.shap_values(X_train_scaled)
 
-    print(f"SHAP values shape: {shap_values[0].shape}")
-    print(f"X_test shape: {X_test.shape}")
+    # Ensure SHAP values are correctly formatted
+    # Should be <class 'list'> or <class 'numpy.ndarray'>
+    print(type(shap_values))
+    print(
+        f"SHAP values shape: {len(shap_values)}, Feature count: {X_train_scaled.shape[1]}")
+
+    # Assign feature names manually if needed
+    if hasattr(shap_values, 'feature_names') is False:
+        shap_values.feature_names = X_train_scaled.columns
+
+    # Plot the bar chart of SHAP values
+    shap.plots.bar(shap_values[0], feature_names=X_train_scaled.columns)
+# =====================
 
     mean_shap_values = np.abs(shap_values[2])[:, 0]
 
