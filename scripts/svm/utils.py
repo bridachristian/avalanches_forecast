@@ -459,7 +459,7 @@ def select_k_best(X, y, k=5):
             "Input X must be a pandas DataFrame to return feature names.")
 
     # Apply SelectKBest (ANOVA F-test)
-    selector = SelectKBest(score_func=mutual_info_classif, k=k)
+    selector = SelectKBest(score_func=f_classif, k=k)
     X_selected = selector.fit_transform(X, y)
 
     # Get the selected feature names
