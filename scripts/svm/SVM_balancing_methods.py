@@ -708,44 +708,52 @@ if __name__ == '__main__':
     print(
         f"SHAP values shape: {len(shap_values)}, Feature count: {X_train_scaled.shape[1]}")
 
-    # Assign feature names manually if needed
-    if hasattr(shap_values, 'feature_names') is False:
-        shap_values.feature_names = X_train_scaled.columns
+    shap_values_df = pd.DataFrame(
+        shap_values[:, :, 1], columns=X_train_scaled.columns)
 
-    # Plot the bar chart of SHAP values
-    shap.plots.bar(shap_values[0], feature_names=X_train_scaled.columns)
-# =====================
+    mean_shap_values = shap_values[:, :, 0].mean(axis=0)
+    # Convert to pandas Series with feature names
+    mean_shap_values = pd.Series(
+        mean_shap_values, index=X_train_scaled.columns)
 
-    mean_shap_values = np.abs(shap_values[2])[:, 0]
+    # Sort SHAP values to make the plot clearer
+    mean_shap_values_sorted = mean_shap_values.sort_values(ascending=True)
 
-    shap_values_df = shap_values.to_dataframe()
-
-    # Extract SHAP values for class 1 (second column of the third dimension)
-    shap_class_1 = shap_values[:, :, 1]
-
-    # Compute the mean absolute SHAP value for each feature across all samples
-    mean_shap_class_1 = np.mean(np.abs(shap_class_1), axis=0)
-
-    # Assuming `X_test` is a pandas DataFrame, match the feature names
-    feature_names = X_test.columns
-
-    # Create a DataFrame for feature importance
-    feature_importance = pd.DataFrame({
-        'Feature': feature_names,
-        'Importance': mean_shap_class_1
-    }).sort_values(by='Importance', ascending=False)
-
-    # Plot the feature importance
+    # Create a horizontal bar plot
     plt.figure(figsize=(10, 15))
-    plt.barh(feature_importance['Feature'],
-             feature_importance['Importance'], color='skyblue')
-    plt.gca().invert_yaxis()  # Invert y-axis for better readability
-    plt.title("Feature Importance (First Column of SHAP Values)")
-    plt.xlabel("Mean |SHAP Value|")
-    plt.ylabel("Feature")
+    mean_shap_values_sorted.plot(kind='barh', color='skyblue')
+    plt.xlabel('Mean SHAP Value')
+    plt.ylabel('Features')
+    plt.title('Feature Importance Based on SHAP Values')
+    plt.show()
+
+    shap_values_abs_df = shap_values_df.abs()
+
+    import matplotlib.colors as mcolors
+
+    # Create a custom diverging colormap (red, white, blue)
+    cmap = mcolors.TwoSlopeNorm(vmin=shap_values_df.min(
+    ).min(), vcenter=0, vmax=shap_values_df.max().max())
+    # Red to Blue with white as the midpoint
+    cmap = sns.diverging_palette(250, 10, as_cmap=True)
+
+    # Set up the matplotlib figure
+    plt.figure(figsize=(10, 15))
+
+    # Create the heatmap with the custom color map
+    sns.heatmap(shap_values_df.T, cmap='RdBu_r', annot=False,
+                fmt='.2g', center=0, cbar_kws={'label': 'SHAP Value'})
+
+    # Add title and labels
+    plt.title('Heatmap of SHAP Values with Red-White-Blue Color Map')
+    plt.xlabel('Samples')
+    plt.ylabel('Features')
+
+    # Show the plot
     plt.tight_layout()
     plt.show()
 
+    #
     # ---------------------------------------------------------------
     # --- d) FEATURE SELECTION USING BACKWARD FEATURE ELIMINATION      ---
     # ---------------------------------------------------------------
