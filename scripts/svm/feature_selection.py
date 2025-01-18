@@ -255,7 +255,7 @@ if __name__ == '__main__':
     # candidate_features = ['HSnum', 'HN_3d']
     # List of candidate features
     candidate_features = [
-        'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+        'TaG', 'TminG', 'TmaxG', 'HSnum',
         'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
         'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
         'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
@@ -282,11 +282,27 @@ if __name__ == '__main__':
     X_new = X.drop(columns=features_correlated)
 
     # Create a range for k from 1 to num_columns (inclusive)
-    k_range = list(range(1, X_new.shape[1]+1))
+    # k_range = list(range(1, X_new.shape[1]+1))
+    k_range = [1, 2, 3, 5, 7, 10, 15, 20, 25]
     results = []
+    # Tuning of parameter C and gamma for SVM classification
+    # param_grid = {
+    #     'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
+    #     'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
+    # }
     param_grid = {
-        'C': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000],
-        'gamma': [100, 50, 10, 5, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
+        'C': [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
+              0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
+              0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+              1, 2, 3, 4, 5, 6, 7, 8, 9,
+              10, 20, 30, 40, 50, 60, 70, 80, 90,
+              100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
+        'gamma': [0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009,
+                  0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
+                  0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
+                  0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+                  1, 2, 3, 4, 5, 6, 7, 8, 9,
+                  10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     }
 
     for k in k_range:
@@ -297,8 +313,10 @@ if __name__ == '__main__':
 
         X_selected = X_new[features_selected]
         # Apply random undersampling
-        X_resampled, y_resampled = undersampling_nearmiss(
-            X_selected, y, version=3, n_neighbors=10)
+        # X_resampled, y_resampled = undersampling_nearmiss(
+        #     X_selected, y, version=3, n_neighbors=10)
+        X_resampled, y_resampled = undersampling_clustercentroids(
+            X_selected, y)
 
         # Remove correlated features and with low variance
         features_low_variance = remove_low_variance(X_resampled)
@@ -317,7 +335,7 @@ if __name__ == '__main__':
 
         # SVM model tuning, training and evaluation
         result_SVM = tune_train_evaluate_svm(
-            X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method='Nearmiss3')
+            X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method=f'feature setup {k}')
 
         # Final SVM classifier and evaluation
         classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
@@ -337,6 +355,12 @@ if __name__ == '__main__':
 
     # Convert results to a DataFrame for easy viewing
     results_df = pd.DataFrame(results)
+
+    results_path = Path(
+        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\ANOVA\\')
+
+    save_outputfile(results_df, results_path /
+                    'anova_feature_selection.csv')
 
     # Plotting
     plt.figure(figsize=(10, 6))
@@ -489,7 +513,7 @@ if __name__ == '__main__':
     # candidate_features = ['HSnum', 'HN_3d']
     # List of candidate features
     candidate_features = [
-        'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+        'TaG', 'TminG', 'TmaxG', 'HSnum',
         'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
         'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
         'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
@@ -645,7 +669,7 @@ if __name__ == '__main__':
     # candidate_features = ['HSnum', 'HN_3d']
     # List of candidate features
     candidate_features = [
-        'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+        'TaG', 'TminG', 'TmaxG', 'HSnum',
         'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
         'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
         'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
@@ -872,7 +896,7 @@ if __name__ == '__main__':
     from sklearn.model_selection import StratifiedKFold
 
     candidate_features = [
-        'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+        'TaG', 'TminG', 'TmaxG', 'HSnum',
         'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
         'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
         'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
