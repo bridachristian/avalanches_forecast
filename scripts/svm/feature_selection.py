@@ -553,12 +553,11 @@ if __name__ == '__main__':
     y = mod1_clean['AvalDay']
 
     # Remove correlated features
-    features_to_remove = remove_correlated_features(X, y)
-    features_to_remove_2 = remove_low_variance(X)
-    combined_list = features_to_remove + \
-        features_to_remove_2  # Concatenate the two lists
+    features_correlated = remove_correlated_features(X, y)
 
-    X_new = X.drop(columns=combined_list)
+    # features_to_remove_2 = remove_low_variance(X)
+
+    X_new = X.drop(columns=features_correlated)
 
     # undersample = NearMiss(version=3, n_neighbors=10)
 
@@ -571,8 +570,8 @@ if __name__ == '__main__':
     }
     # Create a pipeline with undersampling and SVC
     pipeline = Pipeline([
-        # ('undersample', NearMiss(version=3, n_neighbors=10)),  # Apply NearMiss
-        ('undersample', ClusterCentroids(random_state=42)),  # Apply NearMiss
+        ('undersample', NearMiss(version=3, n_neighbors=10)),  # Apply NearMiss
+        # ('undersample', ClusterCentroids(random_state=42)),  # Apply NearMiss
         ('svc', svm.SVC(kernel='rbf'))
     ])
 
@@ -613,6 +612,12 @@ if __name__ == '__main__':
 
     # Retrieve information about subsets
     subsets_BW = sfs_BW.subsets_
+    subsets_BW_df = pd.DataFrame(subsets_BW)
+    results_path = Path(
+        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\BACKWARD_FEATURE_ELIMINATION\\')
+
+    save_outputfile(subsets_BW_df, results_path /
+                    'BFE_feature_selection.csv')
 
     # Extract the best subset
     best_subset_BW = max(subsets_BW.items(), key=lambda x: x[1]['avg_score'])
@@ -645,38 +650,38 @@ if __name__ == '__main__':
     plt.grid(True)
     plt.show()
 
-    BestFeatures_BW_27 = ['N', 'TaG', 'HNnum', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_3d', 'HS_delta_5d', 'DaysSinceLastSnow', 'Tmin_2d', 'TempAmplitude_1d', 'TempAmplitude_2d', 'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_2d',
-                          'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d', 'DegreeDays_Pos', 'Precip_1d', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_3d', 'Tsnow_delta_5d', 'ConsecWetSnowDays']
+    # BestFeatures_BW_27 = ['N', 'TaG', 'HNnum', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_3d', 'HS_delta_5d', 'DaysSinceLastSnow', 'Tmin_2d', 'TempAmplitude_1d', 'TempAmplitude_2d', 'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_2d',
+    #                       'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d', 'DegreeDays_Pos', 'Precip_1d', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_3d', 'Tsnow_delta_5d', 'ConsecWetSnowDays']
 
-    # NEW evaluation based on the best 6 feature (BASED ON PLOT)
-    # Perform Sequential Feature Selection (SFS)
-    sfs_BW_6 = SFS(
-        estimator=grid_search,
-        # k_features=10,          # Select the top 10 features
-        # Explore all possible subset sizes
-        k_features=6,
-        forward=False,         # Forward selection
-        floating=False,        # Disable floating step
-        cv=5,                  # 5-fold cross-validation
-        scoring='f1_macro',    # Use F1 macro as the scoring metric
-        n_jobs=-1              # Use all available CPU cores
-    )
+    # # NEW evaluation based on the best 6 feature (BASED ON PLOT)
+    # # Perform Sequential Feature Selection (SFS)
+    # sfs_BW_6 = SFS(
+    #     estimator=grid_search,
+    #     # k_features=10,          # Select the top 10 features
+    #     # Explore all possible subset sizes
+    #     k_features=6,
+    #     forward=False,         # Forward selection
+    #     floating=False,        # Disable floating step
+    #     cv=5,                  # 5-fold cross-validation
+    #     scoring='f1_macro',    # Use F1 macro as the scoring metric
+    #     n_jobs=-1              # Use all available CPU cores
+    # )
 
-    # Fit SFS to the data
-    # sfs_BW.fit(X_resampled, y_resampled)
-    sfs_BW_6.fit(X_new, y)
+    # # Fit SFS to the data
+    # # sfs_BW.fit(X_resampled, y_resampled)
+    # sfs_BW_6.fit(X_new, y)
 
-    # Retrieve the names of the selected features
-    if isinstance(X_new, pd.DataFrame):
-        selected_feature_names_BW_6 = [X_new.columns[i]
-                                       for i in sfs_BW_6.k_feature_idx_]
-    else:
-        selected_feature_names_BW_6 = list(sfs_BW_6.k_feature_idx_)
+    # # Retrieve the names of the selected features
+    # if isinstance(X_new, pd.DataFrame):
+    #     selected_feature_names_BW_6 = [X_new.columns[i]
+    #                                    for i in sfs_BW_6.k_feature_idx_]
+    # else:
+    #     selected_feature_names_BW_6 = list(sfs_BW_6.k_feature_idx_)
 
-    print("Selected Features:", selected_feature_names_BW_6)
+    # print("Selected Features:", selected_feature_names_BW_6)
 
-    BestFeatures_BW_6 = ['TaG', 'DayOfSeason', 'Tmin_2d',
-                         'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_5d']
+    # BestFeatures_BW_6 = ['TaG', 'DayOfSeason', 'Tmin_2d',
+    #                      'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_5d']
 
     # ---------------------------------------------------------------
     # --- e) FEATURE SELECTION USING FORWARD FEATURE ELIMINATION      ---
@@ -709,12 +714,12 @@ if __name__ == '__main__':
     y = mod1_clean['AvalDay']
 
     # Remove correlated features
-    features_to_remove = remove_correlated_features(X, y)
-    features_to_remove_2 = remove_low_variance(X)
-    combined_list = features_to_remove + \
-        features_to_remove_2  # Concatenate the two lists
+    features_correlated = remove_correlated_features(X, y)
+    # features_to_remove_2 = remove_low_variance(X)
+    # combined_list = features_to_remove + \
+    #     features_to_remove_2  # Concatenate the two lists
 
-    X_new = X.drop(columns=combined_list)
+    X_new = X.drop(columns=features_correlated)
 
     # X_resampled, y_resampled = undersampling_nearmiss(
     #     X_new, y, version=3, n_neighbors=10)
@@ -726,7 +731,8 @@ if __name__ == '__main__':
 
     # Create a pipeline with SVC
     pipeline = Pipeline([
-        ('undersample', NearMiss(version=3, n_neighbors=10)),  # Apply NearMiss
+        # ('undersample', NearMiss(version=3, n_neighbors=10)),  # Apply NearMiss
+        ('undersample', ClusterCentroids(random_state=42)),  # Apply NearMiss
         ('svc', svm.SVC(kernel='rbf'))
     ])
 
@@ -745,6 +751,7 @@ if __name__ == '__main__':
         # k_features=10,          # Select the top 10 features
         # Explore all possible subset sizes
         k_features=(1, X_new.shape[1]),
+        # k_features=(1, 10),
         forward=True,         # Forward selection
         floating=False,        # Disable floating step
         cv=5,                  # 5-fold cross-validation
@@ -766,6 +773,13 @@ if __name__ == '__main__':
 
     # Retrieve information about subsets
     subsets_FW = sfs.subsets_
+    subsets_FW_df = pd.DataFrame(subsets_FW)
+
+    results_path = Path(
+        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\FORWARD_FEATURE_SELECTION\\')
+
+    save_outputfile(subsets_FW_df, results_path /
+                    'FFS_feature_selection_2.csv')
 
     # Extract the best subset
     best_subset_FW = max(subsets_FW.items(), key=lambda x: x[1]['avg_score'])
@@ -798,36 +812,36 @@ if __name__ == '__main__':
     plt.grid(True)
     plt.show()
 
-    BestFeatures_FW_20 = ['N', 'V', 'HNnum', 'PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'Precip_1d', 'Precip_2d', 'Penetration_ratio',
-                          'WetSnow_CS', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex', 'MF_Crust_Present', 'New_MF_Crust']
+    # BestFeatures_FW_20 = ['N', 'V', 'HNnum', 'PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'Precip_1d', 'Precip_2d', 'Penetration_ratio',
+    #                       'WetSnow_CS', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex', 'MF_Crust_Present', 'New_MF_Crust']
 
-    sfs_FW_11 = SFS(
-        estimator=grid_search,
-        # k_features=10,          # Select the top 10 features
-        # Explore all possible subset sizes
-        k_features=11,
-        forward=True,         # Forward selection
-        floating=False,        # Disable floating step
-        cv=5,                  # 5-fold cross-validation
-        scoring='f1_macro',    # Use F1 macro as the scoring metric
-        n_jobs=-1              # Use all available CPU cores
-    )
+    # sfs_FW_11 = SFS(
+    #     estimator=grid_search,
+    #     # k_features=10,          # Select the top 10 features
+    #     # Explore all possible subset sizes
+    #     k_features=11,
+    #     forward=True,         # Forward selection
+    #     floating=False,        # Disable floating step
+    #     cv=5,                  # 5-fold cross-validation
+    #     scoring='f1_macro',    # Use F1 macro as the scoring metric
+    #     n_jobs=-1              # Use all available CPU cores
+    # )
 
-    # Fit SFS to the data
-    # sfs_BW.fit(X_resampled, y_resampled)
-    sfs_FW_11.fit(X_new, y)
+    # # Fit SFS to the data
+    # # sfs_BW.fit(X_resampled, y_resampled)
+    # sfs_FW_11.fit(X_new, y)
 
-    # Retrieve the names of the selected features
-    if isinstance(X_new, pd.DataFrame):
-        selected_feature_names_FW_11 = [X_new.columns[i]
-                                        for i in sfs_FW_11.k_feature_idx_]
-    else:
-        selected_feature_names_FW_11 = list(sfs_FW_11.k_feature_idx_)
+    # # Retrieve the names of the selected features
+    # if isinstance(X_new, pd.DataFrame):
+    #     selected_feature_names_FW_11 = [X_new.columns[i]
+    #                                     for i in sfs_FW_11.k_feature_idx_]
+    # else:
+    #     selected_feature_names_FW_11 = list(sfs_FW_11.k_feature_idx_)
 
-    print("Selected Features:", selected_feature_names_FW_11)
+    # print("Selected Features:", selected_feature_names_FW_11)
 
-    BestFeatures_FW_11 = ['PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'WetSnow_Temperature',
-                          'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex']
+    # BestFeatures_FW_11 = ['PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'WetSnow_Temperature',
+    #                       'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex']
     # ---------------------------------------------------------------
     # --- D) FEATURE EXTRACTION USING LINEAR DISCRIMINANT ANALYSIS (LDA)
     #        on SELECTED FEATURES ---
@@ -903,67 +917,138 @@ if __name__ == '__main__':
     # ---------------------------------------------------------------
     # --- e) RECURSIVE FEATURE EXTRACTION: RFE  ---
     # ---------------------------------------------------------------
-    from sklearn.svm import SVC
-    from sklearn.feature_selection import RFE
-    from sklearn.model_selection import train_test_split
-    from sklearn.preprocessing import StandardScaler
-    from sklearn.svm import LinearSVC
+    from imblearn.pipeline import Pipeline
+    from imblearn.under_sampling import ClusterCentroids
+    from sklearn.svm import SVC, LinearSVC
     from sklearn.feature_selection import RFECV
-    from sklearn.model_selection import StratifiedKFold
+    from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
+    from sklearn.preprocessing import MinMaxScaler
+    from sklearn.metrics import classification_report
+    import numpy as np
 
-    candidate_features = [
-        'TaG', 'TminG', 'TmaxG', 'HSnum',
-        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
-        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
-        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-        'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
-        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
-        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
-        'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
-        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-        'Precip_1d', 'Precip_2d', 'Precip_3d',
-        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
-        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
-        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays'
-    ]
-
-    # Data preparation
+    # Data Preparation
     feature_plus = candidate_features + ['AvalDay']
     mod1_clean = mod1[feature_plus].dropna()
     X = mod1_clean[candidate_features]
     y = mod1_clean['AvalDay']
 
-    X_resampled, y_resampled = undersampling_nearmiss(
-        X, y, version=3, n_neighbors=10)
+    # Remove correlated features
+    features_correlated = remove_correlated_features(X, y)
+    X_new = X.drop(columns=features_correlated)
 
-    # Split into training and testing datasets
+    # Split dataset into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(
-        X_resampled, y_resampled, test_size=0.25, random_state=42)
+        X_new, y, test_size=0.25, random_state=42
+    )
 
-    # Scale the data (important for SVM with RBF kernel)
-    # scaler = StandardScaler()
-    scaler = MinMaxScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
+    # Step 1: Hyperparameter Tuning for RBF Kernel SVM
+    param_grid = {
+        'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
+        'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
+    }
 
-    # Initialize the LinearSVC estimator
-    linear_svm = LinearSVC(penalty="l1", dual=False, max_iter=10000)
+    base_svc = SVC(kernel='rbf', random_state=42)
+    grid_search = GridSearchCV(
+        estimator=base_svc,
+        param_grid=param_grid,
+        scoring='f1_macro',
+        cv=5,
+        n_jobs=-1
+    )
+    grid_search.fit(X_train, y_train)
+    best_params = grid_search.best_params_
+    print("Best Hyperparameters:", best_params)
 
-    # Initialize RFECV with cross-validation (using Stratified K-Folds)
-    selector = RFECV(estimator=linear_svm, step=1,
-                     cv=StratifiedKFold(5), scoring='recall_macro')
+    # Step 2: Define a LinearSVC for RFECV
+    linear_svc = LinearSVC(random_state=42, max_iter=10000)
 
-    # Fit the selector to the data
-    selector.fit(X_train_scaled, y_train)
+    # Step 3: Define the final pipeline
+    pipeline = Pipeline([
+        ('undersample', ClusterCentroids(random_state=42)),  # Undersampling
+        ('scaler', MinMaxScaler()),                          # Scaling
+        ('feature_selection', RFECV(
+            estimator=linear_svc,                            # Use LinearSVC for RFE
+            step=1,                                          # Remove one feature at a time
+            # 5-fold CV for RFE
+            cv=StratifiedKFold(n_splits=5),
+            scoring='f1_macro',                              # Scoring metric
+            n_jobs=-1                                        # Use all CPU cores
+        )),
+        ('svc', SVC(
+            kernel='rbf',                                    # Final RBF SVM
+            C=best_params['C'],
+            gamma=best_params['gamma'],
+            random_state=42
+        ))
+    ])
 
-    # Print the optimal number of features
-    print(f"Optimal number of features: {selector.n_features_}")
+    # Fit the pipeline on the training data
+    pipeline.fit(X_train, y_train)
 
-    # Get the selected features
-    selected_features = X.columns[selector.support_]
-    print("Selected Features:", selected_features)
+    # Evaluate the final pipeline
+    y_pred = pipeline.predict(X_test)
+    print("Test Set Classification Report:")
+    print(classification_report(y_test, y_pred))
+
+    # Access Selected Features
+    rfecv = pipeline.named_steps['feature_selection']
+    print("Selected Features:", np.array(X_new.columns)[rfecv.support_])
+    print("Feature Rankings:", rfecv.ranking_)
+
+    # Get the ranking of features (lower rank means more important)
+    ranking = rfecv.ranking_
+
+    # Get the selected features (those marked as True in support_)
+    selected_features = np.array(X_new.columns)
+    # [rfecv.support_]
+
+    # Create a DataFrame with selected features and their ranking
+    feature_importance = pd.DataFrame({
+        'Feature': selected_features,
+        'Ranking': ranking
+    })
+
+    # Sort the DataFrame by ranking (ascending order as lower rank means higher importance)
+    feature_importance_sorted = feature_importance.sort_values(by='Ranking')
+
+    # Display the sorted features by their importance ranking
+    print("Selected Features ordered by importance:")
+    print(feature_importance_sorted)
+
+    results_path = Path(
+        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\RECURSIVE_FEATURE_ELIMINATION\\')
+
+    save_outputfile(feature_importance_sorted, results_path /
+                    'RFM_feature_selection.csv')
+
+    # X_resampled, y_resampled = undersampling_nearmiss(
+    #     X, y, version=3, n_neighbors=10)
+
+    # # Define cross-validation strategy for RFECV
+    # cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+    # # Scale the data (important for SVM with RBF kernel)
+    # # scaler = StandardScaler()
+    # scaler = MinMaxScaler()
+    # X_train_scaled = scaler.fit_transform(X_train)
+    # X_test_scaled = scaler.transform(X_test)
+
+    # # Initialize the LinearSVC estimator
+    # linear_svm = LinearSVC(penalty="l1", dual=False, max_iter=10000)
+
+    # # Initialize RFECV with cross-validation (using Stratified K-Folds)
+    # selector = RFECV(estimator=linear_svm, step=1,
+    #                  cv=StratifiedKFold(5), scoring='recall_macro')
+
+    # # Fit the selector to the data
+    # selector.fit(X_train_scaled, y_train)
+
+    # # Print the optimal number of features
+    # print(f"Optimal number of features: {selector.n_features_}")
+
+    # # Get the selected features
+    # selected_features = X.columns[selector.support_]
+    # print("Selected Features:", selected_features)
 
     # # Train and evaluate the model using the selected features
     # X_train_selected = X_train_scaled[:, selector.support_]
