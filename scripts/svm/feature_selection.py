@@ -114,7 +114,8 @@ if __name__ == '__main__':
                   10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     }
 
-    X_nm, y_nm = undersampling_nearmiss(X_new, y, version=3, n_neighbors=10)
+    # X_nm, y_nm = undersampling_nearmiss(X_new, y, version=3, n_neighbors=10)
+    X_nm, y_nm = undersampling_clustercentroids(X_new, y)
 
     features_low_variance = remove_low_variance(X_nm, threshold=0.1)
     X_nm = X_nm.drop(columns=features_low_variance)
@@ -144,7 +145,7 @@ if __name__ == '__main__':
         'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\Permutation_ranking\\')
 
     save_outputfile(feature_importance_df, results_path /
-                    'permutation_ranking.csv')
+                    'permutation_ranking_cluster_centroids.csv')
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # TEST ON PERFORMANCE OF MODEL WITH ONLY FEATURES WITH POSITIVE IMPORTANCE
@@ -842,77 +843,6 @@ if __name__ == '__main__':
 
     # BestFeatures_FW_11 = ['PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'WetSnow_Temperature',
     #                       'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex']
-    # ---------------------------------------------------------------
-    # --- D) FEATURE EXTRACTION USING LINEAR DISCRIMINANT ANALYSIS (LDA)
-    #        on SELECTED FEATURES ---
-    # ---------------------------------------------------------------
-
-    BestFeatures_FW_11 = ['PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'WetSnow_Temperature',
-                          'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex']
-
-    BestFeatures_BW_6 = ['TaG', 'DayOfSeason', 'Tmin_2d',
-                         'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_5d']
-
-    BestFeatures_BW_27 = ['N', 'TaG', 'HNnum', 'DayOfSeason',
-                          'HS_delta_1d', 'HS_delta_3d', 'HS_delta_5d',
-                          'DaysSinceLastSnow',
-                          'Tmin_2d', 'TempAmplitude_1d', 'TempAmplitude_2d', 'TempAmplitude_3d', 'TempAmplitude_5d',
-                          'TaG_delta_2d', 'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d',
-                          'DegreeDays_Pos', 'Precip_1d', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_3d', 'Tsnow_delta_5d', 'ConsecWetSnowDays']
-
-    BestFeatures_FW_20 = ['N', 'V', 'HNnum', 'PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'Precip_1d', 'Precip_2d', 'Penetration_ratio',
-                          'WetSnow_CS', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex', 'MF_Crust_Present', 'New_MF_Crust']
-
-    best_features = list(set(BestFeatures_FW_20 + BestFeatures_BW_27))
-
-    # Data preparation
-    feature_plus = best_features + ['AvalDay']
-    mod1_clean = mod1[feature_plus].dropna()
-    X = mod1_clean[best_features]
-    y = mod1_clean['AvalDay']
-
-    X_resampled, y_resampled = undersampling_nearmiss(
-        X, y, version=3, n_neighbors=10)
-
-    param_grid = {
-        'C': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000],
-        'gamma': [100, 50, 10, 5, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
-    }
-
-    # Split into training and test set
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_resampled, y_resampled, test_size=0.25, random_state=42)
-
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-
-    # **Applicazione di LDA per Feature Extraction**
-    # Ridurre a 1 dimensione, ad esempio
-    lda = LinearDiscriminantAnalysis(n_components=1)
-    X_train_lda = lda.fit_transform(X_train_scaled, y_train)
-    X_test_lda = lda.transform(X_test_scaled)
-
-    X_train_scaled = pd.DataFrame(
-        X_train_scaled, columns=X_train.columns, index=X_train.index)
-    X_test_scaled = pd.DataFrame(
-        X_test_scaled, columns=X_test.columns, index=X_test.index)
-
-    X_train_lda = pd.DataFrame(X_train_lda, columns=['LDA'])
-    X_test_lda = pd.DataFrame(X_test_lda, columns=['LDA'])
-
-    result_SVM = tune_train_evaluate_svm(
-        X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method='Nearmiss3')
-
-    classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
-        X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params'])
-
-    # Evaluate model with selected features
-    result_LDA = tune_train_evaluate_svm(
-        X_train_lda, y_train, X_test_lda, y_test, param_grid, resampling_method='Nearmiss3')
-
-    classifier_LDA, evaluation_metrics_LDA = train_evaluate_final_svm(
-        X_train_lda, y_train, X_test_lda, y_test, result_LDA['best_params'])
 
     # ---------------------------------------------------------------
     # --- e) RECURSIVE FEATURE EXTRACTION: RFE  ---
@@ -925,6 +855,25 @@ if __name__ == '__main__':
     from sklearn.preprocessing import MinMaxScaler
     from sklearn.metrics import classification_report
     import numpy as np
+
+    # List of candidate features
+    candidate_features = [
+        'TaG', 'TminG', 'TmaxG', 'HSnum',
+        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
+        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+        'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
+        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
+        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
+        'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
+        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+        'Precip_1d', 'Precip_2d', 'Precip_3d',
+        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
+        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
+        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays'
+    ]
 
     # Data Preparation
     feature_plus = candidate_features + ['AvalDay']
@@ -1019,150 +968,18 @@ if __name__ == '__main__':
         'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\RECURSIVE_FEATURE_ELIMINATION\\')
 
     save_outputfile(feature_importance_sorted, results_path /
-                    'RFM_feature_selection.csv')
+                    'RFE_feature_selection.csv')
 
-    # X_resampled, y_resampled = undersampling_nearmiss(
-    #     X, y, version=3, n_neighbors=10)
+    # ---------------------------------------------------------------
+    # --- D) FEATURE EXTRACTION USING LINEAR DISCRIMINANT ANALYSIS (LDA)
+    #        on SELECTED FEATURES ---
+    # ---------------------------------------------------------------
 
-    # # Define cross-validation strategy for RFECV
-    # cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    BestFeatures_FW_11 = ['PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'WetSnow_Temperature',
+                          'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex']
 
-    # # Scale the data (important for SVM with RBF kernel)
-    # # scaler = StandardScaler()
-    # scaler = MinMaxScaler()
-    # X_train_scaled = scaler.fit_transform(X_train)
-    # X_test_scaled = scaler.transform(X_test)
-
-    # # Initialize the LinearSVC estimator
-    # linear_svm = LinearSVC(penalty="l1", dual=False, max_iter=10000)
-
-    # # Initialize RFECV with cross-validation (using Stratified K-Folds)
-    # selector = RFECV(estimator=linear_svm, step=1,
-    #                  cv=StratifiedKFold(5), scoring='recall_macro')
-
-    # # Fit the selector to the data
-    # selector.fit(X_train_scaled, y_train)
-
-    # # Print the optimal number of features
-    # print(f"Optimal number of features: {selector.n_features_}")
-
-    # # Get the selected features
-    # selected_features = X.columns[selector.support_]
-    # print("Selected Features:", selected_features)
-
-    # # Train and evaluate the model using the selected features
-    # X_train_selected = X_train_scaled[:, selector.support_]
-    # X_test_selected = X_test_scaled[:, selector.support_]
-
-    # param_grid = {
-    #     'C': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000],
-    #     'gamma': [100, 50, 10, 5, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
-    # }
-    # # Train a model with the selected features
-    # best_params = cross_validate_svm(
-    #     X_train_selected, y_train, param_grid, cv=5, title='CV scores', scoring='recall_macro')
-    # # svm_rbf = SVC(kernel='rbf', gamma='scale', C=1)
-    # svm_rbf = SVC(kernel='rbf', gamma=best_params['best_params']['gamma'],
-    #               C=best_params['best_params']['C'])
-    # svm_rbf.fit(X_train_selected, y_train)
-
-    # y_pred = svm_rbf.predict(X_test_selected)
-    # from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, classification_report
-
-    # # Evaluate the model
-    # accuracy = svm_rbf.score(X_test_selected, y_test)
-    # print(f"Model Accuracy with Selected Features: {accuracy}")
-    # # Precision
-    # precision = precision_score(y_test, y_pred)
-    # print("Precision:", precision)
-
-    # # Recall
-    # recall = recall_score(y_test, y_pred)
-    # print("Recall:", recall)
-
-    # # F1 Score
-    # f1 = f1_score(y_test, y_pred)
-    # print("F1 Score:", f1)
-
-    # # ROC AUC
-    # roc_auc = roc_auc_score(y_test, y_pred)
-    # print("ROC AUC:", roc_auc)
-
-    # # Confusion Matrix
-    # cm = confusion_matrix(y_test, y_pred)
-    # print("Confusion Matrix:")
-    # print(cm)
-
-    # # Classification Report (summary of precision, recall, F1, support)
-    # print("\nClassification Report:")
-    # print(classification_report(y_test, y_pred))
-
-    # # Plot the cross-validation scores for each number of features
-    # plt.figure(figsize=(8, 6))
-    # plt.plot(range(1, len(selector.cv_results_['mean_test_score']) + 1),
-    #          selector.cv_results_['mean_test_score'])
-    # plt.xlabel('Number of Features')
-    # plt.ylabel('Cross-validation score (Accuracy)')
-    # plt.title('RFECV - Cross-validation scores')
-    # plt.show()
-
-
-# .......................
-
-    # Data preparation
-    feature_plus = list(selected_features) + ['AvalDay']
-    mod1_clean = mod1[feature_plus].dropna()
-    X = mod1_clean[selected_features]
-    y = mod1_clean['AvalDay']
-
-    X_resampled, y_resampled = undersampling_nearmiss(
-        X, y, version=3, n_neighbors=10)
-
-    # Split into training and testing datasets
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.25, random_state=42)
-
-    # Scale the data (important for SVM with RBF kernel)
-    # scaler = StandardScaler()
-    scaler = MinMaxScaler()
-    X_train_scaled = pd.DataFrame(
-        scaler.fit_transform(X_train), columns=X_train.columns)
-    X_test_scaled = pd.DataFrame(
-        scaler.transform(X_test), columns=X_test.columns)
-
-    param_grid = {
-        'C': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000],
-        'gamma': [100, 50, 10, 5, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
-    }
-    result_SVM = tune_train_evaluate_svm(
-        X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method='Nearmiss3')
-
-    classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
-        X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params'])
-    # -------------------------------------------------------
-    # TEST FEATURES PERFORMANCE
-    # -------------------------------------------------------
-
-    # ....... 1. SNOW LOAD DUE SNOWFALL ...........................
-    [
-        'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
-        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
-        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
-        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-        'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
-        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
-        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
-        'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
-        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-        'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
-        'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
-        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
-        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
-        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
-        'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
-    ]
+    BestFeatures_BW_6 = ['TaG', 'DayOfSeason', 'Tmin_2d',
+                         'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_5d']
 
     BestFeatures_BW_27 = ['N', 'TaG', 'HNnum', 'DayOfSeason',
                           'HS_delta_1d', 'HS_delta_3d', 'HS_delta_5d',
@@ -1170,87 +987,320 @@ if __name__ == '__main__':
                           'Tmin_2d', 'TempAmplitude_1d', 'TempAmplitude_2d', 'TempAmplitude_3d', 'TempAmplitude_5d',
                           'TaG_delta_2d', 'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d',
                           'DegreeDays_Pos', 'Precip_1d', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_3d', 'Tsnow_delta_5d', 'ConsecWetSnowDays']
-    BestFeatures_BW_6 = ['TaG', 'DayOfSeason', 'Tmin_2d',
-                         'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_5d']
 
     BestFeatures_FW_20 = ['N', 'V', 'HNnum', 'PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'Precip_1d', 'Precip_2d', 'Penetration_ratio',
                           'WetSnow_CS', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex', 'MF_Crust_Present', 'New_MF_Crust']
-    BestFeatures_FW_11 = ['PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'WetSnow_Temperature',
-                          'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex']
 
-    Best_RFE = ['HSnum', 'TH03G', 'HS_delta_1d', 'HS_delta_2d', 'HN_2d', 'Tmax_2d',
-                'Tmin_5d', 'TempAmplitude_1d', 'TaG_delta_1d', 'TaG_delta_5d',
-                'TminG_delta_3d', 'TmaxG_delta_1d', 'TmaxG_delta_2d', 'Precip_2d',
-                'Tsnow_delta_2d']
+    best_features = list(set(BestFeatures_FW_20 + BestFeatures_BW_27))
 
-    BestFeatures_Combined = list(set(BestFeatures_BW_6 + BestFeatures_FW_11))
+    # Data preparation
+    feature_plus = best_features + ['AvalDay']
+    mod1_clean = mod1[feature_plus].dropna()
+    X = mod1_clean[best_features]
+    y = mod1_clean['AvalDay']
 
-    print(BestFeatures_Combined)  # s0 = ['HS_delta_2d', 'TaG_delta_2d']
+    X_resampled, y_resampled = undersampling_nearmiss(
+        X, y, version=3, n_neighbors=10)
 
-    # resBW27 = evaluate_svm_with_feature_selection(mod1, BestFeatures_BW_27)
-    resBW6 = evaluate_svm_with_feature_selection(mod1, BestFeatures_BW_6)
+    param_grid = {
+        'C': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000],
+        'gamma': [100, 50, 10, 5, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
+    }
 
-    # resFW20 = evaluate_svm_with_feature_selection(mod1, BestFeatures_FW_20)
-    resFW11 = evaluate_svm_with_feature_selection(mod1, BestFeatures_FW_11)
+    # Split into training and test set
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_resampled, y_resampled, test_size=0.25, random_state=42)
 
-    resComb = evaluate_svm_with_feature_selection(mod1, BestFeatures_Combined)
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
 
-    resRFE = evaluate_svm_with_feature_selection(mod1, Best_RFE)
+    # **Applicazione di LDA per Feature Extraction**
+    # Ridurre a 1 dimensione, ad esempio
+    lda = LinearDiscriminantAnalysis(n_components=1)
+    X_train_lda = lda.fit_transform(X_train_scaled, y_train)
+    X_test_lda = lda.transform(X_test_scaled)
 
-    # --- Test Pairwise combination with features selected in BW_6 ----
+    X_train_scaled = pd.DataFrame(
+        X_train_scaled, columns=X_train.columns, index=X_train.index)
+    X_test_scaled = pd.DataFrame(
+        X_test_scaled, columns=X_test.columns, index=X_test.index)
 
-    s1 = ['TaG', 'DayOfSeason']
-    res1 = evaluate_svm_with_feature_selection(mod1, s1)
+    X_train_lda = pd.DataFrame(X_train_lda, columns=['LDA'])
+    X_test_lda = pd.DataFrame(X_test_lda, columns=['LDA'])
 
-    s2 = ['TaG', 'Tmin_2d']
-    res2 = evaluate_svm_with_feature_selection(mod1, s2)
+    result_SVM = tune_train_evaluate_svm(
+        X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method='Nearmiss3')
 
-    s3 = ['TaG', 'TaG_delta_3d']
-    res3 = evaluate_svm_with_feature_selection(mod1, s3)
+    classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
+        X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params'])
 
-    s4 = ['TaG', 'TaG_delta_5d']
-    res4 = evaluate_svm_with_feature_selection(mod1, s4)
+    # Evaluate model with selected features
+    result_LDA = tune_train_evaluate_svm(
+        X_train_lda, y_train, X_test_lda, y_test, param_grid, resampling_method='Nearmiss3')
 
-    s5 = ['TaG', 'TminG_delta_5d']
-    res5 = evaluate_svm_with_feature_selection(mod1, s5)
+    classifier_LDA, evaluation_metrics_LDA = train_evaluate_final_svm(
+        X_train_lda, y_train, X_test_lda, y_test, result_LDA['best_params'])
 
-    s6 = ['DayOfSeason', 'Tmin_2d']
-    res6 = evaluate_svm_with_feature_selection(mod1, s6)
+# -------------------------------------------------------
+# TEST FEATURES PERFORMANCE
+# -------------------------------------------------------
 
-    s7 = ['DayOfSeason', 'TaG_delta_3d']
-    res7 = evaluate_svm_with_feature_selection(mod1, s7)
+ANOVA = ['HSnum', 'TH01G', 'DayOfSeason', 'HS_delta_1d', 'Tmin_2d', 'TaG_delta_5d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d', 'TmaxG_delta_5d',
+    'T_mean', 'DegreeDays_Pos', 'Precip_2d', 'Precip_3d', 'Precip_5d', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'SnowConditionIndex']
+res_ANOVA = evaluate_svm_with_feature_selection(mod1, ANOVA)
 
-    s8 = ['DayOfSeason', 'TaG_delta_5d']
-    res8 = evaluate_svm_with_feature_selection(mod1, s8)
+# BFE = ['TaG', 'DayOfSeason', 'TempAmplitude_2d', 'TmaxG_delta_5d', 'TH30_tanh']
+# res_BFE = evaluate_svm_with_feature_selection(mod1, BFE)
 
-    s9 = ['DayOfSeason', 'TminG_delta_5d']
-    res9 = evaluate_svm_with_feature_selection(mod1, s9)
+BFE = ['TaG', 'HNnum', 'TH01G', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_3d',
+       'HS_delta_5d', 'DaysSinceLastSnow', 'TempAmplitude_1d',
+       'TempAmplitude_2d', 'TempAmplitude_3d', 'TempAmplitude_5d',
+       'TaG_delta_1d', 'TaG_delta_2d', 'TaG_delta_3d', 'TaG_delta_5d',
+       'TminG_delta_1d', 'TminG_delta_2d', 'TminG_delta_3d', 'TminG_delta_5d',
+       'TmaxG_delta_1d', 'TmaxG_delta_2d', 'TmaxG_delta_3d', 'TmaxG_delta_5d',
+       'T_mean', 'DegreeDays_Pos', 'Precip_1d', 'WetSnow_CS', 'TH10_tanh',
+       'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+       'Tsnow_delta_5d', 'ConsecWetSnowDays', 'ConsecCrustDays']
+res_BFE = evaluate_svm_with_feature_selection(mod1, BFE)
 
-    s10 = ['Tmin_2d', 'TaG_delta_3d']
-    res10 = evaluate_svm_with_feature_selection(mod1, s10)
 
-    s11 = ['Tmin_2d', 'TaG_delta_5d']
-    res11 = evaluate_svm_with_feature_selection(mod1, s11)
+# FFS = ['HS_delta_3d', 'TaG_delta_3d', 'DegreeDays_Pos', 'Tsnow_delta_3d']
+# res_FFS = evaluate_svm_with_feature_selection(mod1, FFS)
 
-    s12 = ['Tmin_2d', 'TminG_delta_5d']
-    res12 = evaluate_svm_with_feature_selection(mod1, s12)
+FFS = ['HS_delta_3d', 'HS_delta_5d', 'DaysSinceLastSnow', 'TempAmplitude_1d',
+       'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d', 'TaG_delta_3d',
+       'TaG_delta_5d', 'TminG_delta_2d', 'TminG_delta_3d', 'TmaxG_delta_3d',
+       'TmaxG_delta_5d', 'DegreeDays_Pos', 'Precip_3d', 'Precip_5d',
+       'WetSnow_CS', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh',
+       'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d', 'Tsnow_delta_5d',
+       'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays']
+res_FFS = evaluate_svm_with_feature_selection(mod1, FFS)
 
-    s13 = ['TaG_delta_3d', 'TaG_delta_5d']
-    res13 = evaluate_svm_with_feature_selection(mod1, s13)
+RFE = ['TaG', 'New_MF_Crust', 'TaG_delta_5d', 'TH10_tanh', 'TH30_tanh',
+        'TmaxG_delta_2d', 'TempAmplitude_5d', 'TempAmplitude_3d', 'Tsnow_delta_1d',
+        'TempAmplitude_1d', 'TminG_delta_5d', 'TmaxG_delta_3d', 'HS_delta_5d',
+        'HS_delta_3d', 'Tsnow_delta_3d', 'HS_delta_1d', 'DayOfSeason', 'PR',
+        'Penetration_ratio', 'Precip_2d', 'HSnum', 'WetSnow_Temperature',
+        'TminG_delta_3d']
+res_RFE = evaluate_svm_with_feature_selection(mod1, RFE)
 
-    s14 = ['TaG_delta_3d', 'TminG_delta_5d']
-    res14 = evaluate_svm_with_feature_selection(mod1, s14)
+Permutation_ranking = ['AvalDay_2d',
+                        'TH10_tanh',
+                        'TH30_tanh',
+                        'DegreeDays_cumsum_2d',
+                        'TH01G',
+                        'PR',
+                        'HS_delta_2d',
+                        'DayOfSeason',
+                        'TmaxG_delta_1d',
+                        'TaG',
+                        'ConsecWetSnowDays',
+                        'HS_delta_1d',
+                        'Precip_2d',
+                        'TempAmplitude_1d',
+                        'TminG_delta_1d',
+                        'Tmin_3d',
+                        'T_mean',
+                        'TminG_delta_2d',
+                        'TmaxG_delta_5d',
+                        'TminG_delta_5d',
+                        'TempAmplitude_2d',
+                        'HS_delta_3d',
+                        'TaG_delta_2d',
+                        'TaG_delta_1d',
+                        'Precip_5d',
+                        'Tsnow_delta_5d',
+                        'TempAmplitude_5d',
+                        'Tsnow_delta_2d',
+                        'TminG_delta_3d',
+                        'TempAmplitude_3d',
+                        'TmaxG_delta_2d',
+                        'HS_delta_5d',
+                        'Tsnow_delta_3d',
+                        'Precip_3d',
+                        'TaG_delta_5d',
+                        'Precip_1d',
+                        'Tsnow_delta_1d']
 
-    s15 = ['TaG_delta_5d', 'TminG_delta_5d']
-    res15 = evaluate_svm_with_feature_selection(mod1, s15)
+res_PR = evaluate_svm_with_feature_selection(mod1, Permutation_ranking)
 
-    results_features = [res1, res2, res3, res4, res5,
-                        res6, res7, res8, res9, res10,
-                        res11, res12, res13, res14, res15]
+SHAP = ['TaG_delta_5d',
+        'TminG_delta_3d',
+        'HS_delta_5d',
+        'WetSnow_Temperature',
+        'New_MF_Crust',
+        'Precip_3d',
+        'Precip_2d',
+        'TempGrad_HS',
+        'Tsnow_delta_3d',
+        'TmaxG_delta_3d',
+        'HSnum',
+        'TempAmplitude_2d',
+        'WetSnow_CS',
+        'TaG',
+        'Tsnow_delta_2d',
+        'DayOfSeason',
+        'Precip_5d',
+        'TH10_tanh',
+        'TempAmplitude_1d',
+        'TaG_delta_2d',
+        'HS_delta_1d',
+        'HS_delta_3d',
+        'TaG_delta_3d']
 
-    # Extract the metrics and create a DataFrame
-    data_res = []
-    for i, res in enumerate(results_features, 1):
+res_SHAP = evaluate_svm_with_feature_selection(mod1, SHAP)
+
+results_features = [res_ANOVA, res_BFE, res_FFS, res_RFE, res_PR, res_SHAP]
+label_feature = ['ANOVA', 'BFE', 'FFS', 'RFE', 'PR', 'SHAP']
+# Extract the metrics and create a DataFrame
+data_res = []
+for i, res in enumerate(results_features, 1):
+     feature_set = ', '.join(res[0])  # Combine feature names as a string
+     metrics = res[2]
+     data_res.append({
+         # 'Configuration': f"res{i}: {feature_set}",
+         'Configuration': f"{label_feature[i-1]}",
+         'Features': f"{feature_set}",
+         'Precision': metrics['precision'],
+         'Accuracy': metrics['accuracy'],
+         'Recall': metrics['recall'],
+         'F1': metrics['f1']
+     })
+
+# Create the DataFrame
+df_res = pd.DataFrame(data_res)
+
+# Plotting a line plot for precision
+plt.figure(figsize=(8, 5))
+plt.plot(df_res['Configuration'], df_res['F1'],
+         marker='x', linestyle='-.', color='red', label='F1 Score')
+plt.plot(df_res['Configuration'], df_res['Recall'],
+         marker='s', linestyle='--', color='green', label='Recall')
+plt.plot(df_res['Configuration'], df_res['Accuracy'],
+         marker='d', linestyle=':', label='Accuracy')
+plt.plot(df_res['Configuration'], df_res['Recall'],
+         marker='o', linestyle='-', label='Recall')
+plt.title('Scores for Snowfall features in different configuration')
+plt.xlabel('Feature Configuration')
+plt.ylabel('Score')
+plt.ylim(0, 1)
+plt.xticks(rotation=45)
+plt.grid(True)
+plt.legend()
+plt.show()
+
+df_res = df_res.sort_values(by='Recall', ascending=False)
+
+
+# ....... 1. SNOW LOAD DUE SNOWFALL ...........................
+[
+    'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
+    'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
+    'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+    'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+    'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+    'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
+    'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
+    'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
+    'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
+    'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+    'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
+    'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
+    'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
+    'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+    'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
+    'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
+    'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
+]
+
+BestFeatures_BW_27 = ['N', 'TaG', 'HNnum', 'DayOfSeason',
+                      'HS_delta_1d', 'HS_delta_3d', 'HS_delta_5d',
+                      'DaysSinceLastSnow',
+                      'Tmin_2d', 'TempAmplitude_1d', 'TempAmplitude_2d', 'TempAmplitude_3d', 'TempAmplitude_5d',
+                      'TaG_delta_2d', 'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d',
+                      'DegreeDays_Pos', 'Precip_1d', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_3d', 'Tsnow_delta_5d', 'ConsecWetSnowDays']
+BestFeatures_BW_6 = ['TaG', 'DayOfSeason', 'Tmin_2d',
+                     'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_5d']
+
+BestFeatures_FW_20 = ['N', 'V', 'HNnum', 'PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'Precip_1d', 'Precip_2d', 'Penetration_ratio',
+                      'WetSnow_CS', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex', 'MF_Crust_Present', 'New_MF_Crust']
+BestFeatures_FW_11 = ['PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'WetSnow_Temperature',
+                      'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex']
+
+Best_RFE = ['HSnum', 'TH03G', 'HS_delta_1d', 'HS_delta_2d', 'HN_2d', 'Tmax_2d',
+            'Tmin_5d', 'TempAmplitude_1d', 'TaG_delta_1d', 'TaG_delta_5d',
+            'TminG_delta_3d', 'TmaxG_delta_1d', 'TmaxG_delta_2d', 'Precip_2d',
+            'Tsnow_delta_2d']
+
+BestFeatures_Combined = list(set(BestFeatures_BW_6 + BestFeatures_FW_11))
+
+print(BestFeatures_Combined)  # s0 = ['HS_delta_2d', 'TaG_delta_2d']
+
+# resBW27 = evaluate_svm_with_feature_selection(mod1, BestFeatures_BW_27)
+resBW6 = evaluate_svm_with_feature_selection(mod1, BestFeatures_BW_6)
+
+# resFW20 = evaluate_svm_with_feature_selection(mod1, BestFeatures_FW_20)
+resFW11 = evaluate_svm_with_feature_selection(mod1, BestFeatures_FW_11)
+
+resComb = evaluate_svm_with_feature_selection(mod1, BestFeatures_Combined)
+
+resRFE = evaluate_svm_with_feature_selection(mod1, Best_RFE)
+
+# --- Test Pairwise combination with features selected in BW_6 ----
+
+s1 = ['TaG', 'DayOfSeason']
+res1 = evaluate_svm_with_feature_selection(mod1, s1)
+
+s2 = ['TaG', 'Tmin_2d']
+res2 = evaluate_svm_with_feature_selection(mod1, s2)
+
+s3 = ['TaG', 'TaG_delta_3d']
+res3 = evaluate_svm_with_feature_selection(mod1, s3)
+
+s4 = ['TaG', 'TaG_delta_5d']
+res4 = evaluate_svm_with_feature_selection(mod1, s4)
+
+s5 = ['TaG', 'TminG_delta_5d']
+res5 = evaluate_svm_with_feature_selection(mod1, s5)
+
+s6 = ['DayOfSeason', 'Tmin_2d']
+res6 = evaluate_svm_with_feature_selection(mod1, s6)
+
+s7 = ['DayOfSeason', 'TaG_delta_3d']
+res7 = evaluate_svm_with_feature_selection(mod1, s7)
+
+s8 = ['DayOfSeason', 'TaG_delta_5d']
+res8 = evaluate_svm_with_feature_selection(mod1, s8)
+
+s9 = ['DayOfSeason', 'TminG_delta_5d']
+res9 = evaluate_svm_with_feature_selection(mod1, s9)
+
+s10 = ['Tmin_2d', 'TaG_delta_3d']
+res10 = evaluate_svm_with_feature_selection(mod1, s10)
+
+s11 = ['Tmin_2d', 'TaG_delta_5d']
+res11 = evaluate_svm_with_feature_selection(mod1, s11)
+
+s12 = ['Tmin_2d', 'TminG_delta_5d']
+res12 = evaluate_svm_with_feature_selection(mod1, s12)
+
+s13 = ['TaG_delta_3d', 'TaG_delta_5d']
+res13 = evaluate_svm_with_feature_selection(mod1, s13)
+
+s14 = ['TaG_delta_3d', 'TminG_delta_5d']
+res14 = evaluate_svm_with_feature_selection(mod1, s14)
+
+s15 = ['TaG_delta_5d', 'TminG_delta_5d']
+res15 = evaluate_svm_with_feature_selection(mod1, s15)
+
+ results_features = [res1, res2, res3, res4, res5,
+                      res6, res7, res8, res9, res10,
+                      res11, res12, res13, res14, res15]
+
+  # Extract the metrics and create a DataFrame
+  data_res = []
+   for i, res in enumerate(results_features, 1):
         feature_set = ', '.join(res[0])  # Combine feature names as a string
         metrics = res[2]
         data_res.append({
