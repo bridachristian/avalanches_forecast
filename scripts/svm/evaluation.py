@@ -12,7 +12,8 @@ from sklearn.inspection import permutation_importance
 from sklearn.model_selection import GridSearchCV
 from imblearn.under_sampling import RandomUnderSampler, NearMiss
 from scripts.svm.data_loading import load_data
-from scripts.svm.undersampling_methods import undersampling_random, undersampling_random_timelimited, undersampling_nearmiss, undersampling_cnn
+from scripts.svm.undersampling_methods import (undersampling_random, undersampling_random_timelimited, undersampling_nearmiss,
+                                               undersampling_cnn, undersampling_enn, undersampling_clustercentroids, undersampling_tomeklinks)
 from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
 from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm, train_evaluate_final_svm
 from scripts.svm.utils import get_adjacent_values, save_outputfile, remove_correlated_features
@@ -240,8 +241,9 @@ def evaluate_svm_with_feature_selection(data, feature_list):
         'gamma': [100, 50, 10, 5, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
     }
 
-    X_resampled, y_resampled = undersampling_nearmiss(
-        X, y, version=3, n_neighbors=10)
+    # X_resampled, y_resampled = undersampling_nearmiss(
+    #     X, y, version=3, n_neighbors=10)
+    X_resampled, y_resampled = undersampling_clustercentroids(X, y)
 
     X_train, X_test, y_train, y_test = train_test_split(
         X_resampled, y_resampled, test_size=0.25, random_state=42)
