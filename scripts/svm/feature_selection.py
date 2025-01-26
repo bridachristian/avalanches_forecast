@@ -413,10 +413,6 @@ if __name__ == '__main__':
     X = mod1_clean[candidate_features]
     y = mod1_clean['AvalDay']
 
-    # Remove correlated features and with low variance
-    features_low_variance = remove_low_variance(X)
-    X = X.drop(columns=features_low_variance)
-
     features_correlated = remove_correlated_features(X, y)
     X = X.drop(columns=features_correlated)
 
@@ -426,6 +422,10 @@ if __name__ == '__main__':
     #     X, y, version=3, n_neighbors=10)
     X_resampled, y_resampled = undersampling_clustercentroids(
         X, y)
+
+    # Remove correlated features and with low variance
+    features_low_variance = remove_low_variance(X_resampled)
+    X_resampled = X_resampled.drop(columns=features_low_variance)
 
     # Split into training and test set
     X_train, X_test, y_train, y_test = train_test_split(
@@ -1013,29 +1013,33 @@ if __name__ == '__main__':
     #        on SELECTED FEATURES ---
     # ---------------------------------------------------------------
 
-    SHAP = ['TaG_delta_5d',
-            'TminG_delta_3d',
-            'HS_delta_5d',
-            'WetSnow_Temperature',
-            'New_MF_Crust',
-            'Precip_3d',
-            'Precip_2d',
-            'TempGrad_HS',
-            'Tsnow_delta_3d',
-            'TmaxG_delta_3d',
-            'HSnum',
-            'TempAmplitude_2d',
-            'WetSnow_CS',
-            'TaG',
-            'Tsnow_delta_2d',
-            'DayOfSeason',
-            'Precip_5d',
-            'TH10_tanh',
-            'TempAmplitude_1d',
-            'TaG_delta_2d',
-            'HS_delta_1d',
-            'HS_delta_3d',
-            'TaG_delta_3d']
+    SHAP = ['TaG_delta_3d',
+                'DegreeDays_Pos',
+                'HS_delta_5d',
+                'HS_delta_3d',
+                'Precip_5d',
+                'New_MF_Crust',
+                'TempAmplitude_3d',
+                'TempAmplitude_2d',
+                'Tsnow_delta_3d',
+                'TminG_delta_1d',
+                'TaG_delta_2d',
+                'T_mean',
+                'Tsnow_delta_5d',
+                'TmaxG_delta_5d',
+                'HS_delta_1d',
+                'TminG_delta_3d',
+                'ConsecWetSnowDays',
+                'Precip_2d',
+                'DaysSinceLastSnow',
+                'TaG',
+                'Tsnow_delta_2d',
+                'TaG_delta_1d',
+                'HNnum',
+                'Precip_1d',
+                'MF_Crust_Present',
+                'PR',
+                'Tsnow_delta_1d']
 
     # best_features = list(set(BestFeatures_FW_20 + BestFeatures_BW_27))
 
