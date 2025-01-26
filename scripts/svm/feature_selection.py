@@ -314,10 +314,10 @@ if __name__ == '__main__':
 
         X_selected = X_new[features_selected]
         # Apply random undersampling
-        X_resampled, y_resampled = undersampling_nearmiss(
-            X_selected, y, version=3, n_neighbors=10)
-        # X_resampled, y_resampled = undersampling_clustercentroids(
-        #     X_selected, y)
+        # X_resampled, y_resampled = undersampling_nearmiss(
+        #     X_selected, y, version=3, n_neighbors=10)
+        X_resampled, y_resampled = undersampling_clustercentroids(
+            X_selected, y)
 
         # Remove correlated features and with low variance
         features_low_variance = remove_low_variance(X_resampled)
@@ -361,7 +361,7 @@ if __name__ == '__main__':
         'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\ANOVA\\')
 
     save_outputfile(results_df, results_path /
-                    'anova_feature_selection.csv')
+                    'anova_feature_selection_new.csv')
 
     # Plotting
     plt.figure(figsize=(10, 6))
@@ -496,7 +496,20 @@ if __name__ == '__main__':
     plt.title('Feature Importance Based on SHAP Values')
     plt.show()
 
+    results_path = Path(
+        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\SHAP\\')
+
+    save_outputfile(mean_shap_values_sorted, results_path /
+                    'mean_shap_values.csv')
+
     shap_values_abs_df = shap_values_df.abs()
+    save_outputfile(shap_values_abs_df, results_path /
+                    'shap_values_abs.csv')
+
+    save_outputfile(shap_values_df, results_path /
+                    'shap_values.csv')
+
+    mean_shap = shap_values_df.mean(axis=0).sort_values(ascending=False)
 
     import matplotlib.colors as mcolors
 
@@ -571,8 +584,8 @@ if __name__ == '__main__':
     }
     # Create a pipeline with undersampling and SVC
     pipeline = Pipeline([
-        ('undersample', NearMiss(version=3, n_neighbors=10)),  # Apply NearMiss
-        # ('undersample', ClusterCentroids(random_state=42)),  # Apply NearMiss
+        # ('undersample', NearMiss(version=3, n_neighbors=10)),  # Apply NearMiss
+        ('undersample', ClusterCentroids(random_state=42)),  # Apply NearMiss
         ('svc', svm.SVC(kernel='rbf'))
     ])
 
@@ -582,7 +595,7 @@ if __name__ == '__main__':
         param_grid=param_grid,
         scoring='f1_macro',
         cv=5,
-        n_jobs=-1
+        n_jobs=6
     )
 
     # Perform Sequential Feature Selection (SFS)
@@ -595,7 +608,7 @@ if __name__ == '__main__':
         floating=False,        # Disable floating step
         cv=5,                  # 5-fold cross-validation
         scoring='f1_macro',    # Use F1 macro as the scoring metric
-        n_jobs=-1              # Use all available CPU cores
+        n_jobs=6              # Use all available CPU cores
     )
 
     # Fit SFS to the data
@@ -618,7 +631,7 @@ if __name__ == '__main__':
         'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\BACKWARD_FEATURE_ELIMINATION\\')
 
     save_outputfile(subsets_BW_df, results_path /
-                    'BFE_feature_selection.csv')
+                    'BFE_feature_selection_CC.csv')
 
     # Extract the best subset
     best_subset_BW = max(subsets_BW.items(), key=lambda x: x[1]['avg_score'])
@@ -941,15 +954,35 @@ if __name__ == '__main__':
 
     # Access Selected Features
     rfecv = pipeline.named_steps['feature_selection']
+
+    # Get mean cross-validation scores for each number of features
+    mean_cv_scores = rfecv.cv_results_['mean_test_score']
+    std_cv_scores = rfecv.cv_results_['std_test_score']
+
+    # Plot the cross-validation scores
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(1, len(mean_cv_scores) + 1), mean_cv_scores, marker='o')
+    plt.title('RFECV - Feature Selection Process')
+    plt.xlabel('Number of Features')
+    plt.ylabel('Mean Cross-Validation Score (F1 Macro)')
+    plt.grid(True)
+    plt.show()
+
     print("Selected Features:", np.array(X_new.columns)[rfecv.support_])
     print("Feature Rankings:", rfecv.ranking_)
 
-    # Get the ranking of features (lower rank means more important)
     ranking = rfecv.ranking_
+    top_11_features_indices = np.argsort(ranking)[:11]
+    top_11_features = np.array(X_new.columns)[top_11_features_indices]
+
+    top_23_features_indices = np.argsort(ranking)[:23]
+    top_23_features = np.array(X_new.columns)[top_23_features_indices]
+
+    print("Top 23 Features by Ranking:", top_23_features)
+    print("Top 11 Features by Ranking:", top_11_features)
 
     # Get the selected features (those marked as True in support_)
     selected_features = np.array(X_new.columns)
-    # [rfecv.support_]
 
     # Create a DataFrame with selected features and their ranking
     feature_importance = pd.DataFrame({
@@ -968,43 +1001,60 @@ if __name__ == '__main__':
         'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\RECURSIVE_FEATURE_ELIMINATION\\')
 
     save_outputfile(feature_importance_sorted, results_path /
-                    'RFE_feature_selection.csv')
+                    'RFE_feature_selection_CC.csv')
 
     # ---------------------------------------------------------------
     # --- D) FEATURE EXTRACTION USING LINEAR DISCRIMINANT ANALYSIS (LDA)
     #        on SELECTED FEATURES ---
     # ---------------------------------------------------------------
 
-    BestFeatures_FW_11 = ['PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'WetSnow_Temperature',
-                          'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex']
+    SHAP = ['TaG_delta_5d',
+            'TminG_delta_3d',
+            'HS_delta_5d',
+            'WetSnow_Temperature',
+            'New_MF_Crust',
+            'Precip_3d',
+            'Precip_2d',
+            'TempGrad_HS',
+            'Tsnow_delta_3d',
+            'TmaxG_delta_3d',
+            'HSnum',
+            'TempAmplitude_2d',
+            'WetSnow_CS',
+            'TaG',
+            'Tsnow_delta_2d',
+            'DayOfSeason',
+            'Precip_5d',
+            'TH10_tanh',
+            'TempAmplitude_1d',
+            'TaG_delta_2d',
+            'HS_delta_1d',
+            'HS_delta_3d',
+            'TaG_delta_3d']
 
-    BestFeatures_BW_6 = ['TaG', 'DayOfSeason', 'Tmin_2d',
-                         'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_5d']
-
-    BestFeatures_BW_27 = ['N', 'TaG', 'HNnum', 'DayOfSeason',
-                          'HS_delta_1d', 'HS_delta_3d', 'HS_delta_5d',
-                          'DaysSinceLastSnow',
-                          'Tmin_2d', 'TempAmplitude_1d', 'TempAmplitude_2d', 'TempAmplitude_3d', 'TempAmplitude_5d',
-                          'TaG_delta_2d', 'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d',
-                          'DegreeDays_Pos', 'Precip_1d', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_3d', 'Tsnow_delta_5d', 'ConsecWetSnowDays']
-
-    BestFeatures_FW_20 = ['N', 'V', 'HNnum', 'PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'Precip_1d', 'Precip_2d', 'Penetration_ratio',
-                          'WetSnow_CS', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex', 'MF_Crust_Present', 'New_MF_Crust']
-
-    best_features = list(set(BestFeatures_FW_20 + BestFeatures_BW_27))
+    # best_features = list(set(BestFeatures_FW_20 + BestFeatures_BW_27))
 
     # Data preparation
-    feature_plus = best_features + ['AvalDay']
+    feature_plus = SHAP + ['AvalDay']
     mod1_clean = mod1[feature_plus].dropna()
-    X = mod1_clean[best_features]
+    X = mod1_clean[SHAP]
     y = mod1_clean['AvalDay']
 
-    X_resampled, y_resampled = undersampling_nearmiss(
-        X, y, version=3, n_neighbors=10)
+    X_resampled, y_resampled = undersampling_clustercentroids(X, y)
 
     param_grid = {
-        'C': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000],
-        'gamma': [100, 50, 10, 5, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
+        'C': [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
+              0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
+              0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+              1, 2, 3, 4, 5, 6, 7, 8, 9,
+              10, 20, 30, 40, 50, 60, 70, 80, 90,
+              100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
+        'gamma': [0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009,
+                  0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
+                  0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
+                  0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+                  1, 2, 3, 4, 5, 6, 7, 8, 9,
+                  10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     }
 
     # Split into training and test set
@@ -1150,6 +1200,16 @@ SHAP = ['TaG_delta_5d',
         'TaG_delta_3d']
 
 res_SHAP = evaluate_svm_with_feature_selection(mod1, SHAP)
+
+physics = ['TaG_delta_5d',
+        'TminG_delta_3d',
+        'HS_delta_5d',
+        'Precip_3d',
+        'Precip_2d',
+        'TempGrad_HS',
+        'Tsnow_delta_3d', 'DayOfSeason']
+res_physics = evaluate_svm_with_feature_selection(mod1, physics)
+
 
 results_features = [res_ANOVA, res_BFE, res_FFS, res_RFE, res_PR, res_SHAP]
 label_feature = ['ANOVA', 'BFE', 'FFS', 'RFE', 'PR', 'SHAP']
