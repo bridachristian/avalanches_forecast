@@ -486,7 +486,12 @@ if __name__ == '__main__':
         mean_shap_values, index=X_train_scaled.columns)
 
     # Sort SHAP values to make the plot clearer
-    mean_shap_values_sorted = mean_shap_values.sort_values(ascending=True)
+    mean_shap_values_sorted = mean_shap_values.sort_values(ascending=False)
+
+    pos_values = list(
+        mean_shap_values_sorted[mean_shap_values_sorted > 0].items())
+    # Extracting only the feature names
+    pos_features = [feature for feature, _ in pos_values]
 
     # Create a horizontal bar plot
     plt.figure(figsize=(10, 15))
