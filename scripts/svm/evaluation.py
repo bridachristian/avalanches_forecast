@@ -256,7 +256,7 @@ def evaluate_svm_with_feature_selection(data, feature_list):
 
     result = tune_train_evaluate_svm(
         X_train, y_train, X_test, y_test, initial_param_grid,
-        resampling_method='Nearmiss v3 nn10')
+        resampling_method='Cluster Centroids')
 
     # Step 6: Train the final model with the best hyperparameters and evaluate it
     classifier, evaluation_metrics = train_evaluate_final_svm(

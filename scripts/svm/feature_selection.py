@@ -1101,13 +1101,13 @@ if __name__ == '__main__':
     classifier_LDA, evaluation_metrics_LDA = train_evaluate_final_svm(
         X_train_lda, y_train, X_test_lda, y_test, result_LDA['best_params'])
 
-# -------------------------------------------------------
-# TEST FEATURES PERFORMANCE
-# -------------------------------------------------------
+    # -------------------------------------------------------
+    # TEST FEATURES PERFORMANCE
+    # -------------------------------------------------------
 
-ANOVA = ['HSnum', 'TH01G', 'DayOfSeason', 'HS_delta_1d', 'Tmin_2d', 'TaG_delta_5d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d', 'TmaxG_delta_5d',
-    'T_mean', 'DegreeDays_Pos', 'Precip_2d', 'Precip_3d', 'Precip_5d', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'SnowConditionIndex']
-res_ANOVA = evaluate_svm_with_feature_selection(mod1, ANOVA)
+    ANOVA = ['HSnum', 'TH01G', 'DayOfSeason', 'HS_delta_1d', 'Tmin_2d', 'TaG_delta_5d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d', 'TmaxG_delta_5d',
+        'T_mean', 'DegreeDays_Pos', 'Precip_2d', 'Precip_3d', 'Precip_5d', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'SnowConditionIndex']
+    res_ANOVA = evaluate_svm_with_feature_selection(mod1, ANOVA)
 
 # BFE = ['TaG', 'DayOfSeason', 'TempAmplitude_2d', 'TmaxG_delta_5d', 'TH30_tanh']
 # res_BFE = evaluate_svm_with_feature_selection(mod1, BFE)
