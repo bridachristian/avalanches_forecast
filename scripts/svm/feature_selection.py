@@ -1220,8 +1220,9 @@ physics = ['TaG_delta_5d',
 res_physics = evaluate_svm_with_feature_selection(mod1, physics)
 
 
-results_features = [res_ANOVA, res_BFE, res_FFS, res_RFE, res_PR, res_SHAP]
-label_feature = ['ANOVA', 'BFE', 'FFS', 'RFE', 'PR', 'SHAP']
+results_features = [res_ANOVA, res_BFE, res_FFS,
+    res_RFE, res_PR, res_SHAP, res_physics]
+label_feature = ['ANOVA', 'BFE', 'FFS', 'RFE', 'PR', 'SHAP', 'physics']
 # Extract the metrics and create a DataFrame
 data_res = []
 for i, res in enumerate(results_features, 1):
