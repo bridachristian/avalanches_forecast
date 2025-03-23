@@ -1,3 +1,6 @@
+import optuna
+from sklearn.model_selection import cross_val_score
+from sklearn.svm import SVC
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -76,7 +79,7 @@ def cross_validate_svm(X, y, param_grid, cv=5, title='CV scores', scoring='f1_ma
     """
     # Initialize GridSearchCV for hyperparameter tuning
     grid = GridSearchCV(svm.SVC(kernel='rbf'), param_grid,
-                        cv=cv, scoring=scoring, verbose=3, n_jobs=-1)
+                        cv=cv, scoring=scoring, verbose=2, n_jobs=-1)
     grid.fit(X, y)
 
     # Extract the best parameters and model
@@ -117,7 +120,55 @@ def cross_validate_svm(X, y, param_grid, cv=5, title='CV scores', scoring='f1_ma
     }
 
 
-def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method, cv=5):
+def tune_svm_with_optuna(X, y, n_trials=50, cv=5, scoring="accuracy"):
+    """
+    Performs hyperparameter tuning for an SVM with RBF kernel using Optuna.
+
+    Parameters:
+    - X: Features (numpy array or DataFrame)
+    - y: Target labels (numpy array or Series)
+    - n_trials: Number of trials to run (default: 50)
+    - cv: Number of cross-validation folds (default: 5)
+    - scoring: Metric to optimize (default: "accuracy")
+
+    Returns:
+    - best_model: Trained SVM model with best parameters
+    - best_params: Dictionary of best hyperparameters
+    - best_score: Best cross-validation score
+    """
+
+    def objective(trial):
+        """Objective function to optimize SVM hyperparameters."""
+        # Log-scale search for C and gamma
+        C = trial.suggest_loguniform("C", 1e-4, 1e4)
+        gamma = trial.suggest_loguniform("gamma", 1e-4, 1e4)
+
+        # Create SVM model
+        model = SVC(kernel='rbf', C=C, gamma=gamma)
+
+        # Perform cross-validation
+        score = cross_val_score(model, X, y, cv=cv, scoring=scoring).mean()
+        return score  # Optuna maximizes this score
+
+    # Run Optuna study
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective, n_trials=n_trials)
+
+    # Get best hyperparameters
+    best_params = study.best_params
+    best_score = study.best_value
+
+    # Train the final model with best parameters
+    best_model = SVC(kernel='rbf', **best_params)
+    best_model.fit(X, y)  # Fit on entire dataset
+
+    print(f"Best Parameters: {best_params}")
+    print(f"Best Score: {best_score:.4f}")
+
+    return best_model, best_params, best_score
+
+
+def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method, cv=10):
     '''
     Performs hyperparameter tuning, training, and evaluation of an SVM classifier.
 
@@ -147,6 +198,9 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method,
     # 1. Hyperparameter Tuning: Cross-validation to find the best C and gamma
     cv_results_coarse = cross_validate_svm(
         X, y, param_grid, cv, title=f'1st run - CV scores for {resampling_method} ', scoring='f1_macro')
+
+    # optuna_results_coarse = tune_svm_with_optuna(
+    #     X, y, n_trials=100, cv=10, scoring="f1_macro")
 
     # Create a finer grid based on adiacent values fo coarse grid
 

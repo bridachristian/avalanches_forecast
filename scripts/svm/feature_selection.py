@@ -131,7 +131,7 @@ if __name__ == '__main__':
 
     res_tuning = tune_train_evaluate_svm(
         X_train, y_train, X_test, y_test, param_grid,
-        resampling_method=f'NearMiss_v3_nn10')
+        resampling_method=f'ClusterCentroids')
 
     classifier = train_evaluate_final_svm(
         X_train, y_train, X_test, y_test, res_tuning['best_params'])
@@ -1013,33 +1013,29 @@ if __name__ == '__main__':
     #        on SELECTED FEATURES ---
     # ---------------------------------------------------------------
 
-    SHAP = ['TaG_delta_3d',
-                'DegreeDays_Pos',
-                'HS_delta_5d',
-                'HS_delta_3d',
-                'Precip_5d',
-                'New_MF_Crust',
-                'TempAmplitude_3d',
-                'TempAmplitude_2d',
-                'Tsnow_delta_3d',
-                'TminG_delta_1d',
-                'TaG_delta_2d',
-                'T_mean',
-                'Tsnow_delta_5d',
-                'TmaxG_delta_5d',
-                'HS_delta_1d',
-                'TminG_delta_3d',
-                'ConsecWetSnowDays',
-                'Precip_2d',
-                'DaysSinceLastSnow',
-                'TaG',
-                'Tsnow_delta_2d',
-                'TaG_delta_1d',
-                'HNnum',
-                'Precip_1d',
-                'MF_Crust_Present',
-                'PR',
-                'Tsnow_delta_1d']
+    SHAP = ['TaG_delta_5d',
+            'TminG_delta_3d',
+            'HS_delta_5d',
+            'WetSnow_Temperature',
+            'New_MF_Crust',
+            'Precip_3d',
+            'Precip_2d',
+            'TempGrad_HS',
+            'Tsnow_delta_3d',
+            'TmaxG_delta_3d',
+            'HSnum',
+            'TempAmplitude_2d',
+            'WetSnow_CS',
+            'TaG',
+            'Tsnow_delta_2d',
+            'DayOfSeason',
+            'Precip_5d',
+            'TH10_tanh',
+            'TempAmplitude_1d',
+            'TaG_delta_2d',
+            'HS_delta_1d',
+            'HS_delta_3d',
+            'TaG_delta_3d']
 
     # best_features = list(set(BestFeatures_FW_20 + BestFeatures_BW_27))
 
@@ -1051,19 +1047,29 @@ if __name__ == '__main__':
 
     X_resampled, y_resampled = undersampling_clustercentroids(X, y)
 
+    # param_grid = {
+    #     'C': [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
+    #           0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
+    #           0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+    #           1, 2, 3, 4, 5, 6, 7, 8, 9,
+    #           10, 20, 30, 40, 50, 60, 70, 80, 90,
+    #           100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
+    #     'gamma': [0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009,
+    #               0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
+    #               0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
+    #               0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+    #               1, 2, 3, 4, 5, 6, 7, 8, 9,
+    #               10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    # }
+
     param_grid = {
-        'C': [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
-              0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
-              0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
-              1, 2, 3, 4, 5, 6, 7, 8, 9,
-              10, 20, 30, 40, 50, 60, 70, 80, 90,
-              100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
-        'gamma': [0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009,
-                  0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
-                  0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
-                  0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
-                  1, 2, 3, 4, 5, 6, 7, 8, 9,
-                  10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+        'C': [0.01, 0.015, 0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.5,
+            0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 15, 20, 30, 50, 75, 100, 150, 200, 300, 500,
+            750, 1000],
+        'gamma': [100, 75, 50, 30, 20, 15, 10, 7.5, 5, 3, 2, 1.5, 1,
+            0.75, 0.5, 0.3, 0.2, 0.15, 0.1, 0.08, 0.07, 0.05, 0.03, 0.02, 0.015, 0.01, 0.008,
+            0.007, 0.005, 0.003, 0.002, 0.0015, 0.001, 0.0008, 0.0007, 0.0005, 0.0003, 0.0002,
+            0.00015, 0.0001]
     }
 
     # Split into training and test set
@@ -1071,6 +1077,7 @@ if __name__ == '__main__':
         X_resampled, y_resampled, test_size=0.25, random_state=42)
 
     scaler = StandardScaler()
+    # scaler = MinMaxScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
 
@@ -1089,14 +1096,14 @@ if __name__ == '__main__':
     X_test_lda = pd.DataFrame(X_test_lda, columns=['LDA'])
 
     result_SVM = tune_train_evaluate_svm(
-        X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method='Nearmiss3')
+        X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method='Cluster Centroids')
 
     classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
         X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params'])
 
     # Evaluate model with selected features
     result_LDA = tune_train_evaluate_svm(
-        X_train_lda, y_train, X_test_lda, y_test, param_grid, resampling_method='Nearmiss3')
+        X_train_lda, y_train, X_test_lda, y_test, param_grid, resampling_method='Cluster Centroids')
 
     classifier_LDA, evaluation_metrics_LDA = train_evaluate_final_svm(
         X_train_lda, y_train, X_test_lda, y_test, result_LDA['best_params'])
@@ -1384,7 +1391,7 @@ res15 = evaluate_svm_with_feature_selection(mod1, s15)
         })
 
     # Create the DataFrame
-    df_res = pd.DataFrame(data_res)
+    df_res= pd.DataFrame(data_res)
 
     # Plotting a line plot for precision
     plt.figure(figsize=(8, 5))
@@ -1405,5 +1412,5 @@ res15 = evaluate_svm_with_feature_selection(mod1, s15)
     plt.legend()
     plt.show()
 
-    df_res = df_res.sort_values(by='Recall', ascending=False)
+    df_res= df_res.sort_values(by='Recall', ascending=False)
     # save_outputfile(df_res, common_path / 'config_snowload_features.csv')
