@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 from sklearn import svm
-from sklearn import svm
 from sklearn.feature_selection import RFE
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.model_selection import cross_val_score
@@ -1100,6 +1099,75 @@ if __name__ == '__main__':
 
     classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
         X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params'])
+
+    # --add loop
+    C_values = np.logspace(-1, 3, num=50)  # 50 values from 0.1 to 1000
+    C_values = np.round(C_values, 5)  # Round for better readability
+
+    gamma_values = np.linspace(0.002, 0.02, 19)  # 10 values in this range
+
+    # Store results
+    performance_results = []
+
+    # Loop through different C values
+    for C in C_values:
+        for gamma in gamma_values:
+            # Use the best found gamma, only varying C
+            params = {'C': C, 'gamma': gamma}
+            # params = {'C': C, 'gamma': result_SVM['best_params']['gamma']}
+
+            # print(f"Training SVM with C = {C} and gamma = {params['gamma']}")
+
+            # Train and evaluate the model with the current C value
+            classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
+                X_train_scaled, y_train, X_test_scaled, y_test, params
+            )
+
+            # Store results
+            performance_results.append({
+                'C': C,
+                'gamma': gamma,
+                'accuracy': evaluation_metrics_SVM['accuracy'],
+                'precision': evaluation_metrics_SVM['precision'],
+                'recall': evaluation_metrics_SVM['recall'],
+                'f1': evaluation_metrics_SVM['f1']
+            })
+
+    # Convert results into a DataFrame for easy analysis
+    df_performance = pd.DataFrame(performance_results)
+
+    # Sort by C value
+    df_performance = df_performance.sort_values(by='C')
+
+    # Display results
+    print(df_performance)
+
+    # Optional: Plot performance trends
+    import matplotlib.pyplot as plt
+
+    plt.figure(figsize=(8, 5))
+    for metric in ['accuracy', 'precision', 'recall', 'f1']:
+        plt.plot(df_performance['C'],
+                 df_performance[metric], marker='o', label=metric)
+
+    plt.xscale('log')  # Use logarithmic scale for better visualization
+    plt.xlabel("C value (log scale)")
+    plt.ylabel("Performance")
+    plt.title("SVM Performance for Different C Values")
+    plt.legend()
+    plt.grid()
+    plt.show()
+    # -- end loop
+
+    # params = {'C': 89, 'gamma': result_SVM['best_params']['gamma']}
+    params = {'C': 50, 'gamma': 0.01}
+
+    # print(f"Training SVM with C = {C} and gamma = {params['gamma']}")
+
+    # Train and evaluate the model with the current C value
+    classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
+        X_train_scaled, y_train, X_test_scaled, y_test, params
+    )
 
     # Evaluate model with selected features
     result_LDA = tune_train_evaluate_svm(
