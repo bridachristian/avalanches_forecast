@@ -45,7 +45,7 @@ def plot_learning_curve(clf, X, y, title, cv=5):
     plt.plot(train_sizes, val_mean, label="Validation Score")
     plt.xlabel("Training Set Size")
     plt.ylabel("Score")
-    plt.ylim(0, 1)
+    plt.ylim(0, 1.1)
     plt.legend()
     plt.title(f'Learning Curve - {title}')
     plt.show()
