@@ -1101,10 +1101,10 @@ if __name__ == '__main__':
         X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params'])
 
     # --add loop
-    C_values = np.logspace(-1, 3, num=50)  # 50 values from 0.1 to 1000
+    C_values = np.logspace(0, 3, num=1000)  # 50 values from 0.1 to 1000
     C_values = np.round(C_values, 5)  # Round for better readability
 
-    gamma_values = np.linspace(0.002, 0.02, 19)  # 10 values in this range
+    gamma_values = np.linspace(0.002, 0.01, 41)  # 10 values in this range
 
     # Store results
     performance_results = []
@@ -1142,25 +1142,73 @@ if __name__ == '__main__':
     # Display results
     print(df_performance)
 
-    # Optional: Plot performance trends
-    import matplotlib.pyplot as plt
+    shap_regular_path = Path(
+        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\SHAP_regularized\\svm_performance_results.csv')
 
-    plt.figure(figsize=(8, 5))
-    for metric in ['accuracy', 'precision', 'recall', 'f1']:
-        plt.plot(df_performance['C'],
-                 df_performance[metric], marker='o', label=metric)
+    df_performance.to_csv(shap_regular_path, index=False)
 
-    plt.xscale('log')  # Use logarithmic scale for better visualization
+    # # Optional: Plot performance trends
+    # import matplotlib.pyplot as plt
+
+    # plt.figure(figsize=(8, 5))
+    # for metric in ['accuracy', 'precision', 'recall', 'f1']:
+    #     plt.plot(df_performance['C'],
+    #              df_performance[metric], marker='o', label=metric)
+
+    # plt.xscale('log')  # Use logarithmic scale for better visualization
+    # plt.xlabel("C value (log scale)")
+    # plt.ylabel("Performance")
+    # plt.title("SVM Performance for Different C Values")
+    # plt.legend()
+    # plt.grid()
+    # plt.show()
+
+    # Group by C and compute statistics
+    df_grouped = df_performance.groupby("C")["f1"].agg([
+        ("mean", "mean"),
+        ("10th", lambda x: np.percentile(x, 10)),
+        ("25th", lambda x: np.percentile(x, 25)),
+        ("50th", lambda x: np.percentile(x, 50)),  # Median
+        ("75th", lambda x: np.percentile(x, 75)),
+        ("90th", lambda x: np.percentile(x, 90)),
+        ("min", "min"),
+        ("max", "max")
+    ]).reset_index()
+
+    # Create the plot
+    plt.figure(figsize=(10, 5))
+
+    # Plot median line
+    plt.plot(df_grouped["C"], df_grouped["50th"], color='#1565C0',
+             linestyle='-', linewidth=2, label="Median (50%)")
+
+    # Add shading for percentiles
+    plt.fill_between(df_grouped["C"], df_grouped["min"], df_grouped["max"],
+                     color='#B3E5FC', alpha=0.5, label="min-max")
+    plt.fill_between(df_grouped["C"], df_grouped["10th"], df_grouped["90th"],
+                     color='#81D4FA', alpha=0.75, label="10th-90th Percentile")
+    plt.fill_between(df_grouped["C"], df_grouped["25th"], df_grouped["75th"],
+                     color='#4FC3F7', alpha=1, label="25th-75th Percentile")
+
+    # Log scale for C
+    plt.xscale("log")
     plt.xlabel("C value (log scale)")
-    plt.ylabel("Performance")
-    plt.title("SVM Performance for Different C Values")
-    plt.legend()
-    plt.grid()
+    plt.ylabel("F1-score")
+    plt.title("SVM Performance (C vs F1-score with Percentile Ranges)")
+
+    # Add legend
+    plt.legend(loc="upper left")
+
+    # Add grid
+    plt.grid(True, linestyle='dotted')
+
+    # Show the plot
     plt.show()
+
     # -- end loop
 
-    # params = {'C': 89, 'gamma': result_SVM['best_params']['gamma']}
-    params = {'C': 50, 'gamma': 0.01}
+    params = {'C': 53.7, 'gamma': 0.0058}
+    # params = {'C': 50, 'gamma': 0.01}
 
     # print(f"Training SVM with C = {C} and gamma = {params['gamma']}")
 

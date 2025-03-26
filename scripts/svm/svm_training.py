@@ -225,8 +225,8 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method,
     clf.fit(X, y)
 
     # 3. Evaluate Training Performance with a Learning Curve
-    plot_learning_curve(clf, X, y, title=f'{resampling_method}', cv=cv)
-    plot_threshold_scoring(X, y, X_test, y_test, clf)
+    # plot_learning_curve(clf, X, y, title=f'{resampling_method}', cv=cv)
+    # plot_threshold_scoring(X, y, X_test, y_test, clf)
 
     if X.shape[1] == 2:
         plot_decision_boundary(X, y, clf,
@@ -343,7 +343,7 @@ def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params):
     print(f'F1: {f1:.4f}')
 
     # Compute and plot the ROC curve
-    plot_roc_curve(X_test, y_test, clf)
+    # plot_roc_curve(X_test, y_test, clf)
 
     # Return model and performance metrics
     metrics = {
