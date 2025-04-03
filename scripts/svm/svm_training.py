@@ -103,12 +103,37 @@ def cross_validate_svm(X, y, param_grid, cv=5, title='CV scores', scoring='f1_ma
     gamma_values = param_grid['gamma']
     scores_matrix = scores.reshape(len(c_values), len(gamma_values))
 
+    # plt.figure(figsize=(10, 8))
+    # sns.heatmap(scores_matrix, annot=False, fmt=".3f",
+    #             xticklabels=gamma_values, yticklabels=c_values, cmap="viridis")
+    # plt.title(f'{title} - {scoring}')
+    # plt.xlabel("Gamma")
+    # plt.ylabel("C")
+    # plt.show()
+
+    best_C = best_params["C"]
+    best_gamma = best_params["gamma"]
+
+    # Find the index of the best C and gamma in the parameter grid
+    best_C_index = np.where(np.array(c_values) == best_C)[0][0]
+    best_gamma_index = np.where(np.array(gamma_values) == best_gamma)[0][0]
+
+    # Create heatmap
     plt.figure(figsize=(10, 8))
     sns.heatmap(scores_matrix, annot=False, fmt=".3f",
                 xticklabels=gamma_values, yticklabels=c_values, cmap="viridis")
+
+    # Add a red dot at the best C and gamma
+    plt.scatter(best_gamma_index + 0.5, best_C_index + 0.5,
+                color='red', s=100, edgecolors='black', label="Best (C, gamma)")
+
+    # Add labels and title
     plt.title(f'{title} - {scoring}')
     plt.xlabel("Gamma")
     plt.ylabel("C")
+    plt.legend(loc="upper right")
+
+    # Show plot
     plt.show()
 
     # Return the best model and evaluation metrics
@@ -204,24 +229,24 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method,
 
     # Create a finer grid based on adiacent values fo coarse grid
 
-    C_fine = get_adjacent_values(
-        param_grid['C'], cv_results_coarse['best_params']['C'])
-    gamma_fine = get_adjacent_values(
-        param_grid['gamma'], cv_results_coarse['best_params']['gamma'])
+    # C_fine = get_adjacent_values(
+    #     param_grid['C'], cv_results_coarse['best_params']['C'])
+    # gamma_fine = get_adjacent_values(
+    #     param_grid['gamma'], cv_results_coarse['best_params']['gamma'])
 
-    finer_param_grid = {
-        # 20 values between the adjacent C values
-        'C': np.linspace(C_fine[0], C_fine[-1], 21, dtype=np.float64),
-        # 20 values between the adjacent gamma values
-        'gamma': np.linspace(gamma_fine[0], gamma_fine[-1], 21, dtype=np.float64)
-    }
+    # finer_param_grid = {
+    #     # 20 values between the adjacent C values
+    #     'C': np.linspace(C_fine[0], C_fine[-1], 21, dtype=np.float64),
+    #     # 20 values between the adjacent gamma values
+    #     'gamma': np.linspace(gamma_fine[0], gamma_fine[-1], 21, dtype=np.float64)
+    # }
 
-    cv_results = cross_validate_svm(
-        X, y, finer_param_grid, cv, title=f'2nd run - CV scores for {resampling_method} ', scoring='f1_macro')
+    # cv_results = cross_validate_svm(
+    #     X, y, finer_param_grid, cv, title=f'2nd run - CV scores for {resampling_method} ', scoring='f1_macro')
 
     # 2. Train the SVM Classifier with Best Hyperparameters
     clf = svm.SVC(
-        kernel='rbf', C=cv_results['best_params']['C'], gamma=cv_results['best_params']['gamma'])
+        kernel='rbf', C=cv_results_coarse['best_params']['C'], gamma=cv_results_coarse['best_params']['gamma'])
     clf.fit(X, y)
 
     # 3. Evaluate Training Performance with a Learning Curve
@@ -255,7 +280,7 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method,
         'accuracy': accuracy,
         'precision': precision,
         'f1': f1,
-        'best_params': cv_results['best_params']
+        'best_params': cv_results_coarse['best_params']
     }
 
 
@@ -320,7 +345,7 @@ def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params):
     test_accuracy = model.score(X_test, y_test)
     print("Test Set Accuracy:", test_accuracy)
 
-    # Evaluate Training Performance with a Learning Curve
+    # # Evaluate Training Performance with a Learning Curve
     plot_learning_curve(clf, X_train, y_train, cv=10,
                         title='Learning Curve Final SVM')
 
@@ -337,10 +362,10 @@ def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params):
     f1 = f1_score(y_test, y_pred, average='macro')
 
     # Print the evaluation metrics
-    print(f'Accuracy: {accuracy:.4f}')
-    print(f'Precision: {precision:.4f}')
-    print(f'Recall: {recall:.4f}')
-    print(f'F1: {f1:.4f}')
+    # print(f'Accuracy: {accuracy:.4f}')
+    # print(f'Precision: {precision:.4f}')
+    # print(f'Recall: {recall:.4f}')
+    # print(f'F1: {f1:.4f}')
 
     # Compute and plot the ROC curve
     # plot_roc_curve(X_test, y_test, clf)

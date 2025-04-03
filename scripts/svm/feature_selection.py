@@ -1080,19 +1080,10 @@ if __name__ == '__main__':
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
 
-    # **Applicazione di LDA per Feature Extraction**
-    # Ridurre a 1 dimensione, ad esempio
-    lda = LinearDiscriminantAnalysis(n_components=1)
-    X_train_lda = lda.fit_transform(X_train_scaled, y_train)
-    X_test_lda = lda.transform(X_test_scaled)
-
     X_train_scaled = pd.DataFrame(
         X_train_scaled, columns=X_train.columns, index=X_train.index)
     X_test_scaled = pd.DataFrame(
         X_test_scaled, columns=X_test.columns, index=X_test.index)
-
-    X_train_lda = pd.DataFrame(X_train_lda, columns=['LDA'])
-    X_test_lda = pd.DataFrame(X_test_lda, columns=['LDA'])
 
     result_SVM = tune_train_evaluate_svm(
         X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method='Cluster Centroids')
@@ -1100,129 +1091,293 @@ if __name__ == '__main__':
     classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
         X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params'])
 
-    # --add loop
-    C_values = np.logspace(0, 3, num=1000)  # 50 values from 0.1 to 1000
-    C_values = np.round(C_values, 5)  # Round for better readability
+    from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 
-    gamma_values = np.linspace(0.002, 0.01, 41)  # 10 values in this range
+    # Apply LDA for dimensionality reduction
+    lda = LDA(n_components=1)
 
-    # Store results
+    X_train_lda = lda.fit_transform(X_train_scaled, y_train)
+    X_test_lda = lda.transform(X_test_scaled)
+
+    # Convert back to DataFrame for compatibility
+    X_train_lda = pd.DataFrame(X_train_lda, index=X_train.index)
+    X_test_lda = pd.DataFrame(X_test_lda, index=X_test.index)
+
+    # Train and evaluate SVM on LDA-transformed features
+    result_SVM_LDA = tune_train_evaluate_svm(
+        X_train_lda, y_train, X_test_lda, y_test, param_grid, resampling_method='Cluster Centroids')
+
+    classifier_SVM_LDA, evaluation_metrics_SVM_LDA = train_evaluate_final_svm(
+        X_train_lda, y_train, X_test_lda, y_test, result_SVM_LDA['best_params'])
+
+    # -------------------------------------------------------
+    # REFINE WITH SHAP
+    # -------------------------------------------------------
+    candidate_features = ['TaG_delta_5d',
+            'TminG_delta_3d',
+            'HS_delta_5d',
+            'WetSnow_Temperature',
+            # 'New_MF_Crust',
+            'Precip_3d',
+            'Precip_2d',
+            'TempGrad_HS',
+            'Tsnow_delta_3d',
+            'TmaxG_delta_3d',
+            'HSnum',
+            'TempAmplitude_2d',
+            # 'WetSnow_CS',
+            'TaG',
+            'Tsnow_delta_2d',
+            'DayOfSeason',
+            'Precip_5d',
+            'TH10_tanh',
+            'TempAmplitude_1d',
+            'TaG_delta_2d',
+            'HS_delta_1d',
+            'HS_delta_3d',
+            'TaG_delta_3d']
+
+    # Store performance results for each feature set
+    all_results = []
+    summary_results = []
+
+    feature_sets = [candidate_features[:i+1]
+        for i in range(len(candidate_features))]
+    # feature_sets = feature_sets[1:]
+
+    # Initialize an empty list to store results
     performance_results = []
 
-    # Loop through different C values
-    for C in C_values:
-        for gamma in gamma_values:
-            # Use the best found gamma, only varying C
-            params = {'C': C, 'gamma': gamma}
-            # params = {'C': C, 'gamma': result_SVM['best_params']['gamma']}
+    for i, feat in enumerate(feature_sets):
+        feature_plus = feat + ['AvalDay']
+        print(f" *** Feature set {i+1}: {feature_plus} *** ")
 
-            # print(f"Training SVM with C = {C} and gamma = {params['gamma']}")
+        # Data preparation
+        mod1_clean = mod1[feature_plus].dropna()
+        X = mod1_clean[feat]
+        y = mod1_clean['AvalDay']
 
-            # Train and evaluate the model with the current C value
-            classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
-                X_train_scaled, y_train, X_test_scaled, y_test, params
-            )
+        # Remove correlated and low-variance features
+        features_correlated = remove_correlated_features(X, y)
+        X = X.drop(columns=features_correlated)
 
-            # Store results
-            performance_results.append({
-                'C': C,
-                'gamma': gamma,
-                'accuracy': evaluation_metrics_SVM['accuracy'],
-                'precision': evaluation_metrics_SVM['precision'],
-                'recall': evaluation_metrics_SVM['recall'],
-                'f1': evaluation_metrics_SVM['f1']
-            })
+        X_resampled, y_resampled = undersampling_clustercentroids(X, y)
+        features_low_variance = remove_low_variance(X_resampled)
+        X_resampled = X_resampled.drop(columns=features_low_variance)
 
-    # Convert results into a DataFrame for easy analysis
+        # Split into training and test set
+        X_train, X_test, y_train, y_test = train_test_split(
+            X_resampled, y_resampled, test_size=0.25, random_state=42)
+
+        # Normalization
+        scaler = MinMaxScaler()
+        X_train_scaled = pd.DataFrame(
+            scaler.fit_transform(X_train), columns=X_train.columns)
+        X_test_scaled = pd.DataFrame(
+            scaler.transform(X_test), columns=X_test.columns)
+
+        param_grid = {
+            'C': [0.01, 0.015, 0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.5,
+                0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 15, 20, 30, 50, 75, 100, 150, 200, 300, 500,
+                750, 1000],
+            'gamma': [100, 75, 50, 30, 20, 15, 10, 7.5, 5, 3, 2, 1.5, 1,
+                0.75, 0.5, 0.3, 0.2, 0.15, 0.1, 0.08, 0.07, 0.05, 0.03, 0.02, 0.015, 0.01, 0.008,
+                0.007, 0.005, 0.003, 0.002, 0.0015, 0.001, 0.0008, 0.0007, 0.0005, 0.0003, 0.0002,
+                0.00015, 0.0001]
+        }
+
+        result_SVM = tune_train_evaluate_svm(
+            X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method='Cluster Centroids')
+
+        # Train the SVM model with fixed hyperparameters
+        classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
+            X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params']
+        )
+
+        # Store the results in a dictionary
+        performance_results.append({
+            'Feature Set': i+1,
+            'Num Features': len(feat),
+            'C': result_SVM['best_params']['C'],
+            'Gamma': result_SVM['best_params']['gamma'],
+            'Accuracy': evaluation_metrics_SVM['accuracy'],
+            'Precision': evaluation_metrics_SVM['precision'],
+            'Recall': evaluation_metrics_SVM['recall'],
+            'F1-score': evaluation_metrics_SVM['f1']
+        })
+
+    # Convert results into a DataFrame
     df_performance = pd.DataFrame(performance_results)
-
-    # Sort by C value
-    df_performance = df_performance.sort_values(by='C')
-
-    # Display results
-    print(df_performance)
-
-    shap_regular_path = Path(
-        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\SHAP_regularized\\svm_performance_results.csv')
-
-    df_performance.to_csv(shap_regular_path, index=False)
-
-    # # Optional: Plot performance trends
-    # import matplotlib.pyplot as plt
-
-    # plt.figure(figsize=(8, 5))
-    # for metric in ['accuracy', 'precision', 'recall', 'f1']:
-    #     plt.plot(df_performance['C'],
-    #              df_performance[metric], marker='o', label=metric)
-
-    # plt.xscale('log')  # Use logarithmic scale for better visualization
-    # plt.xlabel("C value (log scale)")
-    # plt.ylabel("Performance")
-    # plt.title("SVM Performance for Different C Values")
-    # plt.legend()
-    # plt.grid()
-    # plt.show()
-
-    # Group by C and compute statistics
-    df_grouped = df_performance.groupby("C")["f1"].agg([
-        ("mean", "mean"),
-        ("10th", lambda x: np.percentile(x, 10)),
-        ("25th", lambda x: np.percentile(x, 25)),
-        ("50th", lambda x: np.percentile(x, 50)),  # Median
-        ("75th", lambda x: np.percentile(x, 75)),
-        ("90th", lambda x: np.percentile(x, 90)),
-        ("min", "min"),
-        ("max", "max")
-    ]).reset_index()
+    # Sort the DataFrame by the number of features
+    df_performance_sorted = df_performance.sort_values(by="F1-score")
 
     # Create the plot
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(10, 6))
+    sns.lineplot(x=df_performance_sorted["Num Features"],
+                 y=df_performance_sorted["F1-score"],
+                 marker="o", linewidth=2, markersize=8, color='b', label="F1-score")
 
-    # Plot median line
-    plt.plot(df_grouped["C"], df_grouped["50th"], color='#1565C0',
-             linestyle='-', linewidth=2, label="Median (50%)")
+    # Add labels and title
+    plt.xlabel("Number of Features", fontsize=12)
+    plt.ylabel("F1-score", fontsize=12)
+    plt.title("SVM Performance vs Number of Features", fontsize=14)
 
-    # Add shading for percentiles
-    plt.fill_between(df_grouped["C"], df_grouped["min"], df_grouped["max"],
-                     color='#B3E5FC', alpha=0.5, label="min-max")
-    plt.fill_between(df_grouped["C"], df_grouped["10th"], df_grouped["90th"],
-                     color='#81D4FA', alpha=0.75, label="10th-90th Percentile")
-    plt.fill_between(df_grouped["C"], df_grouped["25th"], df_grouped["75th"],
-                     color='#4FC3F7', alpha=1, label="25th-75th Percentile")
-
-    # Log scale for C
-    plt.xscale("log")
-    plt.xlabel("C value (log scale)")
-    plt.ylabel("F1-score")
-    plt.title("SVM Performance (C vs F1-score with Percentile Ranges)")
-
-    # Add legend
-    plt.legend(loc="upper left")
-
-    # Add grid
-    plt.grid(True, linestyle='dotted')
+    # Grid and legend
+    plt.grid(True, linestyle="dotted", alpha=0.7)
+    plt.legend()
+    # Ensure integer ticks on x-axis
+    plt.xticks(df_performance_sorted["Num Features"])
 
     # Show the plot
     plt.show()
 
+
+# stop ... old
+        # Hyperparameter tuning
+        param_grid = {
+            'C': np.logspace(-4, 3, num=8),
+            'gamma': np.logspace(-4, 3, num=8)
+        }
+
+        resampling_method = 'ClusterCentroids'
+
+        res_svm = tune_train_evaluate_svm(
+            X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method, cv=10
+        )
+
+        best_C = res_svm['best_params']['C']
+        best_gamma = res_svm['best_params']['gamma']
+
+        # Generate range of C and gamma values around the best parameters
+        C_values = np.linspace(best_C / 10, best_C * 10, 100)
+        gamma_values = np.linspace(best_gamma / 10, best_gamma * 10, 100)
+
+        performance_results = []
+
+        for C in C_values:
+            for gamma in gamma_values:
+                params = {'C': C, 'gamma': gamma}
+                # params = {'C': C, 'gamma': 'auto'}
+                print(f'--- Testing C={C}, gamma={gamma} ---')
+
+                classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
+                    X_train_scaled, y_train, X_test_scaled, y_test, params
+                )
+
+                performance_results.append({
+                    'Feature Set': i + 1,
+                    'Features': ", ".join(feat),
+                    'C': C,
+                    'gamma': gamma,
+                    'accuracy': evaluation_metrics_SVM['accuracy'],
+                    'precision': evaluation_metrics_SVM['precision'],
+                    'recall': evaluation_metrics_SVM['recall'],
+                    'f1': evaluation_metrics_SVM['f1']
+                })
+
+        # Save results to DataFrame
+        df_performance = pd.DataFrame(performance_results)
+        # Group by C and compute statistics
+        df_grouped = df_performance.groupby("C")["f1"].agg([
+            ("mean", "mean"),
+            ("10th", lambda x: np.percentile(x, 10)),
+            ("25th", lambda x: np.percentile(x, 25)),
+            ("50th", lambda x: np.percentile(x, 50)),  # Median
+            ("75th", lambda x: np.percentile(x, 75)),
+            ("90th", lambda x: np.percentile(x, 90)),
+            ("min", "min"),
+            ("max", "max")
+        ]).reset_index()
+
+        # Create the plot
+        plt.figure(figsize=(10, 5))
+
+        # Plot median line
+        plt.plot(df_grouped["C"], df_grouped["50th"], color='#1565C0',
+                 linestyle='-', linewidth=2, label="Median (50%)")
+
+        # Add shading for percentiles
+        plt.fill_between(df_grouped["C"], df_grouped["min"], df_grouped["max"],
+                         color='#B3E5FC', alpha=0.5, label="min-max")
+        plt.fill_between(df_grouped["C"], df_grouped["10th"], df_grouped["90th"],
+                         color='#81D4FA', alpha=0.75, label="10th-90th Percentile")
+        plt.fill_between(df_grouped["C"], df_grouped["25th"], df_grouped["75th"],
+                         color='#4FC3F7', alpha=1, label="25th-75th Percentile")
+
+        plt.xscale("log")
+        plt.xlabel("C value (log scale)")
+        plt.ylabel("F1-score")
+        # plt.title(f'Feature set {i+1}: {feature_plus}')
+        plt.title(f'Feature set {i+1}')
+        plt.legend(loc="upper left")
+        plt.grid(True, linestyle='dotted')
+        plt.show()
+
+        all_results.append(df_performance)
+
+        # Save individual results to a CSV file
+        feature_filename = f"svm_performance_feature_set_{i+1}.csv"
+        df_performance.to_csv(feature_filename, index=False)
+
+        # Find the C value that gives the highest median F1-score
+        best_C_row = df_grouped[df_grouped["50th"] == df_grouped["50th"].max()]
+
+        # Extract the corresponding best C value
+        C_best = best_C_row["C"].values[0]
+
+        # Now find the gamma value for this best C in df_performance
+        best_gamma_row = df_performance[df_performance["C"] == best_C].sort_values(
+            by="f1", ascending=False).iloc[0]
+        gamma_best = best_gamma_row["gamma"]
+
+        # Extract best performing model for summary
+        best_model = df_performance.loc[(df_performance['C'] == C_best) & (
+            df_performance['gamma'] == gamma_best)].iloc[0]
+
+        summary_results.append(best_model)
+
+    # Convert summary to DataFrame and save
+    df_summary = pd.DataFrame(summary_results)
+    # df_summary.to_csv("svm_summary_results.csv", index=False)
+
+    # Display the summary of best models
+    print(df_summary)
+
+    df_summary_sorted = df_summary.sort_values(by="Feature Set")
+
+    # Plot
+    plt.figure(figsize=(10, 6))
+    sns.lineplot(x=df_summary_sorted["Feature Set"],
+                 y=df_summary_sorted["f1"],
+                 marker="o", linewidth=2, markersize=8)
+
+    # Set integer x-axis ticks
+    plt.xticks(np.arange(df_summary_sorted["Feature Set"].min(),
+                          df_summary_sorted["Feature Set"].max() + 1, 1),
+               rotation=45)  # Rotate for better readability if needed
+
+    # Labels and title
+    plt.xlabel("Number of Features", fontsize=12)
+    plt.ylabel("F1-score", fontsize=12)
+    plt.title("SVM Performance vs Number of Features", fontsize=14)
+
+    # Grid and display
+    plt.grid(True, linestyle="dotted")
+    plt.show()
+
     # -- end loop
 
-    params = {'C': 53.7, 'gamma': 0.0058}
+    params1 = {'C': 53.7, 'gamma': 0.0058}  # best params for full SHAP
+    params2 = {'C': 4.07, 'gamma': 0.037}  # best params for full SHAP
+    params3 = {'C': 9.95, 'gamma': 0.106}  # best params for full SHAP
     # params = {'C': 50, 'gamma': 0.01}
 
     # print(f"Training SVM with C = {C} and gamma = {params['gamma']}")
 
     # Train and evaluate the model with the current C value
     classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
-        X_train_scaled, y_train, X_test_scaled, y_test, params
+        X_train_scaled, y_train, X_test_scaled, y_test, params3
     )
-
-    # Evaluate model with selected features
-    result_LDA = tune_train_evaluate_svm(
-        X_train_lda, y_train, X_test_lda, y_test, param_grid, resampling_method='Cluster Centroids')
-
-    classifier_LDA, evaluation_metrics_LDA = train_evaluate_final_svm(
-        X_train_lda, y_train, X_test_lda, y_test, result_LDA['best_params'])
 
     # -------------------------------------------------------
     # TEST FEATURES PERFORMANCE
@@ -1507,7 +1662,7 @@ res15 = evaluate_svm_with_feature_selection(mod1, s15)
         })
 
     # Create the DataFrame
-    df_res= pd.DataFrame(data_res)
+    df_res = pd.DataFrame(data_res)
 
     # Plotting a line plot for precision
     plt.figure(figsize=(8, 5))
@@ -1528,5 +1683,5 @@ res15 = evaluate_svm_with_feature_selection(mod1, s15)
     plt.legend()
     plt.show()
 
-    df_res= df_res.sort_values(by='Recall', ascending=False)
+    df_res = df_res.sort_values(by='Recall', ascending=False)
     # save_outputfile(df_res, common_path / 'config_snowload_features.csv')
