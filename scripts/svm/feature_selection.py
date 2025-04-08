@@ -39,8 +39,8 @@ if __name__ == '__main__':
     common_path = Path(
         'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\MOD1_manipulation\\')
 
-    # filepath = common_path / 'mod1_newfeatures_NEW.csv'
     filepath = common_path / 'mod1_newfeatures_NEW.csv'
+    # filepath = common_path / 'mod1_certified.csv'
     results_path = Path(
         'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\SVM_results\\')
 
