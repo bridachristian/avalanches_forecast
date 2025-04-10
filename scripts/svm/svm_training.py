@@ -8,7 +8,7 @@ import seaborn as sns
 from sklearn import svm
 from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV, cross_val_score, learning_curve
 from sklearn.metrics import (accuracy_score, precision_score, recall_score,
-                             f1_score, confusion_matrix, roc_curve, auc)
+                             f1_score, confusion_matrix, roc_curve, auc, matthews_corrcoef)
 from sklearn.inspection import permutation_importance
 from scripts.svm.data_loading import load_data
 from scripts.svm.undersampling_methods import undersampling_random, undersampling_random_timelimited, undersampling_nearmiss
@@ -267,12 +267,14 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method,
     precision = precision_score(y_test, y_pred, average='macro')
     recall = recall_score(y_test, y_pred, average='macro')
     f1 = f1_score(y_test, y_pred, average='macro')
+    mcc = matthews_corrcoef(y_test, y_pred)
 
     # Print evaluation metrics
     print(f'Accuracy: {accuracy:.4f}')
     print(f'Precision: {precision:.4f}')
     print(f'Recall: {recall:.4f}')
     print(f'F1: {f1:.4f}')
+    print(f'MCC: {mcc:.4f}')
 
     # Return results as a dictionary
     return {
@@ -280,6 +282,7 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method,
         'accuracy': accuracy,
         'precision': precision,
         'f1': f1,
+        'MCC': mcc,
         'best_params': cv_results_coarse['best_params']
     }
 
@@ -360,6 +363,7 @@ def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params):
     precision = precision_score(y_test, y_pred, average='macro')
     recall = recall_score(y_test, y_pred, average='macro')
     f1 = f1_score(y_test, y_pred, average='macro')
+    mcc = matthews_corrcoef(y_test, y_pred)
 
     # Print the evaluation metrics
     # print(f'Accuracy: {accuracy:.4f}')
@@ -376,6 +380,7 @@ def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params):
         'accuracy': accuracy,
         'recall': recall,
         'f1': f1,
+        'MCC': mcc,
         'best_params': best_params
     }
 
