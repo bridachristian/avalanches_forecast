@@ -274,3 +274,54 @@ plt.title("K-Means Clustering")
 plt.xlabel("Feature 1")
 plt.ylabel("Feature 2")
 plt.show()
+
+inertias = []
+for k in range(1, 11):
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    kmeans.fit(X_scaled)
+    inertias.append(kmeans.inertia_)
+
+plt.plot(range(1, 11), inertias, marker='o')
+plt.title('Elbow Method')
+plt.xlabel('Number of clusters')
+plt.ylabel('Inertia')
+plt.show()
+
+
+from sklearn.preprocessing import StandardScaler
+
+X = df_corr.drop(columns=['AvalDay', 'Cluster'])  # drop target and cluster if already present
+X_scaled = StandardScaler().fit_transform(X)
+from sklearn.decomposition import PCA
+
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_scaled)
+
+from sklearn.cluster import KMeans
+
+kmeans = KMeans(n_clusters=2, random_state=42)  # use 3 or 4 based on your elbow
+kmeans.fit(X_scaled)
+labels = kmeans.labels_
+
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(8, 6))
+plt.scatter(X_pca[:, 0], X_pca[:, 1], c=labels, cmap='viridis', s=50, edgecolor='k')
+plt.title('K-Means Clusters Visualized with PCA')
+plt.xlabel('PCA Component 1')
+plt.ylabel('PCA Component 2')
+plt.grid(True)
+plt.show()
+
+
+from sklearn.manifold import TSNE
+
+X_tsne = TSNE(n_components=2, perplexity=30, random_state=42).fit_transform(X_scaled)
+
+plt.figure(figsize=(8, 6))
+plt.scatter(X_tsne[:, 0], X_tsne[:, 1], c=labels, cmap='plasma', s=50, edgecolor='k')
+plt.title('K-Means Clusters Visualized with t-SNE')
+plt.xlabel('t-SNE Component 1')
+plt.ylabel('t-SNE Component 2')
+plt.grid(True)
+plt.show()

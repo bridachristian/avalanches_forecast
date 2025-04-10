@@ -1267,35 +1267,35 @@ if __name__ == '__main__':
     # Final output
     print(df_expanded)
 
-    # Display the table
-    print(results_df)
+    outpath = results_path / 'df_expanded.csv'
+    df_expanded.to_csv(outpath, index=False)
 
     # -------------------------------------------------------
     # REFINE WITH SHAP --> STABILITY of the model
     # -------------------------------------------------------
     candidate_features = ['TaG_delta_5d',
-            'TminG_delta_3d',
-            'HS_delta_5d',
-            'WetSnow_Temperature',
-            'New_MF_Crust',
-            'Precip_3d',
-            'Precip_2d',
-            'TempGrad_HS',
-            'Tsnow_delta_3d',
-            'TmaxG_delta_3d',
-            'HSnum',
-            'TempAmplitude_2d',
-            'WetSnow_CS',
-            'TaG',
-            'Tsnow_delta_2d',
-            'DayOfSeason',
-            'Precip_5d',
-            'TH10_tanh',
-            'TempAmplitude_1d',
-            'TaG_delta_2d',
-            'HS_delta_1d',
-            'HS_delta_3d',
-            'TaG_delta_3d']
+                            'TminG_delta_3d',
+                            'HS_delta_5d',
+                            'WetSnow_Temperature',
+                            'New_MF_Crust',
+                            'Precip_3d',
+                            'Precip_2d',
+                            'TempGrad_HS',
+                            'Tsnow_delta_3d',
+                            'TmaxG_delta_3d',
+                            'HSnum',
+                            'TempAmplitude_2d',
+                            'WetSnow_CS',
+                            'TaG',
+                            'Tsnow_delta_2d',
+                            'DayOfSeason',
+                            'Precip_5d',
+                            'TH10_tanh',
+                            'TempAmplitude_1d',
+                            'TaG_delta_2d',
+                            'HS_delta_1d',
+                            'HS_delta_3d',
+                            'TaG_delta_3d']
 
     # Store performance results for each feature set
     all_results = []
@@ -1310,66 +1310,70 @@ if __name__ == '__main__':
 
     for i, feat in enumerate(feature_sets):
         feature_plus = feat + ['AvalDay']
-        print(f" *** Feature set {i+1}: {feature_plus} *** ")
+        print(f" *** Feature set {i+1}: {feat} *** ")
 
-        # Data preparation
-        mod1_clean = mod1[feature_plus].dropna()
-        X = mod1_clean[feat]
-        y = mod1_clean['AvalDay']
+        res_feat = evaluate_svm_with_feature_selection(mod1, feat)
 
-        # Remove correlated and low-variance features
-        features_correlated = remove_correlated_features(X, y)
-        X = X.drop(columns=features_correlated)
+        # # Data preparation
+        # mod1_clean = mod1[feature_plus].dropna()
+        # X = mod1_clean[feat]
+        # y = mod1_clean['AvalDay']
 
-        X_resampled, y_resampled = undersampling_clustercentroids(X, y)
-        features_low_variance = remove_low_variance(X_resampled)
-        X_resampled = X_resampled.drop(columns=features_low_variance)
+        # # Remove correlated and low-variance features
+        # features_correlated = remove_correlated_features(X, y)
+        # X = X.drop(columns=features_correlated)
 
-        # Split into training and test set
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_resampled, y_resampled, test_size=0.25, random_state=42)
+        # X_resampled, y_resampled = undersampling_clustercentroids(X, y)
+        # features_low_variance = remove_low_variance(X_resampled)
+        # X_resampled = X_resampled.drop(columns=features_low_variance)
 
-        # Normalization
-        scaler = MinMaxScaler()
-        X_train_scaled = pd.DataFrame(
-            scaler.fit_transform(X_train), columns=X_train.columns)
-        X_test_scaled = pd.DataFrame(
-            scaler.transform(X_test), columns=X_test.columns)
+        # # Split into training and test set
+        # X_train, X_test, y_train, y_test = train_test_split(
+        #     X_resampled, y_resampled, test_size=0.25, random_state=42)
 
-        param_grid = {
-            'C': [0.01, 0.015, 0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.5,
-                0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 15, 20, 30, 50, 75, 100, 150, 200, 300, 500,
-                750, 1000],
-            'gamma': [100, 75, 50, 30, 20, 15, 10, 7.5, 5, 3, 2, 1.5, 1,
-                0.75, 0.5, 0.3, 0.2, 0.15, 0.1, 0.08, 0.07, 0.05, 0.03, 0.02, 0.015, 0.01, 0.008,
-                0.007, 0.005, 0.003, 0.002, 0.0015, 0.001, 0.0008, 0.0007, 0.0005, 0.0003, 0.0002,
-                0.00015, 0.0001]
-        }
+        # # Normalization
+        # scaler = MinMaxScaler()
+        # X_train_scaled = pd.DataFrame(
+        #     scaler.fit_transform(X_train), columns=X_train.columns)
+        # X_test_scaled = pd.DataFrame(
+        #     scaler.transform(X_test), columns=X_test.columns)
 
-        result_SVM = tune_train_evaluate_svm(
-            X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method='Cluster Centroids')
+        # param_grid = {
+        #     'C': [0.01, 0.015, 0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.5,
+        #         0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 15, 20, 30, 50, 75, 100, 150, 200, 300, 500,
+        #         750, 1000],
+        #     'gamma': [100, 75, 50, 30, 20, 15, 10, 7.5, 5, 3, 2, 1.5, 1,
+        #         0.75, 0.5, 0.3, 0.2, 0.15, 0.1, 0.08, 0.07, 0.05, 0.03, 0.02, 0.015, 0.01, 0.008,
+        #         0.007, 0.005, 0.003, 0.002, 0.0015, 0.001, 0.0008, 0.0007, 0.0005, 0.0003, 0.0002,
+        #         0.00015, 0.0001]
+        # }
 
-        # Train the SVM model with fixed hyperparameters
-        classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
-            X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params']
-        )
+        # result_SVM = tune_train_evaluate_svm(
+        #     X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method='Cluster Centroids')
+
+        # # Train the SVM model with fixed hyperparameters
+        # classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
+        #     X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params']
+        # )
 
         # Store the results in a dictionary
         performance_results.append({
-            'Feature Set': i+1,
+            # 'Feature Set': i+1,
+            'Features': res_feat[0],
             'Num Features': len(feat),
-            'C': result_SVM['best_params']['C'],
-            'Gamma': result_SVM['best_params']['gamma'],
-            'Accuracy': evaluation_metrics_SVM['accuracy'],
-            'Precision': evaluation_metrics_SVM['precision'],
-            'Recall': evaluation_metrics_SVM['recall'],
-            'F1-score': evaluation_metrics_SVM['f1']
+            'C': res_feat[2]['best_params']['C'],
+            'Gamma': res_feat[2]['best_params']['gamma'],
+            'Accuracy': res_feat[2]['accuracy'],
+            'Precision': res_feat[2]['precision'],
+            'Recall': res_feat[2]['recall'],
+            'F1-score': res_feat[2]['f1'],
+            'MCC': res_feat[2]['MCC']
         })
 
     # Convert results into a DataFrame
     df_performance = pd.DataFrame(performance_results)
     # Sort the DataFrame by the number of features
-    df_performance_sorted = df_performance.sort_values(by="F1-score")
+    df_performance_sorted = df_performance.sort_values(by="MCC")
 
     # Create the plot
     plt.figure(figsize=(10, 6))
