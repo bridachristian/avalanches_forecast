@@ -9,6 +9,10 @@ from sklearn import svm
 from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV, cross_val_score, learning_curve
 from sklearn.metrics import (accuracy_score, precision_score, recall_score,
                              f1_score, confusion_matrix, roc_curve, auc, matthews_corrcoef)
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score,
+    matthews_corrcoef
+)
 from sklearn.inspection import permutation_importance
 from scripts.svm.data_loading import load_data
 from scripts.svm.undersampling_methods import undersampling_random, undersampling_random_timelimited, undersampling_nearmiss
@@ -250,8 +254,8 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method,
     clf.fit(X, y)
 
     # 3. Evaluate Training Performance with a Learning Curve
-    # plot_learning_curve(clf, X, y, title=f'{resampling_method}', cv=cv)
-    # plot_threshold_scoring(X, y, X_test, y_test, clf)
+    plot_learning_curve(clf, X, y, title=f'{resampling_method}', cv=cv)
+    plot_threshold_scoring(X, y, X_test, y_test, clf)
 
     if X.shape[1] == 2:
         plot_decision_boundary(X, y, clf,
@@ -348,7 +352,7 @@ def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params):
     test_accuracy = model.score(X_test, y_test)
     print("Test Set Accuracy:", test_accuracy)
 
-    # # Evaluate Training Performance with a Learning Curve
+    # Evaluate Training Performance with a Learning Curve
     plot_learning_curve(clf, X_train, y_train, cv=10,
                         title='Learning Curve Final SVM')
 
@@ -372,7 +376,7 @@ def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params):
     # print(f'F1: {f1:.4f}')
 
     # Compute and plot the ROC curve
-    # plot_roc_curve(X_test, y_test, clf)
+    plot_roc_curve(X_test, y_test, clf)
 
     # Return model and performance metrics
     metrics = {

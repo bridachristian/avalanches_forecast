@@ -9,6 +9,10 @@ from sklearn.feature_selection import RFECV, VarianceThreshold
 from sklearn.base import BaseEstimator, MetaEstimatorMixin
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.feature_selection import SelectKBest, f_classif, mutual_info_classif
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score,
+    matthews_corrcoef
+)
 
 
 def save_outputfile(df, output_filepath):
@@ -275,74 +279,91 @@ def plot_decision_boundary(X, y, model, title, palette={0: "blue", 1: "red"}):
 
 def plot_threshold_scoring(X, y, X_test, y_test, model):
     """
-    Creates a scatter plot showing the decision boundary of a classifier, with a heatmap of the decision function.
+    Plot multiple classification metrics vs. threshold for binary classifier.
 
     Parameters:
-    - X: DataFrame, the input data with features.
-    - y: Series, the target labels (binary: 0 or 1).
-    - model: Trained classifier with a decision_function method.
-    - title: str, the title of the plot.
-    - palette: dict, custom color palette for class 0 and class 1 (default is blue for 0 and red for 1).
+    - X: Training features
+    - y: Training labels
+    - X_test: Test features
+    - y_test: Test labels
+    - model: Trained SVC model
     """
 
-    colnames = X.columns
-
-    X_array = X.values.astype(float)
-    y_array = y.values.astype(float)
-
+    # Re-train model with probability support
     clf2 = SVC(C=model.C, gamma=model.gamma, probability=True)
     clf2.fit(X, y)
 
-    # Probability of the positive class
+    # Predict probabilities
     proba = clf2.predict_proba(X_test)[:, 1]
-    # Define a range of thresholds
     thresholds = np.arange(0.0, 1.01, 0.01)
 
-    # Store metrics for each threshold
+    # Containers for metrics
     hk_scores, hss_scores, oa_scores = [], [], []
-    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+    mcc_scores, f1_scores, prec_scores, recall_scores = [], [], [], []
 
     for t in thresholds:
-        # Classify using the current threshold
         y_pred = (proba >= t).astype(int)
 
-        # Compute metrics (example for HK, HSS, and OA)
+        # Confusion matrix components
         TP = np.sum((y_test == 1) & (y_pred == 1))
         TN = np.sum((y_test == 0) & (y_pred == 0))
         FP = np.sum((y_test == 0) & (y_pred == 1))
         FN = np.sum((y_test == 1) & (y_pred == 0))
 
-        # Heidke Skill Score (HSS)
-        HSS = 2 * (TP * TN - FP * FN) / ((TP + FN) *
-                                         (FN + TN) + (TP + FP) * (FP + TN))
+        # HSS
+        denom_hss = ((TP + FN) * (FN + TN) + (TP + FP) * (FP + TN))
+        HSS = 2 * (TP * TN - FP * FN) / denom_hss if denom_hss != 0 else 0
         hss_scores.append(HSS)
 
-        # Hanssen-Kuipers (HK)
-        HK = TP / (TP + FN) - FP / (FP + TN)
+        # HK
+        TPR = TP / (TP + FN) if (TP + FN) != 0 else 0
+        FPR = FP / (FP + TN) if (FP + TN) != 0 else 0
+        HK = TPR - FPR
         hk_scores.append(HK)
 
-        # Overall Accuracy (OA)
-        OA = accuracy_score(y_test, y_pred)
-        oa_scores.append(OA)
+        # Other metrics
+        oa_scores.append(accuracy_score(y_test, y_pred))
+        mcc_scores.append(matthews_corrcoef(y_test, y_pred))
+        f1_scores.append(f1_score(y_test, y_pred))
+        prec_scores.append(precision_score(y_test, y_pred))
+        recall_scores.append(recall_score(y_test, y_pred))
 
-    plt.figure(figsize=(8, 6))
-    plt.plot(thresholds, hk_scores, label="HK", linestyle='-', color='blue')
-    plt.plot(thresholds, hss_scores, label="HSS", linestyle='--', color='red')
-    plt.plot(thresholds, oa_scores, label="OA", linestyle=':', color='black')
+    # Plot
+    plt.figure(figsize=(10, 7))
+    plt.plot(thresholds, mcc_scores, label="MCC",
+             linestyle="-", color="darkgreen")
+    plt.plot(thresholds, f1_scores, label="F1-score",
+             linestyle="--", color="orange")
+    # plt.plot(thresholds, prec_scores, label="Precision",
+    #          linestyle=":", color="purple")
+    # plt.plot(thresholds, recall_scores, label="Recall",
+    #          linestyle="-.", color="brown")
+    plt.plot(thresholds, hk_scores, label="HK", linestyle="-", color="blue")
+    plt.plot(thresholds, hss_scores, label="HSS", linestyle="--", color="red")
+    # plt.plot(thresholds, oa_scores, label="Accuracy",
+    #          linestyle=":", color="black")
+
     plt.xlabel("Threshold")
     plt.ylabel("Performance Measure")
-    plt.title("Performance vs. Threshold")
+    plt.title("Performance Metrics vs. Threshold")
     plt.legend()
-    plt.grid()
+    plt.grid(True)
+    plt.tight_layout()
     plt.show()
 
-    optimal_threshold_hk = thresholds[np.argmax(hk_scores)]
-    optimal_threshold_hss = thresholds[np.argmax(hss_scores)]
+    # Print best thresholds
+    print(f"Optimal Threshold (MCC): {thresholds[np.argmax(mcc_scores)]:.2f}")
+    print(
+        f"Optimal Threshold (F1-score): {thresholds[np.argmax(f1_scores)]:.2f}")
+    print(f"Optimal Threshold (HK): {thresholds[np.argmax(hk_scores)]:.2f}")
+    print(f"Optimal Threshold (HSS): {thresholds[np.argmax(hss_scores)]:.2f}")
 
-    print(f"Optimal Threshold (HK): {optimal_threshold_hk}")
-    print(f"Optimal Threshold (HSS): {optimal_threshold_hss}")
-
-    return optimal_threshold_hk
+    return {
+        "optimal_mcc": thresholds[np.argmax(mcc_scores)],
+        "optimal_f1": thresholds[np.argmax(f1_scores)],
+        "optimal_hk": thresholds[np.argmax(hk_scores)],
+        "optimal_hss": thresholds[np.argmax(hss_scores)],
+    }
 
 
 class PermutationImportanceWrapper(BaseEstimator, MetaEstimatorMixin):
