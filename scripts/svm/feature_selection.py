@@ -1071,12 +1071,12 @@ if __name__ == '__main__':
 
     param_grid = {
         'C': [0.01, 0.015, 0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.5,
-            0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 15, 20, 30, 50, 75, 100, 150, 200, 300, 500,
-            750, 1000],
+              0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 15, 20, 30, 50, 75, 100, 150, 200, 300, 500,
+              750, 1000],
         'gamma': [100, 75, 50, 30, 20, 15, 10, 7.5, 5, 3, 2, 1.5, 1,
-            0.75, 0.5, 0.3, 0.2, 0.15, 0.1, 0.08, 0.07, 0.05, 0.03, 0.02, 0.015, 0.01, 0.008,
-            0.007, 0.005, 0.003, 0.002, 0.0015, 0.001, 0.0008, 0.0007, 0.0005, 0.0003, 0.0002,
-            0.00015, 0.0001]
+                  0.75, 0.5, 0.3, 0.2, 0.15, 0.1, 0.08, 0.07, 0.05, 0.03, 0.02, 0.015, 0.01, 0.008,
+                  0.007, 0.005, 0.003, 0.002, 0.0015, 0.001, 0.0008, 0.0007, 0.0005, 0.0003, 0.0002,
+                  0.00015, 0.0001]
     }
 
     # Split into training and test set
@@ -1125,7 +1125,7 @@ if __name__ == '__main__':
     # ---------------------------------------------------------------
 
     ANOVA = ['HSnum', 'TH01G', 'DayOfSeason', 'HS_delta_1d', 'Tmin_2d', 'TaG_delta_5d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d', 'TmaxG_delta_5d',
-        'T_mean', 'DegreeDays_Pos', 'Precip_2d', 'Precip_3d', 'Precip_5d', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'SnowConditionIndex']
+             'T_mean', 'DegreeDays_Pos', 'Precip_2d', 'Precip_3d', 'Precip_5d', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'SnowConditionIndex']
     res_ANOVA = evaluate_svm_with_feature_selection(mod1, ANOVA)
 
     BFE = ['TaG', 'HNnum', 'TH01G', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_3d',
@@ -1149,50 +1149,50 @@ if __name__ == '__main__':
     res_FFS = evaluate_svm_with_feature_selection(mod1, FFS)
 
     RFE = ['TaG', 'New_MF_Crust', 'TaG_delta_5d', 'TH10_tanh', 'TH30_tanh',
-            'TmaxG_delta_2d', 'TempAmplitude_5d', 'TempAmplitude_3d', 'Tsnow_delta_1d',
-            'TempAmplitude_1d', 'TminG_delta_5d', 'TmaxG_delta_3d', 'HS_delta_5d',
-            'HS_delta_3d', 'Tsnow_delta_3d', 'HS_delta_1d', 'DayOfSeason', 'PR',
-            'Penetration_ratio', 'Precip_2d', 'HSnum', 'WetSnow_Temperature',
-            'TminG_delta_3d']
+           'TmaxG_delta_2d', 'TempAmplitude_5d', 'TempAmplitude_3d', 'Tsnow_delta_1d',
+           'TempAmplitude_1d', 'TminG_delta_5d', 'TmaxG_delta_3d', 'HS_delta_5d',
+           'HS_delta_3d', 'Tsnow_delta_3d', 'HS_delta_1d', 'DayOfSeason', 'PR',
+           'Penetration_ratio', 'Precip_2d', 'HSnum', 'WetSnow_Temperature',
+           'TminG_delta_3d']
     res_RFE = evaluate_svm_with_feature_selection(mod1, RFE)
 
     Permutation_ranking = ['AvalDay_2d',
-                            'TH10_tanh',
-                            'TH30_tanh',
-                            'DegreeDays_cumsum_2d',
-                            'TH01G',
-                            'PR',
-                            'HS_delta_2d',
-                            'DayOfSeason',
-                            'TmaxG_delta_1d',
-                            'TaG',
-                            'ConsecWetSnowDays',
-                            'HS_delta_1d',
-                            'Precip_2d',
-                            'TempAmplitude_1d',
-                            'TminG_delta_1d',
-                            'Tmin_3d',
-                            'T_mean',
-                            'TminG_delta_2d',
-                            'TmaxG_delta_5d',
-                            'TminG_delta_5d',
-                            'TempAmplitude_2d',
-                            'HS_delta_3d',
-                            'TaG_delta_2d',
-                            'TaG_delta_1d',
-                            'Precip_5d',
-                            'Tsnow_delta_5d',
-                            'TempAmplitude_5d',
-                            'Tsnow_delta_2d',
-                            'TminG_delta_3d',
-                            'TempAmplitude_3d',
-                            'TmaxG_delta_2d',
-                            'HS_delta_5d',
-                            'Tsnow_delta_3d',
-                            'Precip_3d',
-                            'TaG_delta_5d',
-                            'Precip_1d',
-                            'Tsnow_delta_1d']
+                           'TH10_tanh',
+                           'TH30_tanh',
+                           'DegreeDays_cumsum_2d',
+                           'TH01G',
+                           'PR',
+                           'HS_delta_2d',
+                           'DayOfSeason',
+                           'TmaxG_delta_1d',
+                           'TaG',
+                           'ConsecWetSnowDays',
+                           'HS_delta_1d',
+                           'Precip_2d',
+                           'TempAmplitude_1d',
+                           'TminG_delta_1d',
+                           'Tmin_3d',
+                           'T_mean',
+                           'TminG_delta_2d',
+                           'TmaxG_delta_5d',
+                           'TminG_delta_5d',
+                           'TempAmplitude_2d',
+                           'HS_delta_3d',
+                           'TaG_delta_2d',
+                           'TaG_delta_1d',
+                           'Precip_5d',
+                           'Tsnow_delta_5d',
+                           'TempAmplitude_5d',
+                           'Tsnow_delta_2d',
+                           'TminG_delta_3d',
+                           'TempAmplitude_3d',
+                           'TmaxG_delta_2d',
+                           'HS_delta_5d',
+                           'Tsnow_delta_3d',
+                           'Precip_3d',
+                           'TaG_delta_5d',
+                           'Precip_1d',
+                           'Tsnow_delta_1d']
 
     res_PR = evaluate_svm_with_feature_selection(mod1, Permutation_ranking)
 
@@ -1258,7 +1258,7 @@ if __name__ == '__main__':
 
     # Step 8: Rearrange if desired
     df_expanded = df_expanded[['Method', 'Selected Features', 'Feature Count',
-        'precision', 'recall', 'f1', 'accuracy', 'MCC', 'C', 'gamma']]
+                               'precision', 'recall', 'f1', 'accuracy', 'MCC', 'C', 'gamma']]
 
     # Step 9: Optional sort by MCC
     df_expanded = df_expanded.sort_values(
@@ -1269,6 +1269,338 @@ if __name__ == '__main__':
 
     outpath = results_path / 'df_expanded.csv'
     df_expanded.to_csv(outpath, index=False)
+
+    # -------------------------------------------------------
+    # SHAP + Forward feature selection directly on SVM
+    # -------------------------------------------------------
+    candidate_features = ['TaG_delta_5d',
+                          'TminG_delta_3d',
+                          'HS_delta_5d',
+                          'WetSnow_Temperature',
+                          'New_MF_Crust',
+                          'Precip_3d',
+                          'Precip_2d',
+                          'TempGrad_HS',
+                          'Tsnow_delta_3d',
+                          'TmaxG_delta_3d',
+                          'HSnum',
+                          'TempAmplitude_2d',
+                          'WetSnow_CS',
+                          'TaG',
+                          'Tsnow_delta_2d',
+                          'DayOfSeason',
+                          'Precip_5d',
+                          'TH10_tanh',
+                          'TempAmplitude_1d',
+                          'TaG_delta_2d',
+                          'HS_delta_1d',
+                          'HS_delta_3d',
+                          'TaG_delta_3d']
+
+    # Store performance results for each feature set
+    all_results = []
+    summary_results = []
+
+    feature_sets = [candidate_features[:i+1]
+                    for i in range(len(candidate_features))]
+    # feature_sets = feature_sets[1:]
+
+    # Initialize an empty list to store results
+    performance_results = []
+
+    # for i, feat in enumerate(feature_sets[:10]):
+    # for i, feat in enumerate(feature_sets[10:20]):
+    for i, feat in enumerate(feature_sets[20:]):
+        # feature_plus = feat + ['AvalDay']
+        print(f" *** Feature set {i+1}: {feat} *** ")
+
+        res_feat = evaluate_svm_with_feature_selection(mod1, feat)
+
+        # Store the results in a dictionary
+        performance_results.append({
+            # 'Feature Set': i+1,
+            'Features': feat,
+            'Num Features': len(feat),
+            'C': res_feat[2]['best_params']['C'],
+            'Gamma': res_feat[2]['best_params']['gamma'],
+            'Accuracy': res_feat[2]['accuracy'],
+            'Precision': res_feat[2]['precision'],
+            'Recall': res_feat[2]['recall'],
+            'F1-score': res_feat[2]['f1'],
+            'MCC': res_feat[2]['MCC']
+        })
+
+    # Convert results into a DataFrame
+    df_performance = pd.DataFrame(performance_results)
+    # Sort the DataFrame by the number of features
+    df_performance_sorted = df_performance.sort_values(
+        by="MCC", ascending=False)
+
+    # out_shap = Path(
+    #     'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\SHAP_classifier\\')
+
+    # df_performance_sorted.to_csv(
+    #     out_shap / "svm_performance_sorted.csv", index=False, sep =';')
+
+    # Create the plot
+    plt.figure(figsize=(10, 6))
+
+    # Line for MCC (blu petrolio)
+    sns.lineplot(
+        x=df_performance_sorted["Num Features"],
+        y=df_performance_sorted["MCC"],
+        marker="o", linewidth=2, markersize=8,
+        color='#1f77b4', label="MCC"  # Blu scuro
+    )
+
+    # Line for F1-score (arancione elegante)
+    sns.lineplot(
+        x=df_performance_sorted["Num Features"],
+        y=df_performance_sorted["F1-score"],
+        marker="s", linewidth=2, markersize=8,
+        color='#ff7f0e', label="F1-score"  # Arancione
+    )
+
+    # Add labels and title
+    plt.xlabel("Number of Features", fontsize=13)
+    plt.ylabel("Score", fontsize=13)
+    plt.title("SVM Performance vs Number of Features",
+              fontsize=15, weight='bold')
+
+    # Grid, legend and ticks
+    plt.grid(True, linestyle="--", linewidth=0.6, alpha=0.7)
+    plt.legend(fontsize=12)
+    plt.xticks(df_performance_sorted["Num Features"])
+
+    # Improve layout
+    plt.tight_layout()
+    plt.show()
+
+    SHAP_6 = ['TaG_delta_5d',
+              'TminG_delta_3d',
+              'HS_delta_5d',
+              'WetSnow_Temperature',
+              'New_MF_Crust',
+              'Precip_3d']
+
+    res_shap6 = evaluate_svm_with_feature_selection(mod1, SHAP_6)
+
+    SHAP_16 = ['TaG_delta_5d',
+               'TminG_delta_3d',
+               'HS_delta_5d',
+               'WetSnow_Temperature',
+               'New_MF_Crust',
+               'Precip_3d',
+               'Precip_2d',
+               'TempGrad_HS',
+               'Tsnow_delta_3d',
+               'TmaxG_delta_3d',
+               'HSnum',
+               'TempAmplitude_2d',
+               'WetSnow_CS',
+               'TaG',
+               'Tsnow_delta_2d',
+               'DayOfSeason']
+    res_shap16 = evaluate_svm_with_feature_selection(mod1, SHAP_16)
+
+    # -------------------------------------------------------
+    # SHAP STABILITY VARYING C AND GAMMA
+    # -------------------------------------------------------
+    SHAP_16 = ['TaG_delta_5d',
+               'TminG_delta_3d',
+               'HS_delta_5d',
+               'WetSnow_Temperature',
+               'New_MF_Crust',
+               'Precip_3d',
+               'Precip_2d',
+               'TempGrad_HS',
+               'Tsnow_delta_3d',
+               'TmaxG_delta_3d',
+               'HSnum',
+               'TempAmplitude_2d',
+               'WetSnow_CS',
+               'TaG',
+               'Tsnow_delta_2d',
+               'DayOfSeason']
+    res_shap16 = evaluate_svm_with_feature_selection(mod1, SHAP_16)
+
+    best_C = res_shap16[2]['best_params']['C']
+    best_gamma = res_shap16[2]['best_params']['gamma']
+
+    # Data preparation
+    feature_plus = SHAP_16 + ['AvalDay']
+    mod1_clean = mod1[feature_plus].dropna()
+    X = mod1_clean[SHAP_16]
+    y = mod1_clean['AvalDay']
+
+    X_resampled, y_resampled = undersampling_clustercentroids(X, y)
+
+    # Split into training and test set
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_resampled, y_resampled, test_size=0.25, random_state=42)
+
+    common_indices = X_train.index.intersection(X_test.index)
+
+    # scaler = StandardScaler()
+    scaler = MinMaxScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+
+    X_train_scaled = pd.DataFrame(
+        X_train_scaled, columns=X_train.columns, index=X_train.index)
+    X_test_scaled = pd.DataFrame(
+        X_test_scaled, columns=X_test.columns, index=X_test.index)
+
+    # # Generate range of C and gamma values around the best parameters
+    # C_values = np.linspace(500, 1000, num=501)
+    C_values = np.arange(100, 1001, 2)  # Includes 1000
+    gamma_values = np.linspace(0.007, 0.01, num=31)
+
+    performance_results = []
+
+    for C in C_values:
+        for gamma in gamma_values:
+            params = {'C': C, 'gamma': gamma}
+            # params = {'C': C, 'gamma': 'auto'}
+            print(f'--- Testing C={C}, gamma={gamma} ---')
+
+            classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
+                X_train_scaled, y_train, X_test_scaled, y_test, params
+            )
+
+            performance_results.append({
+                'C': C,
+                'gamma': gamma,
+                'accuracy': evaluation_metrics_SVM['accuracy'],
+                'precision': evaluation_metrics_SVM['precision'],
+                'recall': evaluation_metrics_SVM['recall'],
+                'f1': evaluation_metrics_SVM['f1'],
+                'MCC': evaluation_metrics_SVM['MCC']
+            })
+
+    df_performance = pd.DataFrame(performance_results)
+
+    # Group by C and compute statistics for MCC
+    df_grouped_mcc = df_performance.groupby("C")["MCC"].agg([
+        ("mean", "mean"),
+        ("10th", lambda x: np.percentile(x, 10)),
+        ("25th", lambda x: np.percentile(x, 25)),
+        ("50th", lambda x: np.percentile(x, 50)),  # Median
+        ("75th", lambda x: np.percentile(x, 75)),
+        ("90th", lambda x: np.percentile(x, 90)),
+        ("min", "min"),
+        ("max", "max")
+    ]).reset_index()
+
+    # Group by C and compute statistics for F1
+    df_grouped_f1 = df_performance.groupby("C")["f1"].agg([
+        ("mean", "mean"),
+        ("10th", lambda x: np.percentile(x, 10)),
+        ("25th", lambda x: np.percentile(x, 25)),
+        ("50th", lambda x: np.percentile(x, 50)),  # Median
+        ("75th", lambda x: np.percentile(x, 75)),
+        ("90th", lambda x: np.percentile(x, 90)),
+        ("min", "min"),
+        ("max", "max")
+    ]).reset_index()
+
+    # Create the plot
+    plt.figure(figsize=(10, 5))
+
+    # --- MCC Plot ---
+    plt.plot(df_grouped_mcc["C"], df_grouped_mcc["50th"], color='#1565C0',
+             linestyle='-', linewidth=2, label="MCC Median (50%)")
+    plt.fill_between(df_grouped_mcc["C"], df_grouped_mcc["min"], df_grouped_mcc["max"],
+                     color='#B3E5FC', alpha=0.5, label="MCC min-max")
+    plt.fill_between(df_grouped_mcc["C"], df_grouped_mcc["10th"], df_grouped_mcc["90th"],
+                     color='#81D4FA', alpha=0.75, label="MCC 10th-90th Percentile")
+    plt.fill_between(df_grouped_mcc["C"], df_grouped_mcc["25th"], df_grouped_mcc["75th"],
+                     color='#4FC3F7', alpha=1, label="MCC 25th-75th Percentile")
+
+    # --- F1 Plot ---
+    plt.plot(df_grouped_f1["C"], df_grouped_f1["50th"], color='#C62828',
+             linestyle='-', linewidth=2, label="F1-score Median (50%)")
+    plt.fill_between(df_grouped_f1["C"], df_grouped_f1["min"], df_grouped_f1["max"],
+                     color='#FFCDD2', alpha=0.5, label="F1 min-max")
+    plt.fill_between(df_grouped_f1["C"], df_grouped_f1["10th"], df_grouped_f1["90th"],
+                     color='#EF9A9A', alpha=0.75, label="F1 10th-90th Percentile")
+    plt.fill_between(df_grouped_f1["C"], df_grouped_f1["25th"], df_grouped_f1["75th"],
+                     color='#E57373', alpha=1, label="F1 25th-75th Percentile")
+
+    # Plot labels and settings
+    plt.xlabel("C value")
+    plt.ylabel("Score")
+    plt.legend(fontsize=9)
+    # plt.legend(loc="upper left", fontsize=9)
+    plt.grid(True, linestyle='dotted')
+    plt.tight_layout()
+    plt.show()
+
+    all_results.append(df_performance)
+
+    # Save individual results to a CSV file
+    feature_filename = f"svm_performance_feature_set_{i+1}.csv"
+    df_performance.to_csv(feature_filename, index=False)
+
+    # Find the C value that gives the highest median F1-score
+    best_C_row = df_grouped[df_grouped["50th"] == df_grouped["50th"].max()]
+
+    # Extract the corresponding best C value
+    C_best = best_C_row["C"].values[0]
+
+    # Now find the gamma value for this best C in df_performance
+    best_gamma_row = df_performance[df_performance["C"] == best_C].sort_values(
+        by="f1", ascending=False).iloc[0]
+    gamma_best = best_gamma_row["gamma"]
+
+    # Extract best performing model for summary
+    best_model = df_performance.loc[(df_performance['C'] == C_best) & (
+        df_performance['gamma'] == gamma_best)].iloc[0]
+
+    summary_results.append(best_model)
+
+    # Convert summary to DataFrame and save
+    df_summary = pd.DataFrame(summary_results)
+    # df_summary.to_csv("svm_summary_results.csv", index=False)
+
+    # Display the summary of best models
+    print(df_summary)
+
+    df_summary_sorted = df_summary.sort_values(by="Feature Set")
+
+    # Plot
+    plt.figure(figsize=(10, 6))
+    sns.lineplot(x=df_summary_sorted["Feature Set"],
+                 y=df_summary_sorted["f1"],
+                 marker="o", linewidth=2, markersize=8)
+
+    # Set integer x-axis ticks
+    plt.xticks(np.arange(df_summary_sorted["Feature Set"].min(),
+                         df_summary_sorted["Feature Set"].max() + 1, 1),
+               rotation=45)  # Rotate for better readability if needed
+
+    # Labels and title
+    plt.xlabel("Number of Features", fontsize=12)
+    plt.ylabel("F1-score", fontsize=12)
+    plt.title("SVM Performance vs Number of Features", fontsize=14)
+
+    # Grid and display
+    plt.grid(True, linestyle="dotted")
+    plt.show()
+
+    # -- end loop
+
+    params1 = {'C': 53.7, 'gamma': 0.0058}  # best params for full SHAP
+    params2 = {'C': 4.07, 'gamma': 0.037}  # best params for full SHAP
+    params3 = {'C': 9.95, 'gamma': 0.106}  # best params for full SHAP
+    # params = {'C': 50, 'gamma': 0.01}
+
+    # print(f"Training SVM with C = {C} and gamma = {params['gamma']}")
+
+    # Train and evaluate the model with the current C value
+    classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
+        X_train_scaled, y_train, X_test_scaled, y_test, params3
+    )
 
     # # -------------------------------------------------------
     # # FFS APPLIED ON SHAP --> reduce n.features
@@ -1400,589 +1732,3 @@ if __name__ == '__main__':
     # plt.title("Feature Subset Performance - Forward Selection")
     # plt.grid(True)
     # plt.show()
-    # -------------------------------------------------------
-    # REFINE WITH SHAP --> STABILITY of the model
-    # -------------------------------------------------------
-    candidate_features = ['TaG_delta_5d',
-                            'TminG_delta_3d',
-                            'HS_delta_5d',
-                            'WetSnow_Temperature',
-                            'New_MF_Crust',
-                            'Precip_3d',
-                            'Precip_2d',
-                            'TempGrad_HS',
-                            'Tsnow_delta_3d',
-                            'TmaxG_delta_3d',
-                            'HSnum',
-                            'TempAmplitude_2d',
-                            'WetSnow_CS',
-                            'TaG',
-                            'Tsnow_delta_2d',
-                            'DayOfSeason',
-                            'Precip_5d',
-                            'TH10_tanh',
-                            'TempAmplitude_1d',
-                            'TaG_delta_2d',
-                            'HS_delta_1d',
-                            'HS_delta_3d',
-                            'TaG_delta_3d']
-
-    # Store performance results for each feature set
-    all_results = []
-    summary_results = []
-
-    feature_sets = [candidate_features[:i+1]
-        for i in range(len(candidate_features))]
-    # feature_sets = feature_sets[1:]
-
-    # Initialize an empty list to store results
-    performance_results = []
-
-    # for i, feat in enumerate(feature_sets[:10]):
-    # for i, feat in enumerate(feature_sets[10:20]):
-    for i, feat in enumerate(feature_sets[20:]):
-        # feature_plus = feat + ['AvalDay']
-        print(f" *** Feature set {i+1}: {feat} *** ")
-
-        res_feat = evaluate_svm_with_feature_selection(mod1, feat)
-
-        # Store the results in a dictionary
-        performance_results.append({
-            # 'Feature Set': i+1,
-            'Features': feat,
-            'Num Features': len(feat),
-            'C': res_feat[2]['best_params']['C'],
-            'Gamma': res_feat[2]['best_params']['gamma'],
-            'Accuracy': res_feat[2]['accuracy'],
-            'Precision': res_feat[2]['precision'],
-            'Recall': res_feat[2]['recall'],
-            'F1-score': res_feat[2]['f1'],
-            'MCC': res_feat[2]['MCC']
-        })
-
-    # Convert results into a DataFrame
-    df_performance = pd.DataFrame(performance_results)
-    # Sort the DataFrame by the number of features
-    df_performance_sorted = df_performance.sort_values(by="MCC")
-
-    # out_shap = Path(
-    #     'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\SHAP_classifier\\')
-
-    # df_performance_sorted.to_csv(
-    #     out_shap / "svm_performance_sorted.csv", index=False)
-
-    # Create the plot
-    plt.figure(figsize=(10, 6))
-
-    # Line for MCC (blu petrolio)
-    sns.lineplot(
-        x=df_performance_sorted["Num Features"],
-        y=df_performance_sorted["MCC"],
-        marker="o", linewidth=2, markersize=8,
-        color='#1f77b4', label="MCC"  # Blu scuro
-    )
-
-    # Line for F1-score (arancione elegante)
-    sns.lineplot(
-        x=df_performance_sorted["Num Features"],
-        y=df_performance_sorted["F1-score"],
-        marker="s", linewidth=2, markersize=8,
-        color='#ff7f0e', label="F1-score"  # Arancione
-    )
-
-    # Add labels and title
-    plt.xlabel("Number of Features", fontsize=13)
-    plt.ylabel("Score", fontsize=13)
-    plt.title("SVM Performance vs Number of Features",
-              fontsize=15, weight='bold')
-
-    # Grid, legend and ticks
-    plt.grid(True, linestyle="--", linewidth=0.6, alpha=0.7)
-    plt.legend(fontsize=12)
-    plt.xticks(df_performance_sorted["Num Features"])
-
-    # Improve layout
-    plt.tight_layout()
-    plt.show()
-
-    SHAP_6 = ['TaG_delta_5d',
-                'TminG_delta_3d',
-                'HS_delta_5d',
-                'WetSnow_Temperature',
-                'New_MF_Crust',
-                'Precip_3d']
-
-    res_shap6 = evaluate_svm_with_feature_selection(mod1, SHAP_6)
-
-    SHAP_16 = ['TaG_delta_5d',
-                            'TminG_delta_3d',
-                            'HS_delta_5d',
-                            'WetSnow_Temperature',
-                            'New_MF_Crust',
-                            'Precip_3d',
-                            'Precip_2d',
-                            'TempGrad_HS',
-                            'Tsnow_delta_3d',
-                            'TmaxG_delta_3d',
-                            'HSnum',
-                            'TempAmplitude_2d',
-                            'WetSnow_CS',
-                            'TaG',
-                            'Tsnow_delta_2d',
-                            'DayOfSeason']
-    res_shap16 = evaluate_svm_with_feature_selection(mod1, SHAP_16)
-
-
-# stop ... old
-        # Hyperparameter tuning
-        param_grid = {
-            'C': np.logspace(-4, 3, num=8),
-            'gamma': np.logspace(-4, 3, num=8)
-        }
-
-        resampling_method = 'ClusterCentroids'
-
-        res_svm = tune_train_evaluate_svm(
-            X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method, cv=10
-        )
-
-        best_C = res_svm['best_params']['C']
-        best_gamma = res_svm['best_params']['gamma']
-
-        # Generate range of C and gamma values around the best parameters
-        C_values = np.linspace(best_C / 10, best_C * 10, 100)
-        gamma_values = np.linspace(best_gamma / 10, best_gamma * 10, 100)
-
-        performance_results = []
-
-        for C in C_values:
-            for gamma in gamma_values:
-                params = {'C': C, 'gamma': gamma}
-                # params = {'C': C, 'gamma': 'auto'}
-                print(f'--- Testing C={C}, gamma={gamma} ---')
-
-                classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
-                    X_train_scaled, y_train, X_test_scaled, y_test, params
-                )
-
-                performance_results.append({
-                    'Feature Set': i + 1,
-                    'Features': ", ".join(feat),
-                    'C': C,
-                    'gamma': gamma,
-                    'accuracy': evaluation_metrics_SVM['accuracy'],
-                    'precision': evaluation_metrics_SVM['precision'],
-                    'recall': evaluation_metrics_SVM['recall'],
-                    'f1': evaluation_metrics_SVM['f1']
-                })
-
-        # Save results to DataFrame
-        df_performance = pd.DataFrame(performance_results)
-        # Group by C and compute statistics
-        df_grouped = df_performance.groupby("C")["f1"].agg([
-            ("mean", "mean"),
-            ("10th", lambda x: np.percentile(x, 10)),
-            ("25th", lambda x: np.percentile(x, 25)),
-            ("50th", lambda x: np.percentile(x, 50)),  # Median
-            ("75th", lambda x: np.percentile(x, 75)),
-            ("90th", lambda x: np.percentile(x, 90)),
-            ("min", "min"),
-            ("max", "max")
-        ]).reset_index()
-
-        # Create the plot
-        plt.figure(figsize=(10, 5))
-
-        # Plot median line
-        plt.plot(df_grouped["C"], df_grouped["50th"], color='#1565C0',
-                 linestyle='-', linewidth=2, label="Median (50%)")
-
-        # Add shading for percentiles
-        plt.fill_between(df_grouped["C"], df_grouped["min"], df_grouped["max"],
-                         color='#B3E5FC', alpha=0.5, label="min-max")
-        plt.fill_between(df_grouped["C"], df_grouped["10th"], df_grouped["90th"],
-                         color='#81D4FA', alpha=0.75, label="10th-90th Percentile")
-        plt.fill_between(df_grouped["C"], df_grouped["25th"], df_grouped["75th"],
-                         color='#4FC3F7', alpha=1, label="25th-75th Percentile")
-
-        plt.xscale("log")
-        plt.xlabel("C value (log scale)")
-        plt.ylabel("F1-score")
-        # plt.title(f'Feature set {i+1}: {feature_plus}')
-        plt.title(f'Feature set {i+1}')
-        plt.legend(loc="upper left")
-        plt.grid(True, linestyle='dotted')
-        plt.show()
-
-        all_results.append(df_performance)
-
-        # Save individual results to a CSV file
-        feature_filename = f"svm_performance_feature_set_{i+1}.csv"
-        df_performance.to_csv(feature_filename, index=False)
-
-        # Find the C value that gives the highest median F1-score
-        best_C_row = df_grouped[df_grouped["50th"] == df_grouped["50th"].max()]
-
-        # Extract the corresponding best C value
-        C_best = best_C_row["C"].values[0]
-
-        # Now find the gamma value for this best C in df_performance
-        best_gamma_row = df_performance[df_performance["C"] == best_C].sort_values(
-            by="f1", ascending=False).iloc[0]
-        gamma_best = best_gamma_row["gamma"]
-
-        # Extract best performing model for summary
-        best_model = df_performance.loc[(df_performance['C'] == C_best) & (
-            df_performance['gamma'] == gamma_best)].iloc[0]
-
-        summary_results.append(best_model)
-
-    # Convert summary to DataFrame and save
-    df_summary = pd.DataFrame(summary_results)
-    # df_summary.to_csv("svm_summary_results.csv", index=False)
-
-    # Display the summary of best models
-    print(df_summary)
-
-    df_summary_sorted = df_summary.sort_values(by="Feature Set")
-
-    # Plot
-    plt.figure(figsize=(10, 6))
-    sns.lineplot(x=df_summary_sorted["Feature Set"],
-                 y=df_summary_sorted["f1"],
-                 marker="o", linewidth=2, markersize=8)
-
-    # Set integer x-axis ticks
-    plt.xticks(np.arange(df_summary_sorted["Feature Set"].min(),
-                          df_summary_sorted["Feature Set"].max() + 1, 1),
-               rotation=45)  # Rotate for better readability if needed
-
-    # Labels and title
-    plt.xlabel("Number of Features", fontsize=12)
-    plt.ylabel("F1-score", fontsize=12)
-    plt.title("SVM Performance vs Number of Features", fontsize=14)
-
-    # Grid and display
-    plt.grid(True, linestyle="dotted")
-    plt.show()
-
-    # -- end loop
-
-    params1 = {'C': 53.7, 'gamma': 0.0058}  # best params for full SHAP
-    params2 = {'C': 4.07, 'gamma': 0.037}  # best params for full SHAP
-    params3 = {'C': 9.95, 'gamma': 0.106}  # best params for full SHAP
-    # params = {'C': 50, 'gamma': 0.01}
-
-    # print(f"Training SVM with C = {C} and gamma = {params['gamma']}")
-
-    # Train and evaluate the model with the current C value
-    classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
-        X_train_scaled, y_train, X_test_scaled, y_test, params3
-    )
-
-    # -------------------------------------------------------
-    # TEST FEATURES PERFORMANCE
-    # -------------------------------------------------------
-
-    ANOVA = ['HSnum', 'TH01G', 'DayOfSeason', 'HS_delta_1d', 'Tmin_2d', 'TaG_delta_5d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d', 'TmaxG_delta_5d',
-        'T_mean', 'DegreeDays_Pos', 'Precip_2d', 'Precip_3d', 'Precip_5d', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'SnowConditionIndex']
-    res_ANOVA = evaluate_svm_with_feature_selection(mod1, ANOVA)
-
-# BFE = ['TaG', 'DayOfSeason', 'TempAmplitude_2d', 'TmaxG_delta_5d', 'TH30_tanh']
-# res_BFE = evaluate_svm_with_feature_selection(mod1, BFE)
-
-BFE = ['TaG', 'HNnum', 'TH01G', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_3d',
-       'HS_delta_5d', 'DaysSinceLastSnow', 'TempAmplitude_1d',
-       'TempAmplitude_2d', 'TempAmplitude_3d', 'TempAmplitude_5d',
-       'TaG_delta_1d', 'TaG_delta_2d', 'TaG_delta_3d', 'TaG_delta_5d',
-       'TminG_delta_1d', 'TminG_delta_2d', 'TminG_delta_3d', 'TminG_delta_5d',
-       'TmaxG_delta_1d', 'TmaxG_delta_2d', 'TmaxG_delta_3d', 'TmaxG_delta_5d',
-       'T_mean', 'DegreeDays_Pos', 'Precip_1d', 'WetSnow_CS', 'TH10_tanh',
-       'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-       'Tsnow_delta_5d', 'ConsecWetSnowDays', 'ConsecCrustDays']
-res_BFE = evaluate_svm_with_feature_selection(mod1, BFE)
-
-
-# FFS = ['HS_delta_3d', 'TaG_delta_3d', 'DegreeDays_Pos', 'Tsnow_delta_3d']
-# res_FFS = evaluate_svm_with_feature_selection(mod1, FFS)
-
-FFS = ['HS_delta_3d', 'HS_delta_5d', 'DaysSinceLastSnow', 'TempAmplitude_1d',
-       'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d', 'TaG_delta_3d',
-       'TaG_delta_5d', 'TminG_delta_2d', 'TminG_delta_3d', 'TmaxG_delta_3d',
-       'TmaxG_delta_5d', 'DegreeDays_Pos', 'Precip_3d', 'Precip_5d',
-       'WetSnow_CS', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh',
-       'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d', 'Tsnow_delta_5d',
-       'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays']
-res_FFS = evaluate_svm_with_feature_selection(mod1, FFS)
-
-RFE = ['TaG', 'New_MF_Crust', 'TaG_delta_5d', 'TH10_tanh', 'TH30_tanh',
-        'TmaxG_delta_2d', 'TempAmplitude_5d', 'TempAmplitude_3d', 'Tsnow_delta_1d',
-        'TempAmplitude_1d', 'TminG_delta_5d', 'TmaxG_delta_3d', 'HS_delta_5d',
-        'HS_delta_3d', 'Tsnow_delta_3d', 'HS_delta_1d', 'DayOfSeason', 'PR',
-        'Penetration_ratio', 'Precip_2d', 'HSnum', 'WetSnow_Temperature',
-        'TminG_delta_3d']
-res_RFE = evaluate_svm_with_feature_selection(mod1, RFE)
-
-Permutation_ranking = ['AvalDay_2d',
-                        'TH10_tanh',
-                        'TH30_tanh',
-                        'DegreeDays_cumsum_2d',
-                        'TH01G',
-                        'PR',
-                        'HS_delta_2d',
-                        'DayOfSeason',
-                        'TmaxG_delta_1d',
-                        'TaG',
-                        'ConsecWetSnowDays',
-                        'HS_delta_1d',
-                        'Precip_2d',
-                        'TempAmplitude_1d',
-                        'TminG_delta_1d',
-                        'Tmin_3d',
-                        'T_mean',
-                        'TminG_delta_2d',
-                        'TmaxG_delta_5d',
-                        'TminG_delta_5d',
-                        'TempAmplitude_2d',
-                        'HS_delta_3d',
-                        'TaG_delta_2d',
-                        'TaG_delta_1d',
-                        'Precip_5d',
-                        'Tsnow_delta_5d',
-                        'TempAmplitude_5d',
-                        'Tsnow_delta_2d',
-                        'TminG_delta_3d',
-                        'TempAmplitude_3d',
-                        'TmaxG_delta_2d',
-                        'HS_delta_5d',
-                        'Tsnow_delta_3d',
-                        'Precip_3d',
-                        'TaG_delta_5d',
-                        'Precip_1d',
-                        'Tsnow_delta_1d']
-
-res_PR = evaluate_svm_with_feature_selection(mod1, Permutation_ranking)
-
-SHAP = ['TaG_delta_5d',
-        'TminG_delta_3d',
-        'HS_delta_5d',
-        'WetSnow_Temperature',
-        'New_MF_Crust',
-        'Precip_3d',
-        'Precip_2d',
-        'TempGrad_HS',
-        'Tsnow_delta_3d',
-        'TmaxG_delta_3d',
-        'HSnum',
-        'TempAmplitude_2d',
-        'WetSnow_CS',
-        'TaG',
-        'Tsnow_delta_2d',
-        'DayOfSeason',
-        'Precip_5d',
-        'TH10_tanh',
-        'TempAmplitude_1d',
-        'TaG_delta_2d',
-        'HS_delta_1d',
-        'HS_delta_3d',
-        'TaG_delta_3d']
-
-res_SHAP = evaluate_svm_with_feature_selection(mod1, SHAP)
-
-physics = ['TaG_delta_5d',
-        'TminG_delta_3d',
-        'HS_delta_5d',
-        'Precip_3d',
-        'Precip_2d',
-        'TempGrad_HS',
-        'Tsnow_delta_3d', 'DayOfSeason']
-res_physics = evaluate_svm_with_feature_selection(mod1, physics)
-
-
-results_features = [res_ANOVA, res_BFE, res_FFS,
-    res_RFE, res_PR, res_SHAP, res_physics]
-label_feature = ['ANOVA', 'BFE', 'FFS', 'RFE', 'PR', 'SHAP', 'physics']
-# Extract the metrics and create a DataFrame
-data_res = []
-for i, res in enumerate(results_features, 1):
-     feature_set = ', '.join(res[0])  # Combine feature names as a string
-     metrics = res[2]
-     data_res.append({
-         # 'Configuration': f"res{i}: {feature_set}",
-         'Configuration': f"{label_feature[i-1]}",
-         'Features': f"{feature_set}",
-         'Precision': metrics['precision'],
-         'Accuracy': metrics['accuracy'],
-         'Recall': metrics['recall'],
-         'F1': metrics['f1']
-     })
-
-# Create the DataFrame
-df_res = pd.DataFrame(data_res)
-
-# Plotting a line plot for precision
-plt.figure(figsize=(8, 5))
-plt.plot(df_res['Configuration'], df_res['F1'],
-         marker='x', linestyle='-.', color='red', label='F1 Score')
-plt.plot(df_res['Configuration'], df_res['Recall'],
-         marker='s', linestyle='--', color='green', label='Recall')
-plt.plot(df_res['Configuration'], df_res['Accuracy'],
-         marker='d', linestyle=':', label='Accuracy')
-plt.plot(df_res['Configuration'], df_res['Recall'],
-         marker='o', linestyle='-', label='Recall')
-plt.title('Scores for Snowfall features in different configuration')
-plt.xlabel('Feature Configuration')
-plt.ylabel('Score')
-plt.ylim(0, 1)
-plt.xticks(rotation=45)
-plt.grid(True)
-plt.legend()
-plt.show()
-
-df_res = df_res.sort_values(by='Recall', ascending=False)
-
-
-# ....... 1. SNOW LOAD DUE SNOWFALL ...........................
-[
-    'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
-    'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
-    'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
-    'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-    'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-    'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
-    'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
-    'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
-    'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
-    'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-    'SnowDrift_1d', 'SnowDrift_2d', 'SnowDrift_3d', 'SnowDrift_5d',
-    'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
-    'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
-    'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-    'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
-    'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
-    'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
-]
-
-BestFeatures_BW_27 = ['N', 'TaG', 'HNnum', 'DayOfSeason',
-                      'HS_delta_1d', 'HS_delta_3d', 'HS_delta_5d',
-                      'DaysSinceLastSnow',
-                      'Tmin_2d', 'TempAmplitude_1d', 'TempAmplitude_2d', 'TempAmplitude_3d', 'TempAmplitude_5d',
-                      'TaG_delta_2d', 'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d',
-                      'DegreeDays_Pos', 'Precip_1d', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_3d', 'Tsnow_delta_5d', 'ConsecWetSnowDays']
-BestFeatures_BW_6 = ['TaG', 'DayOfSeason', 'Tmin_2d',
-                     'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_5d']
-
-BestFeatures_FW_20 = ['N', 'V', 'HNnum', 'PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'Precip_1d', 'Precip_2d', 'Penetration_ratio',
-                      'WetSnow_CS', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex', 'MF_Crust_Present', 'New_MF_Crust']
-BestFeatures_FW_11 = ['PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'WetSnow_Temperature',
-                      'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex']
-
-Best_RFE = ['HSnum', 'TH03G', 'HS_delta_1d', 'HS_delta_2d', 'HN_2d', 'Tmax_2d',
-            'Tmin_5d', 'TempAmplitude_1d', 'TaG_delta_1d', 'TaG_delta_5d',
-            'TminG_delta_3d', 'TmaxG_delta_1d', 'TmaxG_delta_2d', 'Precip_2d',
-            'Tsnow_delta_2d']
-
-BestFeatures_Combined = list(set(BestFeatures_BW_6 + BestFeatures_FW_11))
-
-print(BestFeatures_Combined)  # s0 = ['HS_delta_2d', 'TaG_delta_2d']
-
-# resBW27 = evaluate_svm_with_feature_selection(mod1, BestFeatures_BW_27)
-resBW6 = evaluate_svm_with_feature_selection(mod1, BestFeatures_BW_6)
-
-# resFW20 = evaluate_svm_with_feature_selection(mod1, BestFeatures_FW_20)
-resFW11 = evaluate_svm_with_feature_selection(mod1, BestFeatures_FW_11)
-
-resComb = evaluate_svm_with_feature_selection(mod1, BestFeatures_Combined)
-
-resRFE = evaluate_svm_with_feature_selection(mod1, Best_RFE)
-
-# --- Test Pairwise combination with features selected in BW_6 ----
-
-s1 = ['TaG', 'DayOfSeason']
-res1 = evaluate_svm_with_feature_selection(mod1, s1)
-
-s2 = ['TaG', 'Tmin_2d']
-res2 = evaluate_svm_with_feature_selection(mod1, s2)
-
-s3 = ['TaG', 'TaG_delta_3d']
-res3 = evaluate_svm_with_feature_selection(mod1, s3)
-
-s4 = ['TaG', 'TaG_delta_5d']
-res4 = evaluate_svm_with_feature_selection(mod1, s4)
-
-s5 = ['TaG', 'TminG_delta_5d']
-res5 = evaluate_svm_with_feature_selection(mod1, s5)
-
-s6 = ['DayOfSeason', 'Tmin_2d']
-res6 = evaluate_svm_with_feature_selection(mod1, s6)
-
-s7 = ['DayOfSeason', 'TaG_delta_3d']
-res7 = evaluate_svm_with_feature_selection(mod1, s7)
-
-s8 = ['DayOfSeason', 'TaG_delta_5d']
-res8 = evaluate_svm_with_feature_selection(mod1, s8)
-
-s9 = ['DayOfSeason', 'TminG_delta_5d']
-res9 = evaluate_svm_with_feature_selection(mod1, s9)
-
-s10 = ['Tmin_2d', 'TaG_delta_3d']
-res10 = evaluate_svm_with_feature_selection(mod1, s10)
-
-s11 = ['Tmin_2d', 'TaG_delta_5d']
-res11 = evaluate_svm_with_feature_selection(mod1, s11)
-
-s12 = ['Tmin_2d', 'TminG_delta_5d']
-res12 = evaluate_svm_with_feature_selection(mod1, s12)
-
-s13 = ['TaG_delta_3d', 'TaG_delta_5d']
-res13 = evaluate_svm_with_feature_selection(mod1, s13)
-
-s14 = ['TaG_delta_3d', 'TminG_delta_5d']
-res14 = evaluate_svm_with_feature_selection(mod1, s14)
-
-s15 = ['TaG_delta_5d', 'TminG_delta_5d']
-res15 = evaluate_svm_with_feature_selection(mod1, s15)
-
- results_features = [res1, res2, res3, res4, res5,
-                      res6, res7, res8, res9, res10,
-                      res11, res12, res13, res14, res15]
-
-  # Extract the metrics and create a DataFrame
-  data_res = []
-   for i, res in enumerate(results_features, 1):
-        feature_set = ', '.join(res[0])  # Combine feature names as a string
-        metrics = res[2]
-        data_res.append({
-            # 'Configuration': f"res{i}: {feature_set}",
-            'Configuration': f"conf.{i}",
-            'Features': f"{feature_set}",
-            'Precision': metrics['precision'],
-            'Accuracy': metrics['accuracy'],
-            'Recall': metrics['recall'],
-            'F1': metrics['f1']
-        })
-
-    # Create the DataFrame
-    df_res = pd.DataFrame(data_res)
-
-    # Plotting a line plot for precision
-    plt.figure(figsize=(8, 5))
-    plt.plot(df_res['Configuration'], df_res['F1'],
-             marker='x', linestyle='-.', color='red', label='F1 Score')
-    plt.plot(df_res['Configuration'], df_res['Recall'],
-             marker='s', linestyle='--', color='green', label='Recall')
-    plt.plot(df_res['Configuration'], df_res['Accuracy'],
-             marker='d', linestyle=':', label='Accuracy')
-    plt.plot(df_res['Configuration'], df_res['Recall'],
-             marker='o', linestyle='-', label='Recall')
-    plt.title('Scores for Snowfall features in different configuration')
-    plt.xlabel('Feature Configuration')
-    plt.ylabel('Score')
-    plt.ylim(0, 1)
-    plt.xticks(rotation=45)
-    plt.grid(True)
-    plt.legend()
-    plt.show()
-
-    df_res = df_res.sort_values(by='Recall', ascending=False)
-    # save_outputfile(df_res, common_path / 'config_snowload_features.csv')
