@@ -107,13 +107,13 @@ def cross_validate_svm(X, y, param_grid, cv=5, title='CV scores', scoring='f1_ma
     gamma_values = param_grid['gamma']
     scores_matrix = scores.reshape(len(c_values), len(gamma_values))
 
-    # plt.figure(figsize=(10, 8))
-    # sns.heatmap(scores_matrix, annot=False, fmt=".3f",
-    #             xticklabels=gamma_values, yticklabels=c_values, cmap="viridis")
-    # plt.title(f'{title} - {scoring}')
-    # plt.xlabel("Gamma")
-    # plt.ylabel("C")
-    # plt.show()
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(scores_matrix, annot=False, fmt=".3f",
+                xticklabels=gamma_values, yticklabels=c_values, cmap="viridis")
+    plt.title(f'{title} - {scoring}')
+    plt.xlabel("Gamma")
+    plt.ylabel("C")
+    plt.show()
 
     best_C = best_params["C"]
     best_gamma = best_params["gamma"]
@@ -291,7 +291,7 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method,
     }
 
 
-def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params):
+def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params, display_plot=True):
     '''
     Train and evaluate an SVM model using the best hyperparameters.
 
@@ -353,14 +353,17 @@ def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params):
     print("Test Set Accuracy:", test_accuracy)
 
     # Evaluate Training Performance with a Learning Curve
-    plot_learning_curve(clf, X_train, y_train, cv=10,
-                        title='Learning Curve Final SVM')
+    if display_plot == True:
+        plot_learning_curve(clf, X_train, y_train, cv=10,
+                            title='Learning Curve Final SVM')
+        plot_threshold_scoring(X_train, y_train, X_test, y_test, clf)
 
     # Predicting on the test data
     y_pred = model.predict(X_test)
 
     # Create confusion matrix
-    cm = plot_confusion_matrix(y_test, y_pred)
+    if display_plot == True:
+        cm = plot_confusion_matrix(y_test, y_pred)
 
     # Calculate evaluation metrics
     accuracy = accuracy_score(y_test, y_pred)
@@ -376,7 +379,8 @@ def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params):
     # print(f'F1: {f1:.4f}')
 
     # Compute and plot the ROC curve
-    plot_roc_curve(X_test, y_test, clf)
+    if display_plot == True:
+        plot_roc_curve(X_test, y_test, clf)
 
     # Return model and performance metrics
     metrics = {

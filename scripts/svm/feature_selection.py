@@ -547,7 +547,139 @@ if __name__ == '__main__':
     plt.tight_layout()
     plt.show()
 
-    #
+    # -------------------------------------------------------
+    # SHAP + Forward feature selection directly on SVM
+    # -------------------------------------------------------
+    candidate_features = ['TaG_delta_5d',
+                          'TminG_delta_3d',
+                          'HS_delta_5d',
+                          'WetSnow_Temperature',
+                          'New_MF_Crust',
+                          'Precip_3d',
+                          'Precip_2d',
+                          'TempGrad_HS',
+                          'Tsnow_delta_3d',
+                          'TmaxG_delta_3d',
+                          'HSnum',
+                          'TempAmplitude_2d',
+                          'WetSnow_CS',
+                          'TaG',
+                          'Tsnow_delta_2d',
+                          'DayOfSeason',
+                          'Precip_5d',
+                          'TH10_tanh',
+                          'TempAmplitude_1d',
+                          'TaG_delta_2d',
+                          'HS_delta_1d',
+                          'HS_delta_3d',
+                          'TaG_delta_3d']
+
+    # Store performance results for each feature set
+    all_results = []
+    summary_results = []
+
+    feature_sets = [candidate_features[:i+1]
+                    for i in range(len(candidate_features))]
+    # feature_sets = feature_sets[1:]
+
+    # Initialize an empty list to store results
+    performance_results = []
+
+    # for i, feat in enumerate(feature_sets[:10]):
+    # for i, feat in enumerate(feature_sets[10:20]):
+    for i, feat in enumerate(feature_sets[20:]):
+        # feature_plus = feat + ['AvalDay']
+        print(f" *** Feature set {i+1}: {feat} *** ")
+
+        res_feat = evaluate_svm_with_feature_selection(mod1, feat)
+
+        # Store the results in a dictionary
+        performance_results.append({
+            # 'Feature Set': i+1,
+            'Features': feat,
+            'Num Features': len(feat),
+            'C': res_feat[2]['best_params']['C'],
+            'Gamma': res_feat[2]['best_params']['gamma'],
+            'Accuracy': res_feat[2]['accuracy'],
+            'Precision': res_feat[2]['precision'],
+            'Recall': res_feat[2]['recall'],
+            'F1-score': res_feat[2]['f1'],
+            'MCC': res_feat[2]['MCC']
+        })
+
+    # Convert results into a DataFrame
+    df_performance = pd.DataFrame(performance_results)
+    # Sort the DataFrame by the number of features
+    df_performance_sorted = df_performance.sort_values(
+        by="MCC", ascending=False)
+
+    # out_shap = Path(
+    #     'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\SHAP_classifier\\')
+
+    # df_performance_sorted.to_csv(
+    #     out_shap / "svm_performance_sorted.csv", index=False, sep =';')
+
+    # Create the plot
+    plt.figure(figsize=(10, 6))
+
+    # Line for MCC (blu petrolio)
+    sns.lineplot(
+        x=df_performance_sorted["Num Features"],
+        y=df_performance_sorted["MCC"],
+        marker="o", linewidth=2, markersize=8,
+        color='#1f77b4', label="MCC"  # Blu scuro
+    )
+
+    # Line for F1-score (arancione elegante)
+    sns.lineplot(
+        x=df_performance_sorted["Num Features"],
+        y=df_performance_sorted["F1-score"],
+        marker="s", linewidth=2, markersize=8,
+        color='#ff7f0e', label="F1-score"  # Arancione
+    )
+
+    # Add labels and title
+    plt.xlabel("Number of Features", fontsize=13)
+    plt.ylabel("Score", fontsize=13)
+    plt.title("SVM Performance vs Number of Features",
+              fontsize=15, weight='bold')
+
+    # Grid, legend and ticks
+    plt.grid(True, linestyle="--", linewidth=0.6, alpha=0.7)
+    plt.legend(fontsize=12)
+    plt.xticks(df_performance_sorted["Num Features"])
+
+    # Improve layout
+    plt.tight_layout()
+    plt.show()
+
+    SHAP_6 = ['TaG_delta_5d',
+              'TminG_delta_3d',
+              'HS_delta_5d',
+              'WetSnow_Temperature',
+              'New_MF_Crust',
+              'Precip_3d']
+
+    res_shap6 = evaluate_svm_with_feature_selection(mod1, SHAP_6)
+
+    SHAP_16 = ['TaG_delta_5d',
+               'TminG_delta_3d',
+               'HS_delta_5d',
+               'WetSnow_Temperature',
+               'New_MF_Crust',
+               'Precip_3d',
+               'Precip_2d',
+               'TempGrad_HS',
+               'Tsnow_delta_3d',
+               'TmaxG_delta_3d',
+               'HSnum',
+               'TempAmplitude_2d',
+               'WetSnow_CS',
+               'TaG',
+               'Tsnow_delta_2d',
+               'DayOfSeason']
+    res_shap16 = evaluate_svm_with_feature_selection(mod1, SHAP_16)
+
     # ---------------------------------------------------------------
     # --- d) FEATURE SELECTION USING BACKWARD FEATURE ELIMINATION      ---
     # ---------------------------------------------------------------
@@ -1035,14 +1167,15 @@ if __name__ == '__main__':
             'WetSnow_CS',
             'TaG',
             'Tsnow_delta_2d',
-            'DayOfSeason',
-            'Precip_5d',
-            'TH10_tanh',
-            'TempAmplitude_1d',
-            'TaG_delta_2d',
-            'HS_delta_1d',
-            'HS_delta_3d',
-            'TaG_delta_3d']
+            'DayOfSeason']
+    # ,
+    #         'Precip_5d',
+    #         'TH10_tanh',
+    #         'TempAmplitude_1d',
+    #         'TaG_delta_2d',
+    #         'HS_delta_1d',
+    #         'HS_delta_3d',
+    #         'TaG_delta_3d']
 
     # best_features = list(set(BestFeatures_FW_20 + BestFeatures_BW_27))
 
@@ -1196,31 +1329,24 @@ if __name__ == '__main__':
 
     res_PR = evaluate_svm_with_feature_selection(mod1, Permutation_ranking)
 
-    SHAP = ['TaG_delta_5d',
-            'TminG_delta_3d',
-            'HS_delta_5d',
-            'WetSnow_Temperature',
-            'New_MF_Crust',
-            'Precip_3d',
-            'Precip_2d',
-            'TempGrad_HS',
-            'Tsnow_delta_3d',
-            'TmaxG_delta_3d',
-            'HSnum',
-            'TempAmplitude_2d',
-            'WetSnow_CS',
-            'TaG',
-            'Tsnow_delta_2d',
-            'DayOfSeason',
-            'Precip_5d',
-            'TH10_tanh',
-            'TempAmplitude_1d',
-            'TaG_delta_2d',
-            'HS_delta_1d',
-            'HS_delta_3d',
-            'TaG_delta_3d']
+    SHAP_16 = ['TaG_delta_5d',
+               'TminG_delta_3d',
+               'HS_delta_5d',
+               'WetSnow_Temperature',
+               'New_MF_Crust',
+               'Precip_3d',
+               'Precip_2d',
+               'TempGrad_HS',
+               'Tsnow_delta_3d',
+               'TmaxG_delta_3d',
+               'HSnum',
+               'TempAmplitude_2d',
+               'WetSnow_CS',
+               'TaG',
+               'Tsnow_delta_2d',
+               'DayOfSeason']
 
-    res_SHAP = evaluate_svm_with_feature_selection(mod1, SHAP)
+    res_SHAP = evaluate_svm_with_feature_selection(mod1, SHAP_16)
 
     results_dict = {
         'ANOVA': res_ANOVA,
@@ -1269,136 +1395,3 @@ if __name__ == '__main__':
 
     outpath = results_path / 'df_expanded.csv'
     df_expanded.to_csv(outpath, index=False)
-
-    # -------------------------------------------------------
-    # SHAP + Forward feature selection directly on SVM
-    # -------------------------------------------------------
-    candidate_features = ['TaG_delta_5d',
-                          'TminG_delta_3d',
-                          'HS_delta_5d',
-                          'WetSnow_Temperature',
-                          'New_MF_Crust',
-                          'Precip_3d',
-                          'Precip_2d',
-                          'TempGrad_HS',
-                          'Tsnow_delta_3d',
-                          'TmaxG_delta_3d',
-                          'HSnum',
-                          'TempAmplitude_2d',
-                          'WetSnow_CS',
-                          'TaG',
-                          'Tsnow_delta_2d',
-                          'DayOfSeason',
-                          'Precip_5d',
-                          'TH10_tanh',
-                          'TempAmplitude_1d',
-                          'TaG_delta_2d',
-                          'HS_delta_1d',
-                          'HS_delta_3d',
-                          'TaG_delta_3d']
-
-    # Store performance results for each feature set
-    all_results = []
-    summary_results = []
-
-    feature_sets = [candidate_features[:i+1]
-                    for i in range(len(candidate_features))]
-    # feature_sets = feature_sets[1:]
-
-    # Initialize an empty list to store results
-    performance_results = []
-
-    # for i, feat in enumerate(feature_sets[:10]):
-    # for i, feat in enumerate(feature_sets[10:20]):
-    for i, feat in enumerate(feature_sets[20:]):
-        # feature_plus = feat + ['AvalDay']
-        print(f" *** Feature set {i+1}: {feat} *** ")
-
-        res_feat = evaluate_svm_with_feature_selection(mod1, feat)
-
-        # Store the results in a dictionary
-        performance_results.append({
-            # 'Feature Set': i+1,
-            'Features': feat,
-            'Num Features': len(feat),
-            'C': res_feat[2]['best_params']['C'],
-            'Gamma': res_feat[2]['best_params']['gamma'],
-            'Accuracy': res_feat[2]['accuracy'],
-            'Precision': res_feat[2]['precision'],
-            'Recall': res_feat[2]['recall'],
-            'F1-score': res_feat[2]['f1'],
-            'MCC': res_feat[2]['MCC']
-        })
-
-    # Convert results into a DataFrame
-    df_performance = pd.DataFrame(performance_results)
-    # Sort the DataFrame by the number of features
-    df_performance_sorted = df_performance.sort_values(
-        by="MCC", ascending=False)
-
-    # out_shap = Path(
-    #     'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\SHAP_classifier\\')
-
-    # df_performance_sorted.to_csv(
-    #     out_shap / "svm_performance_sorted.csv", index=False, sep =';')
-
-    # Create the plot
-    plt.figure(figsize=(10, 6))
-
-    # Line for MCC (blu petrolio)
-    sns.lineplot(
-        x=df_performance_sorted["Num Features"],
-        y=df_performance_sorted["MCC"],
-        marker="o", linewidth=2, markersize=8,
-        color='#1f77b4', label="MCC"  # Blu scuro
-    )
-
-    # Line for F1-score (arancione elegante)
-    sns.lineplot(
-        x=df_performance_sorted["Num Features"],
-        y=df_performance_sorted["F1-score"],
-        marker="s", linewidth=2, markersize=8,
-        color='#ff7f0e', label="F1-score"  # Arancione
-    )
-
-    # Add labels and title
-    plt.xlabel("Number of Features", fontsize=13)
-    plt.ylabel("Score", fontsize=13)
-    plt.title("SVM Performance vs Number of Features",
-              fontsize=15, weight='bold')
-
-    # Grid, legend and ticks
-    plt.grid(True, linestyle="--", linewidth=0.6, alpha=0.7)
-    plt.legend(fontsize=12)
-    plt.xticks(df_performance_sorted["Num Features"])
-
-    # Improve layout
-    plt.tight_layout()
-    plt.show()
-
-    SHAP_6 = ['TaG_delta_5d',
-              'TminG_delta_3d',
-              'HS_delta_5d',
-              'WetSnow_Temperature',
-              'New_MF_Crust',
-              'Precip_3d']
-
-    res_shap6 = evaluate_svm_with_feature_selection(mod1, SHAP_6)
-
-    SHAP_16 = ['TaG_delta_5d',
-               'TminG_delta_3d',
-               'HS_delta_5d',
-               'WetSnow_Temperature',
-               'New_MF_Crust',
-               'Precip_3d',
-               'Precip_2d',
-               'TempGrad_HS',
-               'Tsnow_delta_3d',
-               'TmaxG_delta_3d',
-               'HSnum',
-               'TempAmplitude_2d',
-               'WetSnow_CS',
-               'TaG',
-               'Tsnow_delta_2d',
-               'DayOfSeason']
-    res_shap16 = evaluate_svm_with_feature_selection(mod1, SHAP_16)
