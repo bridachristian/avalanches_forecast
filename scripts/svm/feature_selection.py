@@ -1235,6 +1235,7 @@ if __name__ == '__main__':
         X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params'])
 
     from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
+    from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis as QDA
 
     # Apply LDA for dimensionality reduction
     lda = LDA(n_components=1)
@@ -1252,6 +1253,108 @@ if __name__ == '__main__':
 
     classifier_SVM_LDA, evaluation_metrics_SVM_LDA = train_evaluate_final_svm(
         X_train_lda, y_train, X_test_lda, y_test, result_SVM_LDA['best_params'])
+
+    import numpy as np
+    from sklearn.metrics.pairwise import rbf_kernel
+
+    class KernelLDA:
+        def __init__(self, n_components=None, gamma=1.0):
+            self.n_components = n_components
+            self.gamma = gamma
+            self.alphas = None
+            self.X_fit_ = None
+            self.classes_ = None
+            self.class_means_ = None
+
+        def _center_kernel(self, K):
+            N = K.shape[0]
+            one_n = np.ones((N, N)) / N
+            return K - one_n @ K - K @ one_n + one_n @ K @ one_n
+
+        def fit(self, X, y):
+            self.X_fit_ = X
+            self.classes_ = np.unique(y)
+            N = X.shape[0]
+
+            # Compute and center the kernel matrix
+            K = rbf_kernel(X, X, gamma=self.gamma)
+            Kc = self._center_kernel(K)
+
+            # Construct class-wise indicator matrix
+            H = np.zeros((N, len(self.classes_)))
+            for i, label in enumerate(self.classes_):
+                idx = (y == label)
+                H[idx, i] = 1 / np.sqrt(np.sum(idx))
+
+            # Between-class scatter
+            M = Kc @ H
+            S_B = M @ M.T
+
+            # Within-class scatter
+            H_tilde = np.eye(N) - H @ H.T
+            S_W = Kc @ H_tilde @ Kc.T
+
+            # Solve generalized eigenvalue problem
+            eigvals, eigvecs = np.linalg.eig(np.linalg.pinv(S_W) @ S_B)
+            eigvals = eigvals.real
+            eigvecs = eigvecs.real
+            idx = eigvals.argsort()[::-1]
+            eigvecs = eigvecs[:, idx]
+
+            if self.n_components is not None:
+                eigvecs = eigvecs[:, :self.n_components]
+
+            self.alphas = eigvecs
+            self.Kc_train = Kc  # save for centering test kernel
+            return self
+
+        def transform(self, X):
+            K_test = rbf_kernel(X, self.X_fit_, gamma=self.gamma)
+
+            # Center the test kernel
+            N = self.X_fit_.shape[0]
+            one_n = np.ones((N, N)) / N
+            K_train = rbf_kernel(self.X_fit_, self.X_fit_, gamma=self.gamma)
+            K_train_c = self._center_kernel(K_train)
+
+            K_test_c = K_test - K_test @ one_n - \
+                np.mean(K_train, axis=0) + np.mean(K_train)
+            return K_test_c @ self.alphas
+
+        gamma_values = [0.001, 0.01, 0.1, 1, 10, 100]
+        best_score = 0
+        best_gamma = None
+
+        for gamma in gamma_values:
+            klda = KernelLDA(n_components=1, gamma=gamma)
+            X_train_klda = klda.fit(
+                X_train_scaled, y_train).transform(X_train_scaled)
+            X_test_klda = klda.transform(X_test_scaled)
+
+            result = tune_train_evaluate_svm(
+                X_train_klda, y_train, X_test_klda, y_test, param_grid, resampling_method='Cluster Centroids')
+            score = result['MCC']  # or custom metric
+
+            if score > best_score:
+                best_score = score
+                best_gamma = gamma
+
+        print(f"Best gamma: {best_gamma}, Score: {best_score:.4f}")
+
+        klda = KernelLDA(n_components=1, gamma=best_gamma)
+        X_train_klda = klda.fit(
+            X_train_scaled, y_train).transform(X_train_scaled)
+        X_test_klda = klda.transform(X_test_scaled)
+
+        # Convert to DataFrame if needed
+        X_train_klda = pd.DataFrame(X_train_klda, index=X_train.index)
+        X_test_klda = pd.DataFrame(X_test_klda, index=X_test.index)
+
+        result_SVM_KLDA = tune_train_evaluate_svm(
+            X_train_klda, y_train, X_test_klda, y_test, param_grid, resampling_method='Cluster Centroids')
+
+        classifier_SVM_KLDA, evaluation_metrics_SVM_KLDA = train_evaluate_final_svm(
+            X_train_klda, y_train, X_test_klda, y_test, result_SVM_KLDA['best_params'])
 
     # ---------------------------------------------------------------
     # --- E) COMPARE FEATURE SELECTIONS ---
