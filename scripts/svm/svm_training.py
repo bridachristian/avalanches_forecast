@@ -83,7 +83,7 @@ def cross_validate_svm(X, y, param_grid, cv=5, title='CV scores', scoring='f1_ma
     """
     # Initialize GridSearchCV for hyperparameter tuning
     grid = GridSearchCV(svm.SVC(kernel='rbf'), param_grid,
-                        cv=cv, scoring=scoring, verbose=2, n_jobs=-1)
+                        cv=cv, scoring=scoring, verbose=2, n_jobs=-1, random_state=42)
     grid.fit(X, y)
 
     # Extract the best parameters and model
@@ -92,9 +92,9 @@ def cross_validate_svm(X, y, param_grid, cv=5, title='CV scores', scoring='f1_ma
 
     # Perform cross-validation using the best model
     cv_scores = cross_val_score(best_model, X, y, cv=cv, scoring=scoring)
-    print("Best Parameters:", best_params)
-    print("Average Cross-Validation Score:", cv_scores.mean())
-    print("Standard Deviation of Scores:", cv_scores.std())
+    print(f"Best Parameters: {best_params}")
+    print(f"Average Cross-Validation Score: {cv_scores.mean():.4f}")
+    print(f"Standard Deviation of Scores: {cv_scores.std():.4f}")
 
     # Extract grid search results and create a heatmap
     results = grid.cv_results_
@@ -102,42 +102,27 @@ def cross_validate_svm(X, y, param_grid, cv=5, title='CV scores', scoring='f1_ma
 
     # Reshape scores for heatmap visualization
     c_values = param_grid['C']
-    # grid_type_C = detect_grid_type(c_values)
-
     gamma_values = param_grid['gamma']
     scores_matrix = scores.reshape(len(c_values), len(gamma_values))
-
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(scores_matrix, annot=False, fmt=".3f",
-                xticklabels=gamma_values, yticklabels=c_values, cmap="viridis")
-    plt.title(f'{title} - {scoring}')
-    plt.xlabel("Gamma")
-    plt.ylabel("C")
-    plt.show()
-
-    best_C = best_params["C"]
-    best_gamma = best_params["gamma"]
-
-    # Find the index of the best C and gamma in the parameter grid
-    best_C_index = np.where(np.array(c_values) == best_C)[0][0]
-    best_gamma_index = np.where(np.array(gamma_values) == best_gamma)[0][0]
 
     # Create heatmap
     plt.figure(figsize=(10, 8))
     sns.heatmap(scores_matrix, annot=False, fmt=".3f",
                 xticklabels=gamma_values, yticklabels=c_values, cmap="viridis")
-
-    # Add a red dot at the best C and gamma
-    plt.scatter(best_gamma_index + 0.5, best_C_index + 0.5,
-                color='red', s=100, edgecolors='black', label="Best (C, gamma)")
-
-    # Add labels and title
     plt.title(f'{title} - {scoring}')
     plt.xlabel("Gamma")
     plt.ylabel("C")
+
+    # Mark the best (C, gamma) combination with a red dot
+    best_C = best_params["C"]
+    best_gamma = best_params["gamma"]
+    best_C_index = np.where(np.array(c_values) == best_C)[0][0]
+    best_gamma_index = np.where(np.array(gamma_values) == best_gamma)[0][0]
+    plt.scatter(best_gamma_index + 0.5, best_C_index + 0.5,
+                color='red', s=100, edgecolors='black', label="Best (C, gamma)")
     plt.legend(loc="upper right")
 
-    # Show plot
+    # Show the plot
     plt.show()
 
     # Return the best model and evaluation metrics
