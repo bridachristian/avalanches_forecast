@@ -1247,14 +1247,6 @@ if __name__ == '__main__':
             'TaG',
             'Tsnow_delta_2d',
             'DayOfSeason']
-    # ,
-    #         'Precip_5d',
-    #         'TH10_tanh',
-    #         'TempAmplitude_1d',
-    #         'TaG_delta_2d',
-    #         'HS_delta_1d',
-    #         'HS_delta_3d',
-    #         'TaG_delta_3d']
 
     # best_features = list(set(BestFeatures_FW_20 + BestFeatures_BW_27))
 
@@ -1282,13 +1274,17 @@ if __name__ == '__main__':
     # }
 
     param_grid = {
-        'C': [0.01, 0.015, 0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.5,
-              0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 15, 20, 30, 50, 75, 100, 150, 200, 300, 500,
-              750, 1000],
-        'gamma': [100, 75, 50, 30, 20, 15, 10, 7.5, 5, 3, 2, 1.5, 1,
-                  0.75, 0.5, 0.3, 0.2, 0.15, 0.1, 0.08, 0.07, 0.05, 0.03, 0.02, 0.015, 0.01, 0.008,
-                  0.007, 0.005, 0.003, 0.002, 0.0015, 0.001, 0.0008, 0.0007, 0.0005, 0.0003, 0.0002,
-                  0.00015, 0.0001]
+        'C': [
+            0.001, 0.0015, 0.002, 0.003,
+            0.005, 0.0075, 0.01, 0.015, 0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.5,
+            0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 15, 20, 30, 50, 75, 100, 150, 200, 300, 500,
+            750, 1000,
+        ],
+        'gamma': [
+            100, 75, 50, 30, 20, 15, 10, 7.5, 5, 3, 2, 1.5, 1,
+            0.75, 0.5, 0.3, 0.2, 0.15, 0.1, 0.08, 0.07, 0.05, 0.03, 0.02, 0.015, 0.01, 0.008,
+            0.007, 0.005, 0.003, 0.002, 0.0015, 0.001, 0.0008, 0.0007, 0.0005, 0.0003, 0.0002,
+            0.00015, 0.0001]
     }
 
     # Split into training and test set
@@ -1335,6 +1331,27 @@ if __name__ == '__main__':
     # ---------------------------------------------------------------
     # --- E) COMPARE FEATURE SELECTIONS ---
     # ---------------------------------------------------------------
+
+    FULL = [
+        'TaG', 'TminG', 'TmaxG', 'HSnum',
+        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason',
+        'HS_delta_1d', 'HS_delta_2d', 'HS_delta_3d', 'HS_delta_5d',
+        'HN_2d', 'HN_3d', 'HN_5d',
+        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+        'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
+        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
+        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
+        'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
+        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+        'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d',
+        'Penetration_ratio',
+        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d',
+        'Tsnow_delta_2d', 'Tsnow_delta_3d',
+        'Tsnow_delta_5d', 'ConsecWetSnowDays',
+        'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
+    ]
+    res_FULL = evaluate_svm_with_feature_selection(mod1, FULL)
 
     ANOVA = ['HSnum', 'TH01G', 'DayOfSeason', 'HS_delta_1d', 'Tmin_2d', 'TaG_delta_5d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d', 'TmaxG_delta_5d',
              'T_mean', 'DegreeDays_Pos', 'Precip_2d', 'Precip_3d', 'Precip_5d', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'SnowConditionIndex']
@@ -1428,6 +1445,7 @@ if __name__ == '__main__':
     res_SHAP = evaluate_svm_with_feature_selection(mod1, SHAP_16)
 
     results_dict = {
+        'All features': res_FULL,
         'ANOVA': res_ANOVA,
         'BFE': res_BFE,
         'FFS': res_FFS,
