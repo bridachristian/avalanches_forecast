@@ -30,6 +30,7 @@ from scripts.svm.utils import (save_outputfile, get_adjacent_values, Permutation
 
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 
 
 if __name__ == '__main__':
@@ -1151,6 +1152,84 @@ if __name__ == '__main__':
     # --- D) FEATURE EXTRACTION USING LINEAR DISCRIMINANT ANALYSIS (LDA)
     #        on SELECTED FEATURES ---
     # ---------------------------------------------------------------
+    # 1. LDA on full feature dataset
+    # Data preparation
+    feature = [
+        'TaG', 'TminG', 'TmaxG', 'HSnum',
+        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason',
+        'HS_delta_1d', 'HS_delta_2d', 'HS_delta_3d', 'HS_delta_5d',
+        'HN_2d', 'HN_3d', 'HN_5d',
+        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+        'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
+        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
+        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
+        'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
+        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+        'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d',
+        'Penetration_ratio',
+        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d',
+        'Tsnow_delta_2d', 'Tsnow_delta_3d',
+        'Tsnow_delta_5d', 'ConsecWetSnowDays',
+        'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
+    ]
+    feature_plus = feature + ['AvalDay']
+    mod1_clean = mod1.dropna()
+    X = mod1_clean[feature]
+    y = mod1_clean['AvalDay']
+
+    X_resampled, y_resampled = undersampling_clustercentroids(X, y)
+
+    param_grid = {
+        'C': [0.01, 0.015, 0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.5,
+              0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 15, 20, 30, 50, 75, 100, 150, 200, 300, 500,
+              750, 1000],
+        'gamma': [100, 75, 50, 30, 20, 15, 10, 7.5, 5, 3, 2, 1.5, 1,
+                  0.75, 0.5, 0.3, 0.2, 0.15, 0.1, 0.08, 0.07, 0.05, 0.03, 0.02, 0.015, 0.01, 0.008,
+                  0.007, 0.005, 0.003, 0.002, 0.0015, 0.001, 0.0008, 0.0007, 0.0005, 0.0003, 0.0002,
+                  0.00015, 0.0001]
+    }
+
+    # Split into training and test set
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_resampled, y_resampled, test_size=0.25, random_state=42)
+
+    common_indices = X_train.index.intersection(X_test.index)
+
+    # scaler = StandardScaler()
+    scaler = MinMaxScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+
+    X_train_scaled = pd.DataFrame(
+        X_train_scaled, columns=X_train.columns, index=X_train.index)
+    X_test_scaled = pd.DataFrame(
+        X_test_scaled, columns=X_test.columns, index=X_test.index)
+
+    result_SVM = tune_train_evaluate_svm(
+        X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method='Cluster Centroids')
+
+    classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
+        X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params'])
+
+    # Apply LDA for dimensionality reduction
+    lda = LDA(n_components=1)
+
+    X_train_lda = lda.fit_transform(X_train_scaled, y_train)
+    X_test_lda = lda.transform(X_test_scaled)
+
+    # Convert back to DataFrame for compatibility
+    X_train_lda = pd.DataFrame(X_train_lda, index=X_train.index)
+    X_test_lda = pd.DataFrame(X_test_lda, index=X_test.index)
+
+    # Train and evaluate SVM on LDA-transformed features
+    result_SVM_LDA = tune_train_evaluate_svm(
+        X_train_lda, y_train, X_test_lda, y_test, param_grid, resampling_method='Cluster Centroids')
+
+    classifier_SVM_LDA, evaluation_metrics_SVM_LDA = train_evaluate_final_svm(
+        X_train_lda, y_train, X_test_lda, y_test, result_SVM_LDA['best_params'])
+
+    # 2. SHAP without LDA
 
     SHAP = ['TaG_delta_5d',
             'TminG_delta_3d',
@@ -1234,8 +1313,7 @@ if __name__ == '__main__':
     classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
         X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params'])
 
-    from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
-    from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis as QDA
+    # 3. SHAP + LDA
 
     # Apply LDA for dimensionality reduction
     lda = LDA(n_components=1)
@@ -1253,108 +1331,6 @@ if __name__ == '__main__':
 
     classifier_SVM_LDA, evaluation_metrics_SVM_LDA = train_evaluate_final_svm(
         X_train_lda, y_train, X_test_lda, y_test, result_SVM_LDA['best_params'])
-
-    import numpy as np
-    from sklearn.metrics.pairwise import rbf_kernel
-
-    class KernelLDA:
-        def __init__(self, n_components=None, gamma=1.0):
-            self.n_components = n_components
-            self.gamma = gamma
-            self.alphas = None
-            self.X_fit_ = None
-            self.classes_ = None
-            self.class_means_ = None
-
-        def _center_kernel(self, K):
-            N = K.shape[0]
-            one_n = np.ones((N, N)) / N
-            return K - one_n @ K - K @ one_n + one_n @ K @ one_n
-
-        def fit(self, X, y):
-            self.X_fit_ = X
-            self.classes_ = np.unique(y)
-            N = X.shape[0]
-
-            # Compute and center the kernel matrix
-            K = rbf_kernel(X, X, gamma=self.gamma)
-            Kc = self._center_kernel(K)
-
-            # Construct class-wise indicator matrix
-            H = np.zeros((N, len(self.classes_)))
-            for i, label in enumerate(self.classes_):
-                idx = (y == label)
-                H[idx, i] = 1 / np.sqrt(np.sum(idx))
-
-            # Between-class scatter
-            M = Kc @ H
-            S_B = M @ M.T
-
-            # Within-class scatter
-            H_tilde = np.eye(N) - H @ H.T
-            S_W = Kc @ H_tilde @ Kc.T
-
-            # Solve generalized eigenvalue problem
-            eigvals, eigvecs = np.linalg.eig(np.linalg.pinv(S_W) @ S_B)
-            eigvals = eigvals.real
-            eigvecs = eigvecs.real
-            idx = eigvals.argsort()[::-1]
-            eigvecs = eigvecs[:, idx]
-
-            if self.n_components is not None:
-                eigvecs = eigvecs[:, :self.n_components]
-
-            self.alphas = eigvecs
-            self.Kc_train = Kc  # save for centering test kernel
-            return self
-
-        def transform(self, X):
-            K_test = rbf_kernel(X, self.X_fit_, gamma=self.gamma)
-
-            # Center the test kernel
-            N = self.X_fit_.shape[0]
-            one_n = np.ones((N, N)) / N
-            K_train = rbf_kernel(self.X_fit_, self.X_fit_, gamma=self.gamma)
-            K_train_c = self._center_kernel(K_train)
-
-            K_test_c = K_test - K_test @ one_n - \
-                np.mean(K_train, axis=0) + np.mean(K_train)
-            return K_test_c @ self.alphas
-
-        gamma_values = [0.001, 0.01, 0.1, 1, 10, 100]
-        best_score = 0
-        best_gamma = None
-
-        for gamma in gamma_values:
-            klda = KernelLDA(n_components=1, gamma=gamma)
-            X_train_klda = klda.fit(
-                X_train_scaled, y_train).transform(X_train_scaled)
-            X_test_klda = klda.transform(X_test_scaled)
-
-            result = tune_train_evaluate_svm(
-                X_train_klda, y_train, X_test_klda, y_test, param_grid, resampling_method='Cluster Centroids')
-            score = result['MCC']  # or custom metric
-
-            if score > best_score:
-                best_score = score
-                best_gamma = gamma
-
-        print(f"Best gamma: {best_gamma}, Score: {best_score:.4f}")
-
-        klda = KernelLDA(n_components=1, gamma=best_gamma)
-        X_train_klda = klda.fit(
-            X_train_scaled, y_train).transform(X_train_scaled)
-        X_test_klda = klda.transform(X_test_scaled)
-
-        # Convert to DataFrame if needed
-        X_train_klda = pd.DataFrame(X_train_klda, index=X_train.index)
-        X_test_klda = pd.DataFrame(X_test_klda, index=X_test.index)
-
-        result_SVM_KLDA = tune_train_evaluate_svm(
-            X_train_klda, y_train, X_test_klda, y_test, param_grid, resampling_method='Cluster Centroids')
-
-        classifier_SVM_KLDA, evaluation_metrics_SVM_KLDA = train_evaluate_final_svm(
-            X_train_klda, y_train, X_test_klda, y_test, result_SVM_KLDA['best_params'])
 
     # ---------------------------------------------------------------
     # --- E) COMPARE FEATURE SELECTIONS ---
