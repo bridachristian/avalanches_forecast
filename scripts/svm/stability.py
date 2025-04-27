@@ -108,7 +108,7 @@ if __name__ == '__main__':
     # # Generate range of C and gamma values around the best parameters
     # C_values = np.linspace(500, 1000, num=501)
     C_values = np.arange(100, 1001, 1)  # Includes 1000
-    gamma_values = np.linspace(0.006, 0.01, num=41)
+    gamma_values = np.linspace(0.001, 0.015, num=141)
 
     performance_results = []
 
