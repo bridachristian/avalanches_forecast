@@ -58,7 +58,7 @@ if __name__ == '__main__':
     print(mod1.dtypes)  # For initial data type inspection
 
     # -------------------------------------------------------
-    # SHAP STABILITY VARYING C AND GAMMA
+    # STABILITY VARYING C AND GAMMA
     # -------------------------------------------------------
     SHAP_16 = ['TaG_delta_5d',
                'TminG_delta_3d',
@@ -107,8 +107,8 @@ if __name__ == '__main__':
 
     # # Generate range of C and gamma values around the best parameters
     # C_values = np.linspace(500, 1000, num=501)
-    C_values = np.arange(100, 1001, 1)  # Includes 1000
-    gamma_values = np.linspace(0.001, 0.015, num=141)
+    C_values = np.arange(100, 1501, 5)  # Includes 1000
+    gamma_values = np.linspace(0.004, 0.012, num=41)
 
     performance_results = []
 
@@ -222,7 +222,7 @@ if __name__ == '__main__':
 
     # Parametri di soglia e stabilità
     eps = 0.02  # soglia di variazione minima
-    n = 5         # punti consecutivi per stabilità
+    n = 1        # punti consecutivi per stabilità
 
     def detect_plateau(x_vals, deriv_vals, eps, n):
         abs_der = np.abs(deriv_vals)
@@ -244,18 +244,41 @@ if __name__ == '__main__':
     C_f1_plateau_rel = detect_plateau_relative(x_dense, y_f1_dense)
     C_mcc_plateau_rel = detect_plateau_relative(x_dense, y_mcc_dense)
 
-    # Plot risultati
+    y_avg = (y_f1_dense + y_mcc_dense) / 2
+    dy_avg = np.gradient(y_avg, x_dense)
+
+    C_avg_plateau = detect_plateau(x_dense, dy_avg, eps, n)
+    C_avg_plateau_rel = detect_plateau_relative(x_dense, y_avg)
+
+    # Calcolo dei punti originali medi
+    y_avg_original = (y_f1 + y_mcc) / 2
+
+    # Plot
     plt.figure(figsize=(12, 6))
-    plt.plot(df['C'], y_f1, 'o', alpha=0.3, label='F1 (original)')
-    plt.plot(np.exp(x_dense), y_f1_dense, '-', label='F1 spline')
+
+    # F1
+    plt.plot(df['C'], y_f1, 'o', alpha=0.3, color='red', label='F1 (original)')
+    plt.plot(np.exp(x_dense), y_f1_dense, '-', color='red', label='F1 spline')
     plt.axvline(C_f1_plateau_rel, linestyle='--', color='red',
                 label=f'F1 plateau @ C ≈ {int(C_f1_plateau_rel)}')
 
-    plt.plot(df['C'], y_mcc, 'o', alpha=0.3, label='MCC (original)')
-    plt.plot(np.exp(x_dense), y_mcc_dense, '-', label='MCC spline')
+    # MCC
+    plt.plot(df['C'], y_mcc, 'o', alpha=0.3,
+             color='blue', label='MCC (original)')
+    plt.plot(np.exp(x_dense), y_mcc_dense, '-',
+             color='blue', label='MCC spline')
     plt.axvline(C_mcc_plateau_rel, linestyle='--', color='blue',
                 label=f'MCC plateau @ C ≈ {int(C_mcc_plateau_rel)}')
 
+    # Media (punti originali)
+    plt.plot(df['C'], y_avg_original, 's', alpha=0.5,
+             color='green', label='Avg (F1+MCC original)')
+    # Media spline
+    plt.plot(np.exp(x_dense), y_avg, '-', color='green', label='Avg spline')
+    plt.axvline(C_avg_plateau_rel, linestyle='--', color='green',
+                label=f'Avg plateau @ C ≈ {int(C_avg_plateau_rel)}')
+
+    # Finalizzazione
     plt.xscale('linear')
     plt.xlabel("C value")
     plt.ylabel("Score")
@@ -264,10 +287,12 @@ if __name__ == '__main__':
     plt.legend()
     plt.show()
 
+    # Output dei valori
     print(f"📌 F1 plateau a C ≈ {C_f1_plateau_rel:.2f}")
     print(f"📌 MCC plateau a C ≈ {C_mcc_plateau_rel:.2f}")
+    print(f"📌 Plateau medio (F1+MCC) @ C ≈ {C_avg_plateau_rel:.2f}")
 
-    C_optimal = C_mcc_plateau_rel
+    C_optimal = C_avg_plateau_rel
     # Ricerca su gamma
     # più ampio rispetto a [0.006, 0.01]
     gamma_values_expanded = np.linspace(0.01, 0.1, num=201)
@@ -322,15 +347,16 @@ if __name__ == '__main__':
 
     # Rilevamento plateau
     gamma_plateau = detect_plateau(x_dense, dy, eps=0.02, n=5)
+    gamma_plateau_rel = detect_plateau_relative(x_dense, y_dense, pct=0.99)
 
-    print(f"📌 Gamma plateau a gamma ≈ {gamma_plateau:.5f}")
+    print(f"📌 Gamma plateau a gamma ≈ {gamma_plateau_rel:.5f}")
 
     plt.figure(figsize=(10, 5))
     plt.plot(df_gamma['gamma'], df_gamma['f1'],
              'o', alpha=0.3, label='F1 (original)')
     plt.plot(np.exp(x_dense), y_dense, '-', label='f1 spline')
-    plt.axvline(gamma_plateau, linestyle='--', color='red',
-                label=f'Plateau @ gamma ≈ {gamma_plateau:.4f}')
+    plt.axvline(gamma_plateau_rel, linestyle='--', color='red',
+                label=f'Plateau @ gamma ≈ {gamma_plateau_rel:.4f}')
     plt.xlabel("Gamma value")
     plt.ylabel("F1 Score")
     plt.title("Gamma Plateau Detection")
@@ -338,283 +364,274 @@ if __name__ == '__main__':
     plt.legend()
     plt.show()
 
-    def gamma_search_and_plateau(C_value, X_train_scaled, y_train, X_test_scaled, y_test, label_prefix=''):
-        gamma_values = np.linspace(0.01, 0.1, num=201)
-        performance_gamma = []
+    gamma_optimal = gamma_plateau_rel
 
-        print(f"\n🔍 Ricerca gamma per C = {C_value:.2f} ({label_prefix})")
+feature_list = ['TaG_delta_5d',
+                'TminG_delta_3d',
+                'HS_delta_5d',
+                'WetSnow_Temperature',
+                'New_MF_Crust',
+                'Precip_3d',
+                'Precip_2d',
+                'TempGrad_HS',
+                'Tsnow_delta_3d',
+                'TmaxG_delta_3d',
+                'HSnum',
+                'TempAmplitude_2d',
+                'WetSnow_CS',
+                'TaG',
+                'Tsnow_delta_2d',
+                'DayOfSeason']
 
-        for gamma in gamma_values:
-            print(f'--- Testing gamma={gamma:.5f} ---')
-            params = {'C': C_value, 'gamma': gamma}
+# Add target variable to the feature list
+feature_with_target = feature_list + ['AvalDay']
 
-            clf, metrics = train_evaluate_final_svm(
-                X_train_scaled, y_train, X_test_scaled, y_test, params, display_plot=False)
+# Data preprocessing: filter relevant features and drop missing values
+clean_data = mod1[feature_with_target].dropna()
 
-            performance_gamma.append({
-                'gamma': gamma,
-                'accuracy': metrics['accuracy'],
-                'precision': metrics['precision'],
-                'recall': metrics['recall'],
-                'f1': metrics['f1'],
-                'MCC': metrics['MCC']
-            })
+# Extract features and target variable
+X = clean_data[feature_list]
+y = clean_data['AvalDay']
 
-        df_gamma = pd.DataFrame(performance_gamma)
+features_to_remove = remove_correlated_features(X, y)
 
-        # Interpolazione + derivata per F1
-        x = np.log(df_gamma['gamma'].values)
-        y = df_gamma['f1'].values
+X = X.drop(columns=features_to_remove)
 
-        spline = UnivariateSpline(x, y, s=0.05)
-        x_dense = np.linspace(x.min(), x.max(), 1000)
-        y_dense = spline(x_dense)
-        dy = np.gradient(y_dense, x_dense)
+# initial_param_grid = {
+#     'C': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000],
+#     'gamma': [100, 50, 10, 5, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
+# }
+# initial_param_grid = {
+#     'C': [
+#         0.0001, 0.00015, 0.0002, 0.0003, 0.0005, 0.00075, 0.001, 0.0015, 0.002, 0.003,
+#         0.005, 0.0075, 0.01, 0.015, 0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.5,
+#         0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 15, 20, 30, 50, 75, 100, 150, 200, 300, 500,
+#         750, 1000, 1500, 2000, 3000, 5000, 7500, 10000
+#     ],
+#     'gamma': [
+#         1000, 750, 500, 300, 200, 150, 100, 75, 50, 30, 20, 15, 10, 7.5, 5, 3, 2, 1.5, 1,
+#         0.75, 0.5, 0.3, 0.2, 0.15, 0.1, 0.08, 0.07, 0.05, 0.03, 0.02, 0.015, 0.01, 0.008,
+#         0.007, 0.005, 0.003, 0.002, 0.0015, 0.001, 0.0008, 0.0007, 0.0005, 0.0003, 0.0002,
+#         0.00015, 0.0001, 0.00008, 0.00007, 0.00005, 0.00003, 0.00002, 0.000015, 0.00001
+#     ]
+# }
+initial_param_grid = {
+    'C': [
+        0.001, 0.0015, 0.002, 0.003,
+        0.005, 0.0075, 0.01, 0.015, 0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.5,
+        0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 12.5, 15, 20, 25, 30, 50, 75, 100, 125, 150, 200,
+        250, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500
+    ],
+    'gamma': [
+        100, 75, 50, 30, 20, 15, 10, 7.5, 5, 3, 2, 1.5, 1,
+        0.75, 0.5, 0.3, 0.2, 0.15, 0.1, 0.08, 0.07, 0.05, 0.03, 0.02, 0.015, 0.01, 0.008,
+        0.007, 0.005, 0.003, 0.002, 0.0015, 0.001, 0.0008, 0.0007, 0.0005, 0.0003, 0.0002,
+        0.00015, 0.0001, 0.000075
+    ]
+}
 
-        gamma_plateau = detect_plateau(x_dense, dy, eps=0.02, n=5)
+# X_resampled, y_resampled = undersampling_nearmiss(
+#     X, y, version=3, n_neighbors=10)
+X_resampled, y_resampled = undersampling_clustercentroids(X, y)
 
-        print(f"📌 Gamma plateau ({label_prefix}) ≈ {gamma_plateau:.5f}")
+X_train, X_test, y_train, y_test = train_test_split(
+    X_resampled, y_resampled, test_size=0.25, random_state=42)
 
-        return df_gamma, gamma_plateau
+scaler = MinMaxScaler()
+X_train = pd.DataFrame(scaler.fit_transform(
+    X_train), columns=X_train.columns, index=X_train.index)
+X_test = pd.DataFrame(scaler.transform(
+    X_test), columns=X_test.columns, index=X_test.index)
 
-    def calculate_plateau_curve(x_vals, y_vals, metric_name, label_prefix):
-        # Spline su scala logaritmica
-        x_log = np.log(x_vals)
-        spline = UnivariateSpline(x_log, y_vals, s=0.05)
-        x_dense = np.linspace(x_log.min(), x_log.max(), 1000)
-        y_dense = spline(x_dense)
-        dy = np.gradient(y_dense, x_dense)
+# result = tune_train_evaluate_svm(
+#     X_train, y_train, X_test, y_test, initial_param_grid,
+#     resampling_method='Cluster Centroids')
 
-        gamma_plateau = detect_plateau(x_dense, dy, eps=0.02, n=5)
-        print(
-            f"📌 Plateau {metric_name} ({label_prefix}) ≈ gamma {np.exp(gamma_plateau):.5f}")
-        # restituiamo anche le curve per eventuali plottaggi
-        return np.exp(gamma_plateau), x_dense, y_dense
+# Step 6: Train the final model with the best hyperparameters and evaluate it
+classifier, evaluation_metrics = train_evaluate_final_svm(
+    X_train, y_train, X_test, y_test, {'C': C_optimal, 'gamma': gamma_optimal})
 
-    # --- Esegui ricerca gamma con C ottimale da MCC ---
-    df_gamma_mcc, gamma_plateau_mcc = gamma_search_and_plateau(
-        C_mcc_plateau_rel, X_train_scaled, y_train, X_test_scaled, y_test, label_prefix='MCC')
+# # --- Estrazione best parameters
+# best_C = res_shap16[2]['best_params']['C']
+# best_gamma = res_shap16[2]['best_params']['gamma']
 
-    # --- Esegui ricerca gamma con C ottimale da F1 ---
-    df_gamma_f1, gamma_plateau_f1 = gamma_search_and_plateau(
-        C_f1_plateau_rel, X_train_scaled, y_train, X_test_scaled, y_test, label_prefix='F1')
+# # --- Finestra locale attorno ai best parameters
+# # delta_C = 1000
+# # delta_gamma = 0.002
 
-    # --- Calcolo dei plateau ---
-    gamma_f1_plateau_mcc, x_f1_mcc, y_f1_mcc = calculate_plateau_curve(
-        df_gamma_mcc['gamma'].values, df_gamma_mcc['f1'].values, "F1", "C_MCC")
-    gamma_mcc_plateau_mcc, x_mcc_mcc, y_mcc_mcc = calculate_plateau_curve(
-        df_gamma_mcc['gamma'].values, df_gamma_mcc['MCC'].values, "MCC", "C_MCC")
-    gamma_f1_plateau_f1, x_f1_f1, y_f1_f1 = calculate_plateau_curve(
-        df_gamma_f1['gamma'].values, df_gamma_f1['f1'].values, "F1", "C_F1")
-    gamma_mcc_plateau_f1, x_mcc_f1, y_mcc_f1 = calculate_plateau_curve(
-        df_gamma_f1['gamma'].values, df_gamma_f1['MCC'].values, "MCC", "C_F1")
+# # C_values = np.arange(best_C - delta_C, best_C + delta_C + 1, step=100)
+# # gamma_values = np.linspace(best_gamma - delta_gamma, best_gamma + delta_gamma, num=21)
+# C_values = np.arange(100, 1501, 5)  # Includes 1000
+# gamma_values = np.linspace(0.004, 0.012, num=41)
 
-    # --- Plot aggiornato ---
-    plt.figure(figsize=(12, 8))
+# # --- Preparazione dei dati
+# feature_plus = SHAP_16 + ['AvalDay']
+# mod1_clean = mod1[feature_plus].dropna()
+# X = mod1_clean[SHAP_16]
+# y = mod1_clean['AvalDay']
 
-    # Curve
-    plt.plot(df_gamma_mcc["gamma"], df_gamma_mcc["f1"],
-             color='red', label=f'F1 @ C_MCC={C_mcc_plateau_rel:.2f}')
-    plt.plot(df_gamma_mcc["gamma"], df_gamma_mcc["MCC"],
-             color='blue', label=f'MCC @ C_MCC={C_mcc_plateau_rel:.2f}')
-    plt.plot(df_gamma_f1["gamma"], df_gamma_f1["f1"], '--',
-             color='orange', label=f'F1 @ C_F1={C_f1_plateau_rel:.2f}')
-    plt.plot(df_gamma_f1["gamma"], df_gamma_f1["MCC"], '--',
-             color='cyan', label=f'MCC @ C_F1={C_f1_plateau_rel:.2f}')
+# X_resampled, y_resampled = undersampling_clustercentroids(X, y)
 
-    # Plateau lines
-    plt.axvline(gamma_f1_plateau_mcc, color='red', linestyle=':',
-                label=f'γ plateau F1 (C_MCC) ≈ {gamma_f1_plateau_mcc:.4f}')
-    plt.axvline(gamma_mcc_plateau_mcc, color='blue', linestyle=':',
-                label=f'γ plateau MCC (C_MCC) ≈ {gamma_mcc_plateau_mcc:.4f}')
-    plt.axvline(gamma_f1_plateau_f1, color='orange', linestyle=':',
-                label=f'γ plateau F1 (C_F1) ≈ {gamma_f1_plateau_f1:.4f}')
-    plt.axvline(gamma_mcc_plateau_f1, color='cyan', linestyle=':',
-                label=f'γ plateau MCC (C_F1) ≈ {gamma_mcc_plateau_f1:.4f}')
+# X_train, X_test, y_train, y_test = train_test_split(
+#     X_resampled, y_resampled, test_size=0.25, random_state=42
+# )
 
-    plt.xlabel("Gamma")
-    plt.ylabel("Score")
-    plt.title("Confronto dei plateau (MCC & F1) su gamma per C ottimali da MCC e F1")
-    plt.grid(True, linestyle='dotted')
-    plt.legend(fontsize=9)
-    plt.tight_layout()
-    plt.show()
+# scaler = MinMaxScaler()
+# X_train_scaled = scaler.fit_transform(X_train)
+# X_test_scaled = scaler.transform(X_test)
 
-    # --- Confronto grafico ---
-    plt.figure(figsize=(12, 8))
-    plt.plot(df_gamma_mcc["gamma"], df_gamma_mcc["f1"],
-             color='red', label=f'F1 @ C_MCC={C_mcc_plateau_rel:.2f}')
-    plt.plot(df_gamma_mcc["gamma"], df_gamma_mcc["MCC"],
-             color='blue', label=f'MCC @ C_MCC={C_mcc_plateau_rel:.2f}')
-    plt.plot(df_gamma_f1["gamma"], df_gamma_f1["f1"], '--',
-             color='orange', label=f'F1 @ C_F1={C_f1_plateau_rel:.2f}')
-    plt.plot(df_gamma_f1["gamma"], df_gamma_f1["MCC"], '--',
-             color='cyan', label=f'MCC @ C_F1={C_f1_plateau_rel:.2f}')
+# X_train_scaled = pd.DataFrame(
+#     X_train_scaled, columns=X_train.columns, index=X_train.index)
+# X_test_scaled = pd.DataFrame(
+#     X_test_scaled, columns=X_test.columns, index=X_test.index)
 
-    plt.axvline(gamma_plateau_mcc, color='blue', linestyle=':',
-                label=f'Plateau γ (MCC) ≈ {gamma_plateau_mcc:.4f}')
-    plt.axvline(gamma_plateau_f1, color='orange', linestyle=':',
-                label=f'Plateau γ (F1) ≈ {gamma_plateau_f1:.4f}')
+# # --- Valutazione delle prestazioni nella regione locale
+# performance_results_local = []
 
-    plt.xlabel("Gamma")
-    plt.ylabel("Score")
-    plt.title("Confronto delle performance (MCC/F1) su gamma per due C ottimali")
-    plt.grid(True, linestyle='dotted')
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+# for C in C_values:
+#     for gamma in gamma_values:
+#         params = {'C': C, 'gamma': gamma}
+#         print(f'Testing C={C}, gamma={gamma:.5f}')
+#         model, metrics = train_evaluate_final_svm(
+#             X_train_scaled, y_train, X_test_scaled, y_test, params, display_plot=False
+#         )
 
-    # Calcola la variazione percentuale del valore medio (F1)
+#         performance_results_local.append({
+#             'C': C,
+#             'gamma': gamma,
+#             'accuracy': metrics['accuracy'],
+#             'precision': metrics['precision'],
+#             'recall': metrics['recall'],
+#             'f1': metrics['f1'],
+#             'MCC': metrics['MCC']
+#         })
 
-    # params1 = {'C': 53.7, 'gamma': 0.0058}  # best params for full SHAP
-    # params2 = {'C': 4.07, 'gamma': 0.037}  # best params for full SHAP
-    # params3 = {'C': 9.95, 'gamma': 0.106}  # best params for full SHAP
-    params3 = {'C': 486, 'gamma': 0.08}  # best params for full SHAP
-    params3 = {'C': 266.33, 'gamma': 0.0594}  # best params for full SHAP
-    # params = {'C': 50, 'gamma': 0.01}
+# df_local = pd.DataFrame(performance_results_local)
 
-    # print(f"Training SVM with C = {C} and gamma = {params['gamma']}")
+# # --- Analisi di stabilità: descrizione statistica
+# print("\n🔎 Stabilità F1:")
+# print(df_local["f1"].describe())
+# print("\n🔎 Stabilità MCC:")
+# print(df_local["MCC"].describe())
 
-    # Train and evaluate the model with the current C value
-    classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
-        X_train_scaled, y_train, X_test_scaled, y_test, params3, display_plot=True
-    )
+# # --- Heatmap F1-score
+# pivot_f1 = df_local.pivot(index='gamma', columns='C', values='f1')
+# plt.figure(figsize=(10, 6))
+# sns.heatmap(pivot_f1, cmap="YlGnBu", annot=False)
+# plt.title("F1-score Heatmap attorno ai best parameters", fontsize=14)
+# plt.xlabel("C")
+# plt.ylabel("Gamma")
+# plt.tight_layout()
+# plt.show()
 
-    # -------------------------------------------------------
-    # SHAP STABILITY VARYING C AND GAMMA
-    # -------------------------------------------------------
-    import numpy as np
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    from sklearn.model_selection import train_test_split
-    from sklearn.preprocessing import MinMaxScaler
-    from scipy.interpolate import UnivariateSpline
+# # --- Heatmap MCC
+# pivot_mcc = df_local.pivot(index='gamma', columns='C', values='MCC')
+# plt.figure(figsize=(10, 6))
+# sns.heatmap(pivot_mcc, cmap="RdPu", annot=False)
+# plt.title("MCC Heatmap attorno ai best parameters", fontsize=14)
+# plt.xlabel("C")
+# plt.ylabel("Gamma")
+# plt.tight_layout()
+# plt.show()
 
-    # Presumed to be pre-defined
-    # - mod1
-    # - evaluate_svm_with_feature_selection
-    # - undersampling_clustercentroids
-    # - train_evaluate_final_svm
+# # -------------------------------------------------------
+# # STABILITY USING BOOTSTRAP
+# # -------------------------------------------------------
+# SHAP_16 = ['TaG_delta_5d',
+#            'TminG_delta_3d',
+#            'HS_delta_5d',
+#            'WetSnow_Temperature',
+#            'New_MF_Crust',
+#            'Precip_3d',
+#            'Precip_2d',
+#            'TempGrad_HS',
+#            'Tsnow_delta_3d',
+#            'TmaxG_delta_3d',
+#            'HSnum',
+#            'TempAmplitude_2d',
+#            'WetSnow_CS',
+#            'TaG',
+#            'Tsnow_delta_2d',
+#            'DayOfSeason']
+# res_shap16 = evaluate_svm_with_feature_selection(mod1, SHAP_16)
 
-    SHAP_16 = [
-        'TaG_delta_5d', 'TminG_delta_3d', 'HS_delta_5d', 'WetSnow_Temperature',
-        'New_MF_Crust', 'Precip_3d', 'Precip_2d', 'TempGrad_HS', 'Tsnow_delta_3d',
-        'TmaxG_delta_3d', 'HSnum', 'TempAmplitude_2d', 'WetSnow_CS',
-        'TaG', 'Tsnow_delta_2d', 'DayOfSeason']
+# # --- Estrazione best parameters
 
-    res_shap16 = evaluate_svm_with_feature_selection(mod1, SHAP_16)
-    best_C = res_shap16[2]['best_params']['C']
-    best_gamma = res_shap16[2]['best_params']['gamma']
+# from sklearn.utils import resample
 
-    feature_plus = SHAP_16 + ['AvalDay']
-    mod1_clean = mod1[feature_plus].dropna()
-    X = mod1_clean[SHAP_16]
-    y = mod1_clean['AvalDay']
-    X_resampled, y_resampled = undersampling_clustercentroids(X, y)
+# best_C = res_shap16[2]['best_params']['C']
+# best_gamma = res_shap16[2]['best_params']['gamma']
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_resampled, y_resampled, test_size=0.25, random_state=42)
+# # Parametri migliori trovati precedentemente
+# best_params = {'C': best_C, 'gamma': best_gamma}
 
-    scaler = MinMaxScaler()
-    X_train_scaled = pd.DataFrame(scaler.fit_transform(
-        X_train), columns=X_train.columns, index=X_train.index)
-    X_test_scaled = pd.DataFrame(scaler.transform(
-        X_test), columns=X_test.columns, index=X_test.index)
+# # Numero di bootstrap iterations
+# n_iterations = 100
+# bootstrap_results = []
 
-    C_values = np.arange(100, 1001, 1)
-    gamma_values = np.linspace(0.006, 0.01, num=41)
-    performance_results = []
+# for i in range(n_iterations):
+#     print(f'Bootstrap iteration {i+1}/{n_iterations}')
 
-    for C in C_values:
-        for gamma in gamma_values:
-            params = {'C': C, 'gamma': gamma}
-            clf, metrics = train_evaluate_final_svm(
-                X_train_scaled, y_train, X_test_scaled, y_test, params, display_plot=False)
-            performance_results.append({'C': C, 'gamma': gamma, **metrics})
+#     # Resampling con rimpiazzo
+#     X_resampled_bs, y_resampled_bs = resample(
+#         X_resampled, y_resampled, replace=True, random_state=i)
 
-    df_perf = pd.DataFrame(performance_results)
+#     X_train_bs, X_test_bs, y_train_bs, y_test_bs = train_test_split(
+#         X_resampled_bs, y_resampled_bs, test_size=0.25, random_state=42
+#     )
 
-    def summarize_metric(df, metric):
-        return df.groupby("C")[metric].agg([
-            ("mean", "mean"),
-            ("10th", lambda x: np.percentile(x, 10)),
-            ("25th", lambda x: np.percentile(x, 25)),
-            ("50th", lambda x: np.percentile(x, 50)),
-            ("75th", lambda x: np.percentile(x, 75)),
-            ("90th", lambda x: np.percentile(x, 90)),
-            ("min", "min"),
-            ("max", "max")
-        ]).reset_index()
+#     scaler = MinMaxScaler()
+#     X_train_scaled_bs = scaler.fit_transform(X_train_bs)
+#     X_test_scaled_bs = scaler.transform(X_test_bs)
 
-    df_mcc = summarize_metric(df_perf, "MCC")
-    df_f1 = summarize_metric(df_perf, "f1")
+#     X_train_scaled_bs = pd.DataFrame(
+#         X_train_scaled_bs, columns=X.columns, index=X_train_bs.index)
+#     X_test_scaled_bs = pd.DataFrame(
+#         X_test_scaled_bs, columns=X.columns, index=X_test_bs.index)
 
-    plt.figure(figsize=(12, 8))
-    plt.plot(df_mcc["C"], df_mcc["50th"], label="MCC Median", color="blue")
-    plt.plot(df_f1["C"], df_f1["50th"], label="F1 Median", color="red")
-    plt.fill_between(df_mcc["C"], df_mcc["25th"],
-                     df_mcc["75th"], alpha=0.3, color="blue")
-    plt.fill_between(df_f1["C"], df_f1["25th"],
-                     df_f1["75th"], alpha=0.3, color="red")
-    plt.xlabel("C")
-    plt.ylabel("Score")
-    plt.title("Performance Metrics across C values")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+#     model_bs, metrics_bs = train_evaluate_final_svm(
+#         X_train_scaled_bs, y_train_bs, X_test_scaled_bs, y_test_bs, best_params, display_plot=False
+#     )
 
-    def detect_plateau(x_vals, y_vals, eps=0.02, n=5):
-        x_log = np.log(x_vals)
-        spline = UnivariateSpline(x_log, y_vals, s=0.05)
-        x_dense = np.linspace(x_log.min(), x_log.max(), 1000)
-        y_dense = spline(x_dense)
-        dy = np.gradient(y_dense, x_dense)
-        for i in range(len(dy) - n):
-            if np.all(np.abs(dy[i:i+n]) < eps):
-                return np.exp(x_dense[i])
-        return np.exp(x_dense[-1])
+#     bootstrap_results.append(metrics_bs)
 
-    C_f1_plateau = detect_plateau(df_f1["C"], df_f1["50th"])
-    C_mcc_plateau = detect_plateau(df_mcc["C"], df_mcc["50th"])
+# # --- Risultati in DataFrame
+# df_bootstrap = pd.DataFrame(bootstrap_results)
 
-    print(f"📌 F1 plateau at C ≈ {C_f1_plateau:.2f}")
-    print(f"📌 MCC plateau at C ≈ {C_mcc_plateau:.2f}")
+# # --- Statistiche descrittive
+# print("\n📊 Bootstrap Stability F1:")
+# print(df_bootstrap["f1"].describe())
+# print("\n📊 Bootstrap Stability MCC:")
+# print(df_bootstrap["MCC"].describe())
 
-    # Gamma search at C = C_mcc_plateau
-    gamma_values_ext = np.linspace(0.01, 0.1, 201)
-    performance_gamma = []
-    for gamma in gamma_values_ext:
-        params = {'C': C_mcc_plateau, 'gamma': gamma}
-        clf, metrics = train_evaluate_final_svm(
-            X_train_scaled, y_train, X_test_scaled, y_test, params, display_plot=False)
-        performance_gamma.append({'gamma': gamma, **metrics})
+# # --- Boxplot per visualizzare la variabilità
+# plt.figure(figsize=(12, 5))
 
-    df_gamma = pd.DataFrame(performance_gamma)
+# plt.subplot(1, 2, 1)
+# sns.boxplot(y=df_bootstrap["f1"])
+# plt.title("F1-score (Bootstrap)")
 
-    def detect_gamma_plateau(df, metric):
-        x_log = np.log(df['gamma'].values)
-        y = df[metric].values
-        spline = UnivariateSpline(x_log, y, s=0.05)
-        x_dense = np.linspace(x_log.min(), x_log.max(), 1000)
-        y_dense = spline(x_dense)
-        dy = np.gradient(y_dense, x_dense)
-        for i in range(len(dy) - 5):
-            if np.all(np.abs(dy[i:i+5]) < 0.02):
-                return np.exp(x_dense[i])
-        return np.exp(x_dense[-1])
+# plt.subplot(1, 2, 2)
+# sns.boxplot(y=df_bootstrap["MCC"])
+# plt.title("MCC (Bootstrap)")
 
-    gamma_plateau = detect_gamma_plateau(df_gamma, 'f1')
-    print(f"📌 Gamma plateau at gamma ≈ {gamma_plateau:.5f}")
+# plt.tight_layout()
+# plt.show()
 
-    plt.figure(figsize=(10, 6))
-    plt.plot(df_gamma['gamma'], df_gamma['f1'], 'o', alpha=0.3, label='F1')
-    plt.axvline(gamma_plateau, linestyle='--', color='red',
-                label=f'Plateau @ gamma ≈ {gamma_plateau:.4f}')
-    plt.title("Gamma Plateau Detection")
-    plt.xlabel("Gamma")
-    plt.ylabel("F1 Score")
-    plt.grid(True)
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+# # Preparazione dei dati per il boxplot comparativo
+# comparison_df = pd.DataFrame({
+#     'F1-score': pd.concat([df_local["f1"], df_bootstrap["f1"]], ignore_index=True),
+#     'Metodo': ['Griglia Parametri'] * len(df_local) + ['Bootstrap'] * len(df_bootstrap)
+# })
+
+# # Boxplot comparativo
+# plt.figure(figsize=(8, 6))
+# sns.boxplot(x='Metodo', y='F1-score', data=comparison_df,
+#             palette=["#1f77b4", "#ff7f0e"])
+# plt.title("Confronto Stabilità F1-score: Griglia vs Bootstrap", fontsize=14)
+# plt.ylabel("F1-score")
+# plt.xlabel("")
+# plt.grid(axis='y', linestyle='--', alpha=0.7)
+# plt.tight_layout()
+# plt.show()
+# ------------------------------------------------------
