@@ -505,20 +505,70 @@ if __name__ == '__main__':
     plt.tight_layout()
     plt.show()
 
-    # Preparazione dei dati per il boxplot comparativo
-    comparison_df = pd.DataFrame({
-        'F1-score': pd.concat([df_local["f1"], df_bootstrap["f1"]], ignore_index=True),
-        'Metodo': ['Griglia Parametri'] * len(df_local) + ['Bootstrap'] * len(df_bootstrap)
-    })
-
-    # Boxplot comparativo
-    plt.figure(figsize=(8, 6))
-    sns.boxplot(x='Metodo', y='F1-score', data=comparison_df,
-                palette=["#1f77b4", "#ff7f0e"])
-    plt.title("Confronto Stabilità F1-score: Griglia vs Bootstrap", fontsize=14)
-    plt.ylabel("F1-score")
-    plt.xlabel("")
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    plt.tight_layout()
-    plt.show()
     # ------------------------------------------------------
+
+    # Grid di valori da testare
+
+    best_params = {'C': 750, 'gamma': 0.08}
+
+C_values = np.linspace(600, 900, 7)     # 7 valori
+gamma_values = np.linspace(0.06, 0.10, 5)  # 5 valori
+# [0.04, 0.06, 0.08, 0.10, 0.12]
+
+n_iterations = 50
+results_summary = []
+
+for C in C_values:
+    for gamma in gamma_values:
+        print(f"\nTesting C={C}, gamma={gamma}")
+        bootstrap_results = []
+
+        best_params = {'C': C, 'gamma': gamma}
+
+        for i in range(n_iterations):
+            X_resampled_bs, y_resampled_bs = resample(
+                X_resampled, y_resampled, replace=True, random_state=i)
+
+            X_train_bs, X_test_bs, y_train_bs, y_test_bs = train_test_split(
+                X_resampled_bs, y_resampled_bs, test_size=0.25, random_state=42
+            )
+
+            scaler = MinMaxScaler()
+            X_train_scaled_bs = scaler.fit_transform(X_train_bs)
+            X_test_scaled_bs = scaler.transform(X_test_bs)
+
+            X_train_scaled_bs = pd.DataFrame(
+                X_train_scaled_bs, columns=X.columns, index=X_train_bs.index)
+            X_test_scaled_bs = pd.DataFrame(
+                X_test_scaled_bs, columns=X.columns, index=X_test_bs.index)
+
+            model_bs, metrics_bs = train_evaluate_final_svm(
+                X_train_scaled_bs, y_train_bs, X_test_scaled_bs, y_test_bs,
+                best_params, display_plot=False
+            )
+
+            bootstrap_results.append(metrics_bs)
+
+        df_bootstrap = pd.DataFrame(bootstrap_results)
+        f1_std = df_bootstrap["f1"].std()
+        mcc_std = df_bootstrap["MCC"].std()
+
+        results_summary.append({
+            "C": C,
+            "gamma": gamma,
+            "f1_std": f1_std,
+            "mcc_std": mcc_std,
+            "f1_mean": df_bootstrap["f1"].mean(),
+            "mcc_mean": df_bootstrap["MCC"].mean()
+        })
+
+# Confronto tra combinazioni
+df_summary = pd.DataFrame(results_summary)
+print("\n📊 Risultati sintetici (minima deviazione standard):")
+print(df_summary.sort_values(by=["f1_std", "mcc_std"]).head())
+
+# Visualizzazione (opzionale)
+sns.heatmap(df_summary.pivot(index="C", columns="gamma",
+            values="f1_std"), annot=False, fmt=".3f")
+plt.title("F1-std per combinazioni C/gamma")
+plt.show()
