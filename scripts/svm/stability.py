@@ -42,22 +42,21 @@ from scipy.interpolate import UnivariateSpline
 
 # --- Plateau Detection Utilities ---
 
+# def detect_plateau(x_vals, deriv_vals, eps=0.02, n=1):
+#     """Detect where the absolute gradient stays below `eps` for `n` steps."""
+#     for i in range(len(deriv_vals) - n):
+#         if np.all(np.abs(deriv_vals[i:i+n]) < eps):
+#             return np.exp(x_vals[i])
+#     return np.exp(x_vals[-1])
 
-def detect_plateau(x_vals, deriv_vals, eps=0.02, n=1):
-    """Detect where the absolute gradient stays below `eps` for `n` steps."""
-    for i in range(len(deriv_vals) - n):
-        if np.all(np.abs(deriv_vals[i:i+n]) < eps):
-            return np.exp(x_vals[i])
-    return np.exp(x_vals[-1])
 
-
-def detect_plateau_relative(x_vals, y_vals, threshold=0.95):
-    """Detect where the score reaches 95% of its maximum."""
-    y_max = np.max(y_vals)
-    for i, y in enumerate(y_vals):
-        if y >= threshold * y_max:
-            return np.exp(x_vals[i])
-    return np.exp(x_vals[-1])
+# def detect_plateau_relative(x_vals, y_vals, threshold=0.95):
+#     """Detect where the score reaches 95% of its maximum."""
+#     y_max = np.max(y_vals)
+#     for i, y in enumerate(y_vals):
+#         if y >= threshold * y_max:
+#             return np.exp(x_vals[i])
+#     return np.exp(x_vals[-1])
 
 
 if __name__ == '__main__':
@@ -217,7 +216,7 @@ if __name__ == '__main__':
         size="f1_std",
         hue="f1_mean",
         palette="viridis",
-        sizes=(50, 300),
+        sizes=(5, 200),
         legend="brief"
     )
 
@@ -239,7 +238,7 @@ if __name__ == '__main__':
         size="mcc_std",
         hue="mcc_mean",
         palette="YlOrRd",
-        sizes=(50, 300),
+        sizes=(5, 200),
         legend="brief"
     )
 
