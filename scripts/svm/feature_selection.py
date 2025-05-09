@@ -15,7 +15,6 @@ from sklearn.preprocessing import FunctionTransformer
 # from sklearn.pipeline import Pipeline
 from imblearn.pipeline import Pipeline  # Use imblearn's Pipeline
 from imblearn.under_sampling import NearMiss, ClusterCentroids
-
 from scripts.svm.data_loading import load_data
 from scripts.svm.undersampling_methods import (undersampling_random, undersampling_random_timelimited,
                                                undersampling_nearmiss, undersampling_cnn,
@@ -27,10 +26,18 @@ from scripts.svm.evaluation import (plot_learning_curve, plot_confusion_matrix,
                                     plot_roc_curve, permutation_ranking, evaluate_svm_with_feature_selection)
 from scripts.svm.utils import (save_outputfile, get_adjacent_values, PermutationImportanceWrapper,
                                remove_correlated_features, remove_low_variance, select_k_best)
-
+from scripts.svm.feature_engineering import transform_features
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
+from imblearn.pipeline import Pipeline
+from imblearn.under_sampling import ClusterCentroids
+from sklearn.svm import SVC, LinearSVC
+from sklearn.feature_selection import RFECV
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import classification_report
+import numpy as np
 
 
 if __name__ == '__main__':
@@ -49,56 +56,26 @@ if __name__ == '__main__':
 
     # Load and clean data
     mod1 = load_data(filepath)
-    print(mod1.dtypes)  # For initial data type inspection
+    # print(mod1.dtypes)  # For initial data type inspection
 
-    # ---------------------------------------------------------------
-    # --- a) FEATURE SELECTION BASED ON PERMUTATION RANKING       ---
-    # ---------------------------------------------------------------
-
-    feature = [
+    # DEFINE INITIAL FEATURE SET
+    feature_set = [
         'TaG', 'TminG', 'TmaxG', 'HSnum',
-        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason',
-        'HS_delta_1d', 'HS_delta_2d', 'HS_delta_3d', 'HS_delta_5d',
-        'HN_2d', 'HN_3d', 'HN_5d',
-        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-        'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
-        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
-        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
-        'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
-        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-        'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d',
-        'Penetration_ratio',
-        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d',
-        'Tsnow_delta_2d', 'Tsnow_delta_3d',
-        'Tsnow_delta_5d', 'ConsecWetSnowDays',
-        'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
-    ]
+               'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
+               'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+               'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+               'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+               'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
+               'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
+               'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
+               'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
+               'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+               'Precip_1d', 'Precip_2d', 'Precip_3d',
+               'Precip_5d', 'Penetration_ratio',
+               'TempGrad_HS', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+               'Tsnow_delta_5d', 'ConsecWetSnowDays', 'ConsecCrustDays']
 
-    feature_plus = feature + ['AvalDay']
-    mod1_clean = mod1[feature_plus]
-    mod1_clean = mod1_clean.dropna()
-
-    X = mod1_clean[feature]
-    y = mod1_clean['AvalDay']
-
-    # features_low_variance = remove_low_variance(X, threshold=0.1)
-    # X = X.drop(columns=features_low_variance)
-
-    features_correlated = remove_correlated_features(X, y)
-    X_new = X.drop(columns=features_correlated)
-
-    # Tuning of parameter C and gamma for SVM classification
-    # param_grid = {
-    #     'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
-    #     'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
-    # }
-
-    # param_grid = {
-    #     'C': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000],
-    #     'gamma': [100, 50, 10, 5, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
-    # }
-
+    # DEFINE PARAMETER GRID (IN SOME CASES SHOULD BE REDUCED)
     param_grid = {
         'C': [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
               0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
@@ -111,8 +88,24 @@ if __name__ == '__main__':
                   0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
                   0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
                   1, 2, 3, 4, 5, 6, 7, 8, 9,
-                  10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-    }
+                  10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
+    # ---------------------------------------------------------------
+    # --- a) FEATURE SELECTION BASED ON PERMUTATION RANKING       ---
+    # ---------------------------------------------------------------
+
+    feature_plus = feature_set + ['AvalDay']
+    mod1_clean = mod1[feature_plus]
+    mod1_clean = mod1_clean.dropna()
+    mod1_transformed = transform_features(mod1_clean.copy())
+
+    X = mod1_transformed[feature_set]
+    y = mod1_transformed['AvalDay']
+
+    # features_low_variance = remove_low_variance(X, threshold=0.1)
+    # X = X.drop(columns=features_low_variance)
+
+    features_correlated = remove_correlated_features(X, y)
+    X_new = X.drop(columns=features_correlated)
 
     # X_nm, y_nm = undersampling_nearmiss(X_new, y, version=3, n_neighbors=10)
     X_nm, y_nm = undersampling_clustercentroids(X_new, y)
@@ -123,11 +116,11 @@ if __name__ == '__main__':
     X_train, X_test, y_train, y_test = train_test_split(
         X_nm, y_nm, test_size=0.25, random_state=42)
 
-    scaler = MinMaxScaler()
-    X_train = pd.DataFrame(scaler.fit_transform(
-        X_train), columns=X_train.columns, index=X_train.index)
-    X_test = pd.DataFrame(scaler.transform(
-        X_test), columns=X_test.columns, index=X_test.index)
+    # scaler = MinMaxScaler()
+    # X_train = pd.DataFrame(scaler.fit_transform(
+    #     X_train), columns=X_train.columns, index=X_train.index)
+    # X_test = pd.DataFrame(scaler.transform(
+    #     X_test), columns=X_test.columns, index=X_test.index)
 
     res_tuning = tune_train_evaluate_svm(
         X_train, y_train, X_test, y_test, param_grid,
@@ -140,144 +133,81 @@ if __name__ == '__main__':
 
     feature_importance_df = permutation_ranking(
         classifier[0], X_test, y_test)
+    # Supponendo che il DataFrame abbia una colonna chiamata 'importance'
+    positive_features_df = feature_importance_df[feature_importance_df['Importance_Mean'] > 0]
 
+    # Opzionalmente, puoi ordinarle per importanza decrescente
+    positive_features_df = positive_features_df.sort_values(
+        by='Importance_Mean', ascending=False)
+
+    # Visualizza le feature con importanza positiva
+    print(positive_features_df)
+    positive_feature_names = positive_features_df['Feature'].tolist()
     results_path = Path(
         'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\Permutation_ranking\\')
 
     save_outputfile(feature_importance_df, results_path /
                     'permutation_ranking_cluster_centroids.csv')
 
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # TEST ON PERFORMANCE OF MODEL WITH ONLY FEATURES WITH POSITIVE IMPORTANCE
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # Filter the DataFrame to include only positive importance values
-    positive_features = feature_importance_df[feature_importance_df['Importance_Mean'] > 0]
+    # # ---------------------------------------------------------------
+    # # --- b) TEST DIFFERENT CONFIGURATION OF FEATURES  ---
+    # # ---------------------------------------------------------------
 
-    # ordered_features = feature_importance_df['Feature'].iloc[::-1]
+    # candidate_features = feature_set
 
-    # # Get only the feature names
-    features_plus_aval = positive_features['Feature'].tolist() + ['AvalDay']
-    # features_plus_aval = ordered_features.tolist() + ['AvalDay']
+    # # Initialize results dictionary
+    # results = {}
 
-    # # --- NEW SVM MODEL WITH FEATURES SELECTED ---
+    # # Loop through each candidate feature and test its performance
+    # for feature in candidate_features:
+    #     # Define the current set of features to evaluate
+    #     # current_features = base_predictors + [feature]
+    #     current_features = [feature]
+    #     print(current_features)
 
-    # # mod1_clean = mod1.dropna()  # Keep the clean DataFrame with the datetime index
-    # # X = mod1_clean.drop(columns=['Stagione', 'AvalDay'])
-    X_new = X[positive_features['Feature'].tolist()]
-    y_new = y
+    #     # Evaluate the model with the selected features
+    #     result = evaluate_svm_with_feature_selection(mod1, current_features)
 
-    # --- SPLIT TRAIN AND TEST ---
+    #     # Store the result in the dictionary
+    #     results[feature] = result
 
-    # ... 4. Condensed Nearest Neighbour Undersampling ...
-    resampling_method = 'NearMiss3'
-    X_resampled, y_resampled = undersampling_nearmiss(
-        X_new, y_new, version=3, n_neighbors=10)
+    #     # Print the evaluated feature and the result
+    #     # print(f"Evaluated Feature: {feature}, Result: {result}")
 
-    X_train_new, X_test_new, y_train_new, y_test_new = train_test_split(
-        X_resampled, y_resampled, test_size=0.25, random_state=42)
-    res_new = tune_train_evaluate_svm(
-        X_train_new, y_train_new, X_test_new, y_test_new, param_grid,
-        resampling_method='NearMiss3 Undersampling')
+    # # Identify the best-performing feature based on the evaluation metric
+    # # Assuming higher is better; adjust based on metric
+    # # Extract the feature with the maximum precision
+    # best_feature = max(
+    #     results, key=lambda x: results[x][2]['recall'])
+    # max_value = results[best_feature][2]['recall']
 
-    classifier_new = train_evaluate_final_svm(
-        X_train_new, y_train_new, X_test_new, y_test_new, res_new['best_params'])
+    # print(
+    #     f"Best Feature: {best_feature}, Best Result: {max_value}")
 
-    # ---------------------------------------------------------------
-    # --- b) TEST DIFFERENT CONFIGURATION OF FEATURES  ---
-    # ---------------------------------------------------------------
+    # data = []
+    # for key, (feature, model, metrics) in results.items():
+    #     row = {'model': model, 'name': key}
+    #     row.update(metrics)  # Merge the performance metrics
+    #     data.append(row)
 
-    candidate_features = [
-        'N', 'V',  'TaG', 'TminG', 'TmaxG', 'HSnum',
-        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
-        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
-        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-        'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
-        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
-        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
-        'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
-        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-        'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
-        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
-        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
-        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays',
-        'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
-    ]
+    # # Create the DataFrame
+    # df = pd.DataFrame(data)
+    # df = df.sort_values(by='recall', ascending=False)
 
-    # Base predictors
-    # base_predictors = ['HSnum']
-
-    # Initialize results dictionary
-    results = {}
-
-    # Loop through each candidate feature and test its performance
-    for feature in candidate_features:
-        # Define the current set of features to evaluate
-        # current_features = base_predictors + [feature]
-        current_features = [feature]
-        print(current_features)
-
-        # Evaluate the model with the selected features
-        result = evaluate_svm_with_feature_selection(mod1, current_features)
-
-        # Store the result in the dictionary
-        results[feature] = result
-
-        # Print the evaluated feature and the result
-        # print(f"Evaluated Feature: {feature}, Result: {result}")
-
-    # Identify the best-performing feature based on the evaluation metric
-    # Assuming higher is better; adjust based on metric
-    # Extract the feature with the maximum precision
-    best_feature = max(
-        results, key=lambda x: results[x][2]['recall'])
-    max_value = results[best_feature][2]['recall']
-
-    print(
-        f"Best Feature: {best_feature}, Best Result: {max_value}")
-
-    data = []
-    for key, (feature, model, metrics) in results.items():
-        row = {'model': model, 'name': key}
-        row.update(metrics)  # Merge the performance metrics
-        data.append(row)
-
-    # Create the DataFrame
-    df = pd.DataFrame(data)
-    df = df.sort_values(by='recall', ascending=False)
-
-    save_outputfile(df, common_path / 'precision_features_NEW.csv')
+    # save_outputfile(df, common_path / 'precision_features_NEW.csv')
 
     # ---------------------------------------------------------------
     # --- c) FEATURE SELECTION USING SELECT K BEST AND ANOVA      ---
     # ---------------------------------------------------------------
 
-    # candidate_features = ['HSnum', 'HN_3d']
-    # List of candidate features
-    candidate_features = [
-        'TaG', 'TminG', 'TmaxG', 'HSnum',
-        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
-        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
-        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-        'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
-        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
-        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
-        'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
-        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-        'Precip_1d', 'Precip_2d', 'Precip_3d',
-        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
-        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
-        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays'
-    ]
-
     # Data preparation
-    feature_plus = candidate_features + ['AvalDay']
-    mod1_clean = mod1[feature_plus].dropna()
-    X = mod1_clean[candidate_features]
-    y = mod1_clean['AvalDay']
+    feature_plus = feature_set + ['AvalDay']
+    mod1_clean = mod1[feature_plus]
+    mod1_clean = mod1_clean.dropna()
+    mod1_transformed = transform_features(mod1_clean.copy())
+
+    X = mod1_transformed[feature_set]
+    y = mod1_transformed['AvalDay']
 
     features_correlated = remove_correlated_features(X, y)
     X_new = X.drop(columns=features_correlated)
@@ -287,24 +217,10 @@ if __name__ == '__main__':
     # k_range = [1, 2, 3, 5, 7, 10, 15, 20, 25]
     results = []
     # Tuning of parameter C and gamma for SVM classification
-    param_grid = {
+    param_grid_short = {
         'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
         'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
     }
-    # param_grid = {
-    #     'C': [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
-    #           0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
-    #           0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
-    #           1, 2, 3, 4, 5, 6, 7, 8, 9,
-    #           10, 20, 30, 40, 50, 60, 70, 80, 90,
-    #           100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
-    #     'gamma': [0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009,
-    #               0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
-    #               0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
-    #               0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
-    #               1, 2, 3, 4, 5, 6, 7, 8, 9,
-    #               10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-    # }
 
     for k in k_range:
         # Select the top k features using SelectKBest
@@ -328,19 +244,19 @@ if __name__ == '__main__':
             X_resampled, y_resampled, test_size=0.25, random_state=42)
 
         # Normalization
-        scaler = MinMaxScaler()
-        X_train_scaled = pd.DataFrame(
-            scaler.fit_transform(X_train), columns=X_train.columns)
-        X_test_scaled = pd.DataFrame(
-            scaler.fit_transform(X_test), columns=X_test.columns)
+        # scaler = MinMaxScaler()
+        # X_train_scaled = pd.DataFrame(
+        #     scaler.fit_transform(X_train), columns=X_train.columns)
+        # X_test_scaled = pd.DataFrame(
+        #     scaler.fit_transform(X_test), columns=X_test.columns)
 
         # SVM model tuning, training and evaluation
         result_SVM = tune_train_evaluate_svm(
-            X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method=f'feature setup {k}')
+            X_train, y_train, X_test, y_test, param_grid_short, resampling_method=f'feature setup {k}')
 
         # Final SVM classifier and evaluation
         classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
-            X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params'])
+            X_train, y_train, X_test, y_test, result_SVM['best_params'])
 
         # Store results
         results.append({
@@ -351,23 +267,24 @@ if __name__ == '__main__':
             'accuracy': evaluation_metrics_SVM['accuracy'],
             'recall': evaluation_metrics_SVM['recall'],
             'f1': evaluation_metrics_SVM['f1'],
+            'MCC': evaluation_metrics_SVM['MCC'],
             'best_params': evaluation_metrics_SVM['best_params']
         })
 
     # Convert results to a DataFrame for easy viewing
     results_df = pd.DataFrame(results)
 
-    results_path = Path(
-        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\ANOVA\\')
+    # results_path = Path(
+    #     'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\ANOVA\\')
 
-    save_outputfile(results_df, results_path /
-                    'anova_feature_selection_new.csv')
+    # save_outputfile(results_df, results_path /
+    #                 'anova_feature_selection_new.csv')
 
     # Plotting
     plt.figure(figsize=(10, 6))
 
     # Plot each metric
-    for metric in ['precision', 'accuracy', 'recall', 'f1']:
+    for metric in ['precision', 'accuracy', 'recall', 'f1', 'MCC']:
         plt.plot(results_df['num_features'],
                  results_df[metric], marker='o', label=metric)
 
@@ -387,31 +304,14 @@ if __name__ == '__main__':
     # --- d) FEATURE SELECTION USING SHAP METHOD      ---
     # ---------------------------------------------------------------
 
-    # candidate_features = ['HSnum', 'HN_3d']
-    # List of candidate features
-    candidate_features = [
-        'TaG', 'TminG', 'TmaxG', 'HSnum',
-        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
-        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
-        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-        'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
-        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
-        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
-        'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
-        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-        'Precip_1d', 'Precip_2d', 'Precip_3d',
-        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
-        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
-        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays'
-    ]
-
     # Data preparation
-    feature_plus = candidate_features + ['AvalDay']
-    mod1_clean = mod1[feature_plus].dropna()
-    X = mod1_clean[candidate_features]
-    y = mod1_clean['AvalDay']
+    feature_plus = feature_set + ['AvalDay']
+    mod1_clean = mod1[feature_plus]
+    mod1_clean = mod1_clean.dropna()
+    mod1_transformed = transform_features(mod1_clean.copy())
+
+    X = mod1_transformed[feature_set]
+    y = mod1_transformed['AvalDay']
 
     features_correlated = remove_correlated_features(X, y)
     X = X.drop(columns=features_correlated)
@@ -431,59 +331,43 @@ if __name__ == '__main__':
     X_train, X_test, y_train, y_test = train_test_split(
         X_resampled, y_resampled, test_size=0.25, random_state=42)
 
-    # Normalization
-    scaler = MinMaxScaler()
-    X_train_scaled = pd.DataFrame(
-        scaler.fit_transform(X_train), columns=X_train.columns)
-    X_test_scaled = pd.DataFrame(
-        scaler.fit_transform(X_test), columns=X_test.columns)
+    # # Normalization
+    # scaler = MinMaxScaler()
+    # X_train_scaled = pd.DataFrame(
+    #     scaler.fit_transform(X_train), columns=X_train.columns)
+    # X_test_scaled = pd.DataFrame(
+    #     scaler.fit_transform(X_test), columns=X_test.columns)
 
-    # param_grid = {
-    #     'C': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000],
-    #     'gamma': [100, 50, 10, 5, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
-    # }
-    param_grid = {
-        'C': [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
-              0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
-              0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
-              1, 2, 3, 4, 5, 6, 7, 8, 9,
-              10, 20, 30, 40, 50, 60, 70, 80, 90,
-              100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
-        'gamma': [0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009,
-                  0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
-                  0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
-                  0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
-                  1, 2, 3, 4, 5, 6, 7, 8, 9,
-                  10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-    }
     resampling_method = 'ClusterCentroids'
 
-    res_svm = tune_train_evaluate_svm(X_train_scaled, y_train, X_test_scaled,
-                                      y_test, param_grid, resampling_method, cv=5)    # Train SVM model
+    res_svm = tune_train_evaluate_svm(X_train, y_train, X_test,
+                                      y_test, param_grid,
+                                      resampling_method='ClusterCentroids',
+                                      cv=5)    # Train SVM model
 
     svm = svm.SVC(kernel='rbf', C=res_svm['best_params']['C'],
                   gamma=res_svm['best_params']['gamma'], probability=True)
-    svm.fit(X_train_scaled, y_train)
+    svm.fit(X_train, y_train)
 
     # Use SHAP Kernel Explainer
-    explainer = shap.KernelExplainer(svm.predict_proba, X_train_scaled)
+    explainer = shap.KernelExplainer(svm.predict_proba, X_train)
 
     # Compute SHAP values
-    shap_values = explainer.shap_values(X_train_scaled)
+    shap_values = explainer.shap_values(X_train)
 
     # Ensure SHAP values are correctly formatted
     # Should be <class 'list'> or <class 'numpy.ndarray'>
     print(type(shap_values))
     print(
-        f"SHAP values shape: {len(shap_values)}, Feature count: {X_train_scaled.shape[1]}")
+        f"SHAP values shape: {len(shap_values)}, Feature count: {X_train.shape[1]}")
 
     shap_values_df = pd.DataFrame(
-        shap_values[:, :, 1], columns=X_train_scaled.columns)
+        shap_values[:, :, 1], columns=X_train.columns)
 
     mean_shap_values = shap_values[:, :, 0].mean(axis=0)
     # Convert to pandas Series with feature names
     mean_shap_values = pd.Series(
-        mean_shap_values, index=X_train_scaled.columns)
+        mean_shap_values, index=X_train.columns)
 
     # Sort SHAP values to make the plot clearer
     mean_shap_values_sorted = mean_shap_values.sort_values(ascending=True)
@@ -551,6 +435,7 @@ if __name__ == '__main__':
     # -------------------------------------------------------
     # SHAP + Forward feature selection directly on SVM
     # -------------------------------------------------------
+    candidate_features = pos_features
     candidate_features = ['TaG_delta_5d',
                           'TminG_delta_3d',
                           'HS_delta_5d',
@@ -586,9 +471,9 @@ if __name__ == '__main__':
     # Initialize an empty list to store results
     performance_results = []
 
-    # for i, feat in enumerate(feature_sets[:10]):
-    # for i, feat in enumerate(feature_sets[10:20]):
-    for i, feat in enumerate(feature_sets[20:]):
+    for i, feat in enumerate(feature_sets):
+        # for i, feat in enumerate(feature_sets[10:20]):
+        # for i, feat in enumerate(feature_sets[20:]):
         # feature_plus = feat + ['AvalDay']
         print(f" *** Feature set {i+1}: {feat} *** ")
 
@@ -685,31 +570,14 @@ if __name__ == '__main__':
     # --- d) FEATURE SELECTION USING BACKWARD FEATURE ELIMINATION      ---
     # ---------------------------------------------------------------
 
-    # candidate_features = ['HSnum', 'HN_3d']
-    # List of candidate features
-    candidate_features = [
-        'TaG', 'TminG', 'TmaxG', 'HSnum',
-        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
-        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
-        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-        'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
-        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
-        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
-        'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
-        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-        'Precip_1d', 'Precip_2d', 'Precip_3d',
-        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
-        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
-        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays'
-    ]
-
     # Data preparation
-    feature_plus = candidate_features + ['AvalDay']
-    mod1_clean = mod1[feature_plus].dropna()
-    X = mod1_clean[candidate_features]
-    y = mod1_clean['AvalDay']
+    feature_plus = feature_set + ['AvalDay']
+    mod1_clean = mod1[feature_plus]
+    mod1_clean = mod1_clean.dropna()
+    mod1_transformed = transform_features(mod1_clean.copy())
+
+    X = mod1_transformed[feature_set]
+    y = mod1_transformed['AvalDay']
 
     # Remove correlated features
     features_correlated = remove_correlated_features(X, y)
@@ -723,7 +591,7 @@ if __name__ == '__main__':
     # X_resampled, y_resampled = undersampling_nearmiss(
     #     X_new, y, version=3, n_neighbors=10)
 
-    param_grid = {
+    param_grid_short = {
         'svc__C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
         'svc__gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
     }
@@ -737,7 +605,7 @@ if __name__ == '__main__':
     # Use GridSearchCV to tune hyperparameters during SFS
     grid_search = GridSearchCV(
         estimator=pipeline,
-        param_grid=param_grid,
+        param_grid=param_grid_short,
         scoring='f1_macro',
         cv=5,
         n_jobs=6
@@ -809,81 +677,25 @@ if __name__ == '__main__':
     plt.grid(True)
     plt.show()
 
-    # BestFeatures_BW_27 = ['N', 'TaG', 'HNnum', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_3d', 'HS_delta_5d', 'DaysSinceLastSnow', 'Tmin_2d', 'TempAmplitude_1d', 'TempAmplitude_2d', 'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_2d',
-    #                       'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d', 'DegreeDays_Pos', 'Precip_1d', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_3d', 'Tsnow_delta_5d', 'ConsecWetSnowDays']
-
-    # # NEW evaluation based on the best 6 feature (BASED ON PLOT)
-    # # Perform Sequential Feature Selection (SFS)
-    # sfs_BW_6 = SFS(
-    #     estimator=grid_search,
-    #     # k_features=10,          # Select the top 10 features
-    #     # Explore all possible subset sizes
-    #     k_features=6,
-    #     forward=False,         # Forward selection
-    #     floating=False,        # Disable floating step
-    #     cv=5,                  # 5-fold cross-validation
-    #     scoring='f1_macro',    # Use F1 macro as the scoring metric
-    #     n_jobs=-1              # Use all available CPU cores
-    # )
-
-    # # Fit SFS to the data
-    # # sfs_BW.fit(X_resampled, y_resampled)
-    # sfs_BW_6.fit(X_new, y)
-
-    # # Retrieve the names of the selected features
-    # if isinstance(X_new, pd.DataFrame):
-    #     selected_feature_names_BW_6 = [X_new.columns[i]
-    #                                    for i in sfs_BW_6.k_feature_idx_]
-    # else:
-    #     selected_feature_names_BW_6 = list(sfs_BW_6.k_feature_idx_)
-
-    # print("Selected Features:", selected_feature_names_BW_6)
-
-    # BestFeatures_BW_6 = ['TaG', 'DayOfSeason', 'Tmin_2d',
-    #                      'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_5d']
-
     # ---------------------------------------------------------------
     # --- e) FEATURE SELECTION USING FORWARD FEATURE SELECTION    ---
     # ---------------------------------------------------------------
 
-    # candidate_features = ['HSnum', 'HN_3d']
-    # List of candidate features
-    candidate_features = [
-        'TaG', 'TminG', 'TmaxG', 'HSnum',
-        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
-        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
-        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-        'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
-        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
-        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
-        'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
-        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-        'Precip_1d', 'Precip_2d', 'Precip_3d',
-        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
-        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
-        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays'
-    ]
-
     # Data preparation
-    feature_plus = candidate_features + ['AvalDay']
-    mod1_clean = mod1[feature_plus].dropna()
-    X = mod1_clean[candidate_features]
-    y = mod1_clean['AvalDay']
+    feature_plus = feature_set + ['AvalDay']
+    mod1_clean = mod1[feature_plus]
+    mod1_clean = mod1_clean.dropna()
+    mod1_transformed = transform_features(mod1_clean.copy())
+
+    X = mod1_transformed[feature_set]
+    y = mod1_transformed['AvalDay']
 
     # Remove correlated features
     features_correlated = remove_correlated_features(X, y)
-    # features_to_remove_2 = remove_low_variance(X)
-    # combined_list = features_to_remove + \
-    #     features_to_remove_2  # Concatenate the two lists
 
     X_new = X.drop(columns=features_correlated)
 
-    # X_resampled, y_resampled = undersampling_nearmiss(
-    #     X_new, y, version=3, n_neighbors=10)
-
-    param_grid = {
+    param_grid_short = {
         'svc__C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
         'svc__gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
     }
@@ -898,7 +710,7 @@ if __name__ == '__main__':
     # Use GridSearchCV to tune hyperparameters during SFS
     grid_search = GridSearchCV(
         estimator=pipeline,
-        param_grid=param_grid,
+        param_grid=param_grid_short,
         scoring='f1_macro',
         cv=5,
         n_jobs=-1
@@ -971,73 +783,17 @@ if __name__ == '__main__':
     plt.grid(True)
     plt.show()
 
-    # BestFeatures_FW_20 = ['N', 'V', 'HNnum', 'PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'Precip_1d', 'Precip_2d', 'Penetration_ratio',
-    #                       'WetSnow_CS', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex', 'MF_Crust_Present', 'New_MF_Crust']
-
-    # sfs_FW_11 = SFS(
-    #     estimator=grid_search,
-    #     # k_features=10,          # Select the top 10 features
-    #     # Explore all possible subset sizes
-    #     k_features=11,
-    #     forward=True,         # Forward selection
-    #     floating=False,        # Disable floating step
-    #     cv=5,                  # 5-fold cross-validation
-    #     scoring='f1_macro',    # Use F1 macro as the scoring metric
-    #     n_jobs=-1              # Use all available CPU cores
-    # )
-
-    # # Fit SFS to the data
-    # # sfs_BW.fit(X_resampled, y_resampled)
-    # sfs_FW_11.fit(X_new, y)
-
-    # # Retrieve the names of the selected features
-    # if isinstance(X_new, pd.DataFrame):
-    #     selected_feature_names_FW_11 = [X_new.columns[i]
-    #                                     for i in sfs_FW_11.k_feature_idx_]
-    # else:
-    #     selected_feature_names_FW_11 = list(sfs_FW_11.k_feature_idx_)
-
-    # print("Selected Features:", selected_feature_names_FW_11)
-
-    # BestFeatures_FW_11 = ['PR', 'DayOfSeason', 'HS_delta_3d', 'Tmin_2d', 'TmaxG_delta_3d', 'WetSnow_Temperature',
-    #                       'TempGrad_HS', 'TH10_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_3d', 'SnowConditionIndex']
-
     # ---------------------------------------------------------------
     # --- e) RECURSIVE FEATURE EXTRACTION: RFE  ---
     # ---------------------------------------------------------------
-    from imblearn.pipeline import Pipeline
-    from imblearn.under_sampling import ClusterCentroids
-    from sklearn.svm import SVC, LinearSVC
-    from sklearn.feature_selection import RFECV
-    from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
-    from sklearn.preprocessing import MinMaxScaler
-    from sklearn.metrics import classification_report
-    import numpy as np
 
-    # List of candidate features
-    candidate_features = [
-        'TaG', 'TminG', 'TmaxG', 'HSnum',
-        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
-        'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
-        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-        'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
-        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
-        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
-        'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
-        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-        'Precip_1d', 'Precip_2d', 'Precip_3d',
-        'Precip_5d', 'Penetration_ratio', 'WetSnow_CS', 'WetSnow_Temperature',
-        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-        'Tsnow_delta_5d', 'SnowConditionIndex', 'ConsecWetSnowDays',
-        'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays'
-    ]
+    feature_plus = feature_set + ['AvalDay']
+    mod1_clean = mod1[feature_plus]
+    mod1_clean = mod1_clean.dropna()
+    mod1_transformed = transform_features(mod1_clean.copy())
 
-    # Data Preparation
-    feature_plus = candidate_features + ['AvalDay']
-    mod1_clean = mod1[feature_plus].dropna()
-    X = mod1_clean[candidate_features]
-    y = mod1_clean['AvalDay']
+    X = mod1_transformed[feature_set]
+    y = mod1_transformed['AvalDay']
 
     # Remove correlated features
     features_correlated = remove_correlated_features(X, y)
@@ -1049,7 +805,7 @@ if __name__ == '__main__':
     )
 
     # Step 1: Hyperparameter Tuning for RBF Kernel SVM
-    param_grid = {
+    param_grid_short = {
         'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
         'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
     }
@@ -1057,7 +813,7 @@ if __name__ == '__main__':
     base_svc = SVC(kernel='rbf', random_state=42)
     grid_search = GridSearchCV(
         estimator=base_svc,
-        param_grid=param_grid,
+        param_grid=param_grid_short,
         scoring='f1_macro',
         cv=5,
         n_jobs=-1
@@ -1072,7 +828,6 @@ if __name__ == '__main__':
     # Step 3: Define the final pipeline
     pipeline = Pipeline([
         ('undersample', ClusterCentroids(random_state=42)),  # Undersampling
-        ('scaler', MinMaxScaler()),                          # Scaling
         ('feature_selection', RFECV(
             estimator=linear_svc,                            # Use LinearSVC for RFE
             step=1,                                          # Remove one feature at a time
@@ -1154,41 +909,15 @@ if __name__ == '__main__':
     # ---------------------------------------------------------------
     # 1. LDA on full feature dataset
     # Data preparation
-    feature = [
-        'TaG', 'TminG', 'TmaxG', 'HSnum',
-        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason',
-        'HS_delta_1d', 'HS_delta_2d', 'HS_delta_3d', 'HS_delta_5d',
-        'HN_2d', 'HN_3d', 'HN_5d',
-        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-        'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
-        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
-        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
-        'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
-        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-        'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d',
-        'Penetration_ratio',
-        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d',
-        'Tsnow_delta_2d', 'Tsnow_delta_3d',
-        'Tsnow_delta_5d', 'ConsecWetSnowDays',
-        'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
-    ]
-    feature_plus = feature + ['AvalDay']
-    mod1_clean = mod1.dropna()
-    X = mod1_clean[feature]
-    y = mod1_clean['AvalDay']
+    feature_plus = feature_set + ['AvalDay']
+    mod1_clean = mod1[feature_plus]
+    mod1_clean = mod1_clean.dropna()
+    mod1_transformed = transform_features(mod1_clean.copy())
+
+    X = mod1_transformed[feature_set]
+    y = mod1_transformed['AvalDay']
 
     X_resampled, y_resampled = undersampling_clustercentroids(X, y)
-
-    param_grid = {
-        'C': [0.01, 0.015, 0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.5,
-              0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 15, 20, 30, 50, 75, 100, 150, 200, 300, 500,
-              750, 1000],
-        'gamma': [100, 75, 50, 30, 20, 15, 10, 7.5, 5, 3, 2, 1.5, 1,
-                  0.75, 0.5, 0.3, 0.2, 0.15, 0.1, 0.08, 0.07, 0.05, 0.03, 0.02, 0.015, 0.01, 0.008,
-                  0.007, 0.005, 0.003, 0.002, 0.0015, 0.001, 0.0008, 0.0007, 0.0005, 0.0003, 0.0002,
-                  0.00015, 0.0001]
-    }
 
     # Split into training and test set
     X_train, X_test, y_train, y_test = train_test_split(
@@ -1196,27 +925,28 @@ if __name__ == '__main__':
 
     common_indices = X_train.index.intersection(X_test.index)
 
-    # scaler = StandardScaler()
-    scaler = MinMaxScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
+    # # scaler = StandardScaler()
+    # scaler = MinMaxScaler()
+    # X_train_scaled = scaler.fit_transform(X_train)
+    # X_test_scaled = scaler.transform(X_test)
 
-    X_train_scaled = pd.DataFrame(
-        X_train_scaled, columns=X_train.columns, index=X_train.index)
-    X_test_scaled = pd.DataFrame(
-        X_test_scaled, columns=X_test.columns, index=X_test.index)
+    # X_train_scaled = pd.DataFrame(
+    #     X_train_scaled, columns=X_train.columns, index=X_train.index)
+    # X_test_scaled = pd.DataFrame(
+    #     X_test_scaled, columns=X_test.columns, index=X_test.index)
 
     result_SVM = tune_train_evaluate_svm(
-        X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method='Cluster Centroids')
+        X_train, y_train, X_test, y_test,
+        param_grid, resampling_method='Cluster Centroids')
 
     classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
-        X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params'])
+        X_train, y_train, X_test, y_test, result_SVM['best_params'])
 
     # Apply LDA for dimensionality reduction
     lda = LDA(n_components=1)
 
-    X_train_lda = lda.fit_transform(X_train_scaled, y_train)
-    X_test_lda = lda.transform(X_test_scaled)
+    X_train_lda = lda.fit_transform(X_train, y_train)
+    X_test_lda = lda.transform(X_test)
 
     # Convert back to DataFrame for compatibility
     X_train_lda = pd.DataFrame(X_train_lda, index=X_train.index)
@@ -1234,8 +964,6 @@ if __name__ == '__main__':
     SHAP = ['TaG_delta_5d',
             'TminG_delta_3d',
             'HS_delta_5d',
-            'WetSnow_Temperature',
-            'New_MF_Crust',
             'Precip_3d',
             'Precip_2d',
             'TempGrad_HS',
@@ -1243,7 +971,6 @@ if __name__ == '__main__':
             'TmaxG_delta_3d',
             'HSnum',
             'TempAmplitude_2d',
-            'WetSnow_CS',
             'TaG',
             'Tsnow_delta_2d',
             'DayOfSeason']
@@ -1258,64 +985,35 @@ if __name__ == '__main__':
 
     X_resampled, y_resampled = undersampling_clustercentroids(X, y)
 
-    # param_grid = {
-    #     'C': [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
-    #           0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
-    #           0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
-    #           1, 2, 3, 4, 5, 6, 7, 8, 9,
-    #           10, 20, 30, 40, 50, 60, 70, 80, 90,
-    #           100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
-    #     'gamma': [0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009,
-    #               0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
-    #               0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
-    #               0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
-    #               1, 2, 3, 4, 5, 6, 7, 8, 9,
-    #               10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-    # }
-
-    param_grid = {
-        'C': [
-            0.001, 0.0015, 0.002, 0.003,
-            0.005, 0.0075, 0.01, 0.015, 0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.5,
-            0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 15, 20, 30, 50, 75, 100, 150, 200, 300, 500,
-            750, 1000,
-        ],
-        'gamma': [
-            100, 75, 50, 30, 20, 15, 10, 7.5, 5, 3, 2, 1.5, 1,
-            0.75, 0.5, 0.3, 0.2, 0.15, 0.1, 0.08, 0.07, 0.05, 0.03, 0.02, 0.015, 0.01, 0.008,
-            0.007, 0.005, 0.003, 0.002, 0.0015, 0.001, 0.0008, 0.0007, 0.0005, 0.0003, 0.0002,
-            0.00015, 0.0001]
-    }
-
     # Split into training and test set
     X_train, X_test, y_train, y_test = train_test_split(
         X_resampled, y_resampled, test_size=0.25, random_state=42)
 
     common_indices = X_train.index.intersection(X_test.index)
 
-    # scaler = StandardScaler()
-    scaler = MinMaxScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
+    # # scaler = StandardScaler()
+    # scaler = MinMaxScaler()
+    # X_train_scaled = scaler.fit_transform(X_train)
+    # X_test_scaled = scaler.transform(X_test)
 
-    X_train_scaled = pd.DataFrame(
-        X_train_scaled, columns=X_train.columns, index=X_train.index)
-    X_test_scaled = pd.DataFrame(
-        X_test_scaled, columns=X_test.columns, index=X_test.index)
+    # X_train_scaled = pd.DataFrame(
+    #     X_train_scaled, columns=X_train.columns, index=X_train.index)
+    # X_test_scaled = pd.DataFrame(
+    #     X_test_scaled, columns=X_test.columns, index=X_test.index)
 
     result_SVM = tune_train_evaluate_svm(
-        X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method='Cluster Centroids')
+        X_train, y_train, X_test, y_test, param_grid, resampling_method='Cluster Centroids')
 
     classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
-        X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params'])
+        X_train, y_train, X_test, y_test, result_SVM['best_params'])
 
     # 3. SHAP + LDA
 
     # Apply LDA for dimensionality reduction
     lda = LDA(n_components=1)
 
-    X_train_lda = lda.fit_transform(X_train_scaled, y_train)
-    X_test_lda = lda.transform(X_test_scaled)
+    X_train_lda = lda.fit_transform(X_train, y_train)
+    X_test_lda = lda.transform(X_test)
 
     # Convert back to DataFrame for compatibility
     X_train_lda = pd.DataFrame(X_train_lda, index=X_train.index)
@@ -1332,25 +1030,7 @@ if __name__ == '__main__':
     # --- E) COMPARE FEATURE SELECTIONS ---
     # ---------------------------------------------------------------
 
-    FULL = [
-        'TaG', 'TminG', 'TmaxG', 'HSnum',
-        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason',
-        'HS_delta_1d', 'HS_delta_2d', 'HS_delta_3d', 'HS_delta_5d',
-        'HN_2d', 'HN_3d', 'HN_5d',
-        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-        'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
-        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
-        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
-        'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
-        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-        'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d',
-        'Penetration_ratio',
-        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d',
-        'Tsnow_delta_2d', 'Tsnow_delta_3d',
-        'Tsnow_delta_5d', 'ConsecWetSnowDays',
-        'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'
-    ]
+    FULL = feature_set
     res_FULL = evaluate_svm_with_feature_selection(mod1, FULL)
 
     ANOVA = ['HSnum', 'TH01G', 'DayOfSeason', 'HS_delta_1d', 'Tmin_2d', 'TaG_delta_5d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d', 'TmaxG_delta_5d',

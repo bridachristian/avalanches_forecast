@@ -18,9 +18,11 @@ from scripts.svm.oversampling_methods import oversampling_random, oversampling_s
 from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm, train_evaluate_final_svm
 from scripts.svm.utils import get_adjacent_values, save_outputfile, remove_correlated_features
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.metrics import make_scorer, matthews_corrcoef
+from scripts.svm.feature_engineering import transform_features
 
 
-def plot_learning_curve(clf, X, y, title, cv=5):
+def plot_learning_curve(clf, X, y, title, cv=5, scoring='f1'):
     """
     Plots the learning curve for the given classifier.
 
@@ -28,26 +30,32 @@ def plot_learning_curve(clf, X, y, title, cv=5):
     - clf: Trained classifier (e.g., SVM model)
     - X: Feature data
     - y: Target labels
-    - cv: Number of cross-validation folds (default is 10)
+    - title: Title of the plot
+    - cv: Number of cross-validation folds (default is 5)
+    - scoring: Scoring metric (e.g., 'accuracy', 'f1', or a custom scorer)
 
     Returns:
     - None (displays a plot)
     """
-    # Compute learning curve
-    train_sizes, train_scores, val_scores = learning_curve(clf, X, y, cv=cv)
+    if scoring == 'mcc':
+        scorer = make_scorer(matthews_corrcoef)
+    else:
+        scorer = scoring
 
-    # Calculate mean and standard deviation of training and validation scores
+    train_sizes, train_scores, val_scores = learning_curve(
+        clf, X, y, cv=cv, scoring=scorer)
+
     train_mean = train_scores.mean(axis=1)
     val_mean = val_scores.mean(axis=1)
 
-    # Plot the learning curve
     plt.plot(train_sizes, train_mean, label="Training Score")
     plt.plot(train_sizes, val_mean, label="Validation Score")
     plt.xlabel("Training Set Size")
-    plt.ylabel("Score")
+    plt.ylabel(f"{scoring} Score")
     plt.ylim(0, 1.1)
     plt.legend()
     plt.title(f'Learning Curve - {title}')
+    plt.grid(True)
     plt.show()
 
 
@@ -222,77 +230,50 @@ def evaluate_svm_with_feature_selection(data, feature_list):
         - 'best_params': Best C and gamma values from the final cross-validation.
     """
 
-    # Add target variable to the feature list
-    feature_with_target = feature_list + ['AvalDay']
+    feature_plus = feature_list + ['AvalDay']
+    data_clean = data[feature_plus]
+    data_clean = data_clean.dropna()
+    data_transformed = transform_features(data_clean.copy())
 
-    # Data preprocessing: filter relevant features and drop missing values
-    clean_data = data[feature_with_target].dropna()
-
-    # Extract features and target variable
-    X = clean_data[feature_list]
-    y = clean_data['AvalDay']
+    X = data_transformed[feature_list]
+    y = data_transformed['AvalDay']
 
     features_to_remove = remove_correlated_features(X, y)
 
     X = X.drop(columns=features_to_remove)
 
-    # initial_param_grid = {
-    #     'C': [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100, 500, 1000],
-    #     'gamma': [100, 50, 10, 5, 1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
-    # }
-    initial_param_grid = {
-        'C': [
-            0.001, 0.0015, 0.002, 0.003,
-            0.005, 0.0075, 0.01, 0.015, 0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.5,
-            0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 15, 20, 30, 50, 75, 100, 150, 200, 300, 500,
-            750, 1000
-        ],
-        'gamma': [
-            100, 75, 50, 30, 20, 15, 10, 7.5, 5, 3, 2, 1.5, 1,
-            0.75, 0.5, 0.3, 0.2, 0.15, 0.1, 0.08, 0.07, 0.05, 0.03, 0.02, 0.015, 0.01, 0.008,
-            0.007, 0.005, 0.003, 0.002, 0.0015, 0.001, 0.0008, 0.0007, 0.0005, 0.0003, 0.0002,
-            0.00015, 0.0001
-        ]
-    }
-    # initial_param_grid = {
-    #     'C': [
-    #         0.001, 0.0015, 0.002, 0.003,
-    #         0.005, 0.0075, 0.01, 0.015, 0.02, 0.03, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.5,
-    #         0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 12.5, 15, 20, 25, 30, 50, 75, 100, 125, 150, 200,
-    #         250, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500
-    #     ],
-    #     'gamma': [
-    #         100, 75, 50, 30, 20, 15, 10, 7.5, 5, 3, 2, 1.5, 1,
-    #         0.75, 0.5, 0.3, 0.2, 0.15, 0.1, 0.08, 0.07, 0.05, 0.03, 0.02, 0.015, 0.01, 0.008,
-    #         0.007, 0.005, 0.003, 0.002, 0.0015, 0.001, 0.0008, 0.0007, 0.0005, 0.0003, 0.0002,
-    #         0.00015, 0.0001, 0.000075
-    #     ]
-    # }
+    param_grid = {
+        'C': [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
+              0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
+              0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+              1, 2, 3, 4, 5, 6, 7, 8, 9,
+              10, 20, 30, 40, 50, 60, 70, 80, 90,
+              100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
+        'gamma': [0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009,
+                  0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
+                  0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
+                  0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+                  1, 2, 3, 4, 5, 6, 7, 8, 9,
+                  10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
 
-    # X_resampled, y_resampled = undersampling_nearmiss(
-    #     X, y, version=3, n_neighbors=10)
     X_resampled, y_resampled = undersampling_clustercentroids(X, y)
 
     X_train, X_test, y_train, y_test = train_test_split(
         X_resampled, y_resampled, test_size=0.25, random_state=42)
 
-    scaler = MinMaxScaler()
-    X_train = pd.DataFrame(scaler.fit_transform(
-        X_train), columns=X_train.columns, index=X_train.index)
-    X_test = pd.DataFrame(scaler.transform(
-        X_test), columns=X_test.columns, index=X_test.index)
+    # scaler = MinMaxScaler()
+    # X_train = pd.DataFrame(scaler.fit_transform(
+    #     X_train), columns=X_train.columns, index=X_train.index)
+    # X_test = pd.DataFrame(scaler.transform(
+    #     X_test), columns=X_test.columns, index=X_test.index)
 
     result = tune_train_evaluate_svm(
-        X_train, y_train, X_test, y_test, initial_param_grid,
+        X_train, y_train, X_test, y_test, param_grid,
         resampling_method='Cluster Centroids')
 
     # Step 6: Train the final model with the best hyperparameters and evaluate it
     classifier, evaluation_metrics = train_evaluate_final_svm(
         X_train, y_train, X_test, y_test, result['best_params']
     )
-    # classifier, evaluation_metrics = train_evaluate_final_svm(
-    #     X_train, y_train, X_test, y_test, {
-    #         'C': 100.0, 'gamma': 0.03}
-    # )
 
     return feature_list, classifier, evaluation_metrics

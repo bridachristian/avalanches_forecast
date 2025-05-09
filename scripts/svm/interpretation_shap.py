@@ -4,6 +4,8 @@ Created on Wed May  7 14:44:30 2025
 
 @author: Christian
 """
+from IPython.display import display
+import shap
 import time
 import pandas as pd
 import numpy as np
@@ -61,20 +63,184 @@ if __name__ == '__main__':
     # -------------------------------------------------------
     # STABILITY VARYING C AND GAMMA
     # -------------------------------------------------------
-    SHAP_16 = ['TaG_delta_5d',
-               'TminG_delta_3d',
-               'HS_delta_5d',
-               'WetSnow_Temperature',
-               'New_MF_Crust',
-               'Precip_3d',
-               'Precip_2d',
-               'TempGrad_HS',
-               'Tsnow_delta_3d',
-               'TmaxG_delta_3d',
-               'HSnum',
-               'TempAmplitude_2d',
-               'WetSnow_CS',
-               'TaG',
-               'Tsnow_delta_2d',
-               'DayOfSeason']
-    res_shap16 = evaluate_svm_with_feature_selection(mod1, SHAP_16)
+    feature_list = ['TaG_delta_5d',
+                    'TminG_delta_3d',
+                    'HS_delta_5d',
+                    # 'WetSnow_Temperature',
+                    'New_MF_Crust',
+                    'Precip_3d',
+                    'Precip_2d',
+                    'TempGrad_HS',
+                    'Tsnow_delta_3d',
+                    'TmaxG_delta_3d',
+                    'HSnum',
+                    'TempAmplitude_2d',
+                    # 'WetSnow_CS',
+                    'TaG',
+                    'Tsnow_delta_2d',
+                    'DayOfSeason']
+    res_shap16 = evaluate_svm_with_feature_selection(mod1, feature_list)
+
+# Add target variable to the feature list
+feature_with_target = feature_list + ['AvalDay']
+
+# Data preprocessing: filter relevant features and drop missing values
+clean_data = mod1[feature_with_target].dropna()
+
+# Extract features and target variable
+X = clean_data[feature_list]
+y = clean_data['AvalDay']
+
+features_to_remove = remove_correlated_features(X, y)
+
+X = X.drop(columns=features_to_remove)
+
+X_resampled, y_resampled = undersampling_clustercentroids(X, y)
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X_resampled, y_resampled, test_size=0.25, random_state=42)
+
+scaler = MinMaxScaler()
+X_train = pd.DataFrame(scaler.fit_transform(
+    X_train), columns=X_train.columns, index=X_train.index)
+X_test = pd.DataFrame(scaler.transform(
+    X_test), columns=X_test.columns, index=X_test.index)
+
+# Step 6: Train the final model with the best hyperparameters and evaluate it
+classifier, evaluation_metrics = train_evaluate_final_svm(
+    X_train, y_train, X_test, y_test, {'C': 200, 'gamma': 0.3})
+
+# Use SHAP KernelExplainer for non-tree-based models like SVM
+model = svm.SVC(C=200, gamma=0.3, probability=True, random_state=42)
+model.fit(X_train, y_train)
+
+explainer = shap.KernelExplainer(model.predict_proba, X_train)
+
+# Compute SHAP values for the test set
+shap_values = explainer.shap_values(X_test)
+
+shap_values_class1 = shap_values[:, :, 1]
+shap.summary_plot(shap_values_class1, X_test)
+
+shap.dependence_plot("WetSnow_Temperature", shap_values_class1, X_test)
+
+shap_exp = shap.Explanation(
+    values=shap_values[:, :, 1],       # SHAP values for class 1
+    base_values=explainer.expected_value[1],  # Base value for class 1
+    data=X_test.values,                # Feature values
+    feature_names=X_test.columns       # Column names
+)
+
+y_test_np = y_test.to_numpy() if hasattr(
+    y_test, "to_numpy") else np.array(y_test)
+
+# Now create cohorts using boolean indexing
+cohorts = {
+    "No Avalanche": shap_exp[y_test_np == 0],
+    "Avalanche": shap_exp[y_test_np == 1]
+}
+shap.plots.bar(cohorts, max_display=16)
+
+shap.summary_plot(cohorts["Avalanche"], X_test[y_test == 1])
+shap.summary_plot(cohorts["No Avalanche"], X_test[y_test == 0])
+
+# Replace 'shap_values' with the correct key if needed
+shap.plots.violin(cohorts['Avalanche'])
+# Replace 'shap_values' with the correct key if needed
+shap.plots.violin(cohorts['No Avalanche'])
+
+# for i in range(len(shap_exp)):  # Loop through the indices of shap_exp
+#     shap.plots.waterfall(shap_exp[i])
+
+
+# ✅ 1. Global Feature Importance (Summary Plot)
+shap.summary_plot(shap_values[:, :, 1], X_test)
+
+clustering = shap.utils.hclust(X_test, y_test)
+shap.plots.bar(shap_values[:, :, 1], clustering=clustering)
+
+# Crea Explanation object (classe positiva: 1)
+explanation1 = shap.Explanation(
+    values=shap_values[:, :, 1],
+    base_values=explainer.expected_value[1],
+    data=X_test,
+    feature_names=X_test.columns
+)
+
+explanation0 = shap.Explanation(
+    values=shap_values[:, :, 0],
+    base_values=explainer.expected_value[0],
+    data=X_test,
+    feature_names=X_test.columns
+)
+
+
+# Ora puoi usare il bar plot
+shap.plots.bar(explanation1, max_display=16)
+shap.plots.bar(explanation0, max_display=16)
+
+
+# ✅ 2. Summary Bar Plot
+shap.summary_plot(shap_values[:, :, 1], X_test, plot_type="bar")
+
+# ✅ 3. Force Plot (Local Explanation for One Prediction)
+i = 0  # Index of the sample to explain
+shap.initjs()  # Enable JS visualizations
+
+shap.force_plot(
+    explainer.expected_value[1],   # base value for class 1
+    shap_values[i, :, 1],          # SHAP values for instance i and class 1
+    X_test.iloc[i]                 # Feature values for instance i
+)
+
+
+force_plot = shap.force_plot(
+    explainer.expected_value[1],
+    shap_values[i, :, 1],
+    X_test.iloc[i]
+)
+display(force_plot)  # <- This makes the plot appear in the notebook
+# Create the force plot
+force_plot = shap.force_plot(
+    explainer.expected_value[1],
+    shap_values[10, :, 1],
+    X_test.iloc[i]
+)
+
+# Save it to an HTML file
+shap.save_html("shap_force_plot.html", force_plot)
+
+
+# ✅ 4. Decision Plot
+shap.decision_plot(
+    explainer.expected_value[1],
+    shap_values[:2, :, 1],        # first 5 samples
+    X_test.iloc[:2]
+)
+
+# ✅ 5. Dependence Plot
+shap.dependence_plot(
+    "Precip_3d",               # replace with a column name from X_test
+    shap_values[:, :, 1],
+    X_test
+)
+
+shap.dependence_plot(
+    "Precip_3d",
+    shap_values[:, :, 1],
+    X_test,
+    interaction_index="auto"
+)
+
+# ✅ 6. Waterfall Plot
+shap.plots._waterfall.waterfall_legacy(
+    explainer.expected_value[1],
+    shap_values[96, :, 1],
+    X_test.iloc[96]
+)
+
+
+# shap_values_df = pd.DataFrame(
+#     shap_values[:, :, 1], columns=X_train.columns)
+
+# shap.plots.bar(shap_values)

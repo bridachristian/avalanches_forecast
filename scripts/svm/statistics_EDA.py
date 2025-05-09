@@ -39,6 +39,57 @@ from scripts.svm.utils import (save_outputfile, get_adjacent_values, Permutation
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
 
+from scripts.svm.eda_analysis import run_eda
+
+# -------------------------------------------
+# FUNZIONI UTILI
+# -------------------------------------------
+
+
+def load_data(filepath):
+    df = pd.read_csv(filepath)
+    return df
+
+
+def remove_correlated_features(X, y, threshold=0.9):
+    corr_matrix = X.corr().abs()
+    upper = corr_matrix.where(
+        np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+    to_drop = [column for column in upper.columns if any(
+        upper[column] > threshold)]
+    return to_drop
+
+
+def undersampling_clustercentroids(X, y):
+    cc = ClusterCentroids(random_state=42)
+    X_resampled, y_resampled = cc.fit_resample(X, y)
+    return pd.DataFrame(X_resampled, columns=X.columns), pd.Series(y_resampled, name='AvalDay')
+
+
+def compare_distributions(original, resampled, features, n_plot=5):
+    ks_results = []
+
+    for i, col in enumerate(features):
+        orig_values = original[col]
+        res_values = resampled[col]
+
+        ks_stat, p_value = ks_2samp(orig_values, res_values)
+        ks_results.append((col, ks_stat, p_value))
+
+        if i < n_plot:
+            plt.figure(figsize=(6, 3))
+            sns.kdeplot(orig_values, label='Original', fill=True)
+            sns.kdeplot(res_values, label='Resampled', fill=True)
+            plt.title(f'Distribuzione: {col} (p={p_value:.3f})')
+            plt.legend()
+            plt.tight_layout()
+            plt.show()
+
+    ks_df = pd.DataFrame(ks_results, columns=[
+                         'Feature', 'KS_statistic', 'p_value'])
+    ks_df['Significant_change'] = ks_df['p_value'] < 0.05
+    return ks_df.sort_values(by='KS_statistic', ascending=False)
+
 
 if __name__ == '__main__':
 
@@ -62,16 +113,78 @@ if __name__ == '__main__':
     mod1 = load_data(filepath)
     print(mod1.dtypes)  # For initial data type
 
-    # --- EXPLORATORY DATA ANALYSIS ---
+    # --- AFTER RESAMPLING ---
+    feature = ['TaG', 'TminG', 'TmaxG', 'HSnum',
+           'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d',
+           'HS_delta_2d', 'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+           'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+           'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+           'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
+           'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
+           'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
+           'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
+           'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+           'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
+           'Precip_5d', 'Penetration_ratio',
+           # 'WetSnow_CS', 'WetSnow_Temperature',
+           'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d',
+           'Tsnow_delta_2d', 'Tsnow_delta_3d', 'Tsnow_delta_5d',
+           'ConsecWetSnowDays', 'MF_Crust_Present',
+           'New_MF_Crust', 'ConsecCrustDays']
 
-    # COUNTS
-    mod1['AvalDay'].value_counts().plot(kind='bar')
-    plt.title("Class distribution: Avalanche vs No Avalanche")
-    plt.xticks([0, 1], ['No Avalanche', 'Avalanche'], rotation=0)
-    plt.show()
+    feature_plus = feature + ['AvalDay']
+    mod1_clean = mod1[feature_plus]
+    mod1_clean = mod1_clean.dropna()
 
-    # UNIVARIATE ANALYSIS
-    for col in mod1.columns[1:]:
+    X = mod1_clean[feature]
+    y = mod1_clean['AvalDay']
+    mod1_clean = mod1_clean.dropna()
+
+    features_correlated = remove_correlated_features(X, y)
+    X_new = X.drop(columns=features_correlated)
+
+    X_resampled, y_resampled = undersampling_clustercentroids(X_new, y)
+
+    df_resampled = X_resampled
+    df_resampled['AvalDay'] = y_resampled
+
+    # -------------------------------------------
+# CONFRONTO DISTRIBUZIONI ORIGINALE VS RESAMPLING
+# -------------------------------------------
+
+print("\n--- Confronto delle distribuzioni (originale vs resampled) ---")
+comparison_df = compare_distributions(
+    X_new, X_resampled, X_new.columns, n_plot=10)
+print(comparison_df)
+
+    # --- EXPLORATORY DATA ANALYSIS BEFORE RESAMPLING ---
+    # Lista di feature che dovrebbero essere binarie
+# aggiorna in base al tuo caso
+binary_features = ['New_MF_Crust', 'MF_Crust_Present']
+
+run_eda(mod1_clean, title='Original Data',
+        binary_features_to_check=binary_features)
+run_eda(df_resampled, title='Resampled Data (ClusterCentroids)',
+        binary_features_to_check=binary_features)
+
+
+# Lista di feature che dovrebbero essere binarie
+# aggiorna in base al tuo caso
+binary_features = ['WetSnow_temperature', 'ConsecWetSnowDays']
+
+run_eda(mod1_clean, title='Original Data',
+        binary_features_to_check=binary_features)
+run_eda(df_resampled, title='Resampled Data (ClusterCentroids)',
+        binary_features_to_check=binary_features)
+
+# COUNTS
+mod1['AvalDay'].value_counts().plot(kind='bar')
+plt.title("Class distribution: Avalanche vs No Avalanche")
+ plt.xticks([0, 1], ['No Avalanche', 'Avalanche'], rotation=0)
+  plt.show()
+
+   # UNIVARIATE ANALYSIS
+   for col in mod1.columns[1:]:
         plt.figure(figsize=(6, 3))
         sns.kdeplot(data=mod1, x=col, hue='AvalDay',
                     fill=True, common_norm=False, alpha=0.5)
@@ -252,76 +365,58 @@ if __name__ == '__main__':
     accuracy = accuracy_score(y, y_pred)
     print(f'Accuracy: {accuracy}')
 
-    # KMEANS clustering
+    # --- EXPLORATORY DATA ANALYSIS AFTER RESAMPLING ---
+    feature = [
+        'TaG', 'TminG', 'TmaxG', 'HSnum',
+        'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason',
+        'HS_delta_1d', 'HS_delta_2d', 'HS_delta_3d', 'HS_delta_5d',
+        'HN_2d', 'HN_3d', 'HN_5d',
+        'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+        'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+        'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
+        'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
+        'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
+        'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
+        'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+        'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d',
+        'Penetration_ratio',
+        'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d',
+        'Tsnow_delta_2d', 'Tsnow_delta_3d',
+        'Tsnow_delta_5d', 'ConsecWetSnowDays']
 
-    # Prepare your data
-X = df_corr.drop(columns='AvalDay')  # or whatever your features are
-X = X.dropna()
-X_scaled = StandardScaler().fit_transform(X)  # Standardize features
+    feature_plus = feature + ['AvalDay']
+    mod1_clean = mod1[feature_plus]
+    mod1_clean = mod1_clean.dropna()
 
-# Apply K-Means
-kmeans = KMeans(n_clusters=3, random_state=42)
-kmeans.fit(X_scaled)
+    X = mod1_clean[feature]
+    y = mod1_clean['AvalDay']
+    mod1_clean = mod1_clean.dropna()
 
-# Add the cluster labels to your DataFrame (optional)
-df_corr['Cluster'] = kmeans.labels_
+    features_correlated = remove_correlated_features(X, y)
+    X_new = X.drop(columns=features_correlated)
 
-# Plot clusters (only works if X has 2D/3D after PCA or t-SNE)
-plt.figure(figsize=(8, 6))
-plt.scatter(X_scaled[:, 0], X_scaled[:, 1],
-            c=kmeans.labels_, cmap='viridis', edgecolor='k')
-plt.title("K-Means Clustering")
-plt.xlabel("Feature 1")
-plt.ylabel("Feature 2")
-plt.show()
+    X_resampled, y_resampled = undersampling_clustercentroids(X_new, y)
 
-inertias = []
-for k in range(1, 11):
-    kmeans = KMeans(n_clusters=k, random_state=42)
-    kmeans.fit(X_scaled)
-    inertias.append(kmeans.inertia_)
+    df_resampled = X_resampled
+    df_resampled['AvalDay'] = y_resampled
 
-plt.plot(range(1, 11), inertias, marker='o')
-plt.title('Elbow Method')
-plt.xlabel('Number of clusters')
-plt.ylabel('Inertia')
-plt.show()
+    # COUNTS
+    df_resampled['AvalDay'].value_counts().plot(kind='bar')
+    plt.title("Class distribution: Avalanche vs No Avalanche")
+    plt.xticks([0, 1], ['No Avalanche', 'Avalanche'], rotation=0)
+    plt.show()
 
+    # UNIVARIATE ANALYSIS
+    for col in df_resampled.columns[1:]:
+        plt.figure(figsize=(6, 3))
+        sns.kdeplot(data=df_resampled, x=col, hue='AvalDay',
+                    fill=True, common_norm=False, alpha=0.5)
+        plt.title(f'Distribution of {col} by Avalanche Occurrence')
+        plt.show()
 
-from sklearn.preprocessing import StandardScaler
+      # 3. Boxplots for Class Comparison
 
-X = df_corr.drop(columns=['AvalDay', 'Cluster'])  # drop target and cluster if already present
-X_scaled = StandardScaler().fit_transform(X)
-from sklearn.decomposition import PCA
-
-pca = PCA(n_components=2)
-X_pca = pca.fit_transform(X_scaled)
-
-from sklearn.cluster import KMeans
-
-kmeans = KMeans(n_clusters=2, random_state=42)  # use 3 or 4 based on your elbow
-kmeans.fit(X_scaled)
-labels = kmeans.labels_
-
-import matplotlib.pyplot as plt
-
-plt.figure(figsize=(8, 6))
-plt.scatter(X_pca[:, 0], X_pca[:, 1], c=labels, cmap='viridis', s=50, edgecolor='k')
-plt.title('K-Means Clusters Visualized with PCA')
-plt.xlabel('PCA Component 1')
-plt.ylabel('PCA Component 2')
-plt.grid(True)
-plt.show()
-
-
-from sklearn.manifold import TSNE
-
-X_tsne = TSNE(n_components=2, perplexity=30, random_state=42).fit_transform(X_scaled)
-
-plt.figure(figsize=(8, 6))
-plt.scatter(X_tsne[:, 0], X_tsne[:, 1], c=labels, cmap='plasma', s=50, edgecolor='k')
-plt.title('K-Means Clusters Visualized with t-SNE')
-plt.xlabel('t-SNE Component 1')
-plt.ylabel('t-SNE Component 2')
-plt.grid(True)
-plt.show()
+    for col in mod1.columns[1:]:
+        sns.boxplot(x='AvalDay', y=col, data=mod1)
+        plt.title(f'{col} vs Avalanche Occurrence')
+        plt.show()
