@@ -6,7 +6,7 @@ from imblearn.under_sampling import (RandomUnderSampler, NearMiss, CondensedNear
 import matplotlib.pyplot as plt
 
 from scripts.svm.utils import plot_scatter_original, plot_scatter_under_over_sampling
-from scripts.svm.feature_engineering import transform_features
+from scripts.svm.feature_engineering import transform_features, transform_penetration_ratio
 
 
 def undersampling_random(X, y):
@@ -371,8 +371,8 @@ def undersampling_tomeklinks(X, y, version=1, n_neighbors=3):
 
 def undersampling_clustercentroids_v2(X, y):
     """
-    Applica ClusterCentroids su X, mantenendo binarie, fresh snow e PR interpretabili (norm).
-    Lavora anche se alcune colonne non sono presenti.
+    Applica ClusterCentroids su feature continue, mantenendo binarie, neve fresca e PR normalizzate interpretabili.
+    Ignora colonne non trasformabili. Se non ci sono feature continue, bilancia solo con feature binarie.
 
     Input:
         X: pd.DataFrame - tutte le feature
@@ -388,75 +388,108 @@ def undersampling_clustercentroids_v2(X, y):
     import numpy as np
     import pandas as pd
 
-    # Feature note (usa solo se presenti)
+    # Feature di interesse
     precip_features = ['HNnum', 'HN_2d', 'HN_3d', 'HN_5d',
                        'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d']
     bin_features = ['HNnum_bin', 'HN_2d_bin', 'HN_3d_bin', 'HN_5d_bin',
                     'Precip_1d_bin', 'Precip_2d_bin', 'Precip_3d_bin', 'Precip_5d_bin']
-
-    # PR features da trattare se presenti
     pr_cols = ['PR']
     pr_transformed = {}
 
-    X = X.copy()
-    X_tranformed = transform_features(X.copy())
+    X_copy = X.copy()
+    y = y.loc[X_copy.index]  # garantisce indice compatibile
 
-    # Clipping, log1p, standardizzazione, normalizzazione per PR
+    # Tenta di trasformare le feature (opzionale)
+    try:
+        X_transformed = transform_features(X_copy)
+    except Exception as e:
+        print(f"[WARN] Errore durante transform_features(): {e}")
+        X_transformed = X_copy.copy()
+
+    # Funzione di trasformazione PR
     def transform_pr_column(series):
-        upper_clip = series.quantile(0.99)
-        clipped = series.clip(upper=upper_clip)
-        log_vals = np.log1p(clipped)
+        try:
+            upper_clip = series.quantile(0.99)
+            clipped = series.clip(upper=upper_clip)
+            log_vals = np.log1p(clipped)
+            std = StandardScaler().fit_transform(log_vals.values.reshape(-1, 1)).flatten()
+            norm = MinMaxScaler().fit_transform(series.values.reshape(-1, 1)).flatten()
+            return pd.Series(std, index=series.index), pd.Series(norm, index=series.index)
+        except Exception as e:
+            print(f"[WARN] Colonna PR non trasformabile: {e}")
+            return None, None
 
-        std = StandardScaler().fit_transform(log_vals.values.reshape(-1, 1)).flatten()
-        norm = MinMaxScaler().fit_transform(series.values.reshape(-1, 1)).flatten()
-
-        return pd.Series(std, index=series.index), pd.Series(norm, index=series.index)
-
-    # Applica trasformazioni PR se presenti
+    # Trasformazioni PR
     for col in pr_cols:
-        if col in X_tranformed.columns:
-            std_col, norm_col = transform_pr_column(X_tranformed[col])
-            X_tranformed[f'{col}_std'] = std_col
-            pr_transformed[f'{col}_norm'] = norm_col
+        if col in X_transformed.columns:
+            std_col, norm_col = transform_pr_column(X_transformed[col])
+            if std_col is not None:
+                X_transformed[f'{col}_std'] = std_col
+                pr_transformed[f'{col}_norm'] = norm_col
 
-    # Separazione feature
-    bin_in_X = [col for col in bin_features if col in X_tranformed.columns]
+    # Selezione feature binarie e precipitazioni
+    bin_in_X = [col for col in bin_features if col in X_transformed.columns]
     fresh_in_X = [
-        col for col in precip_features if col in X_tranformed.columns]
+        col for col in precip_features if col in X_transformed.columns]
 
-    cont_features = X_tranformed.drop(
+    # Seleziona solo feature continue valide
+    cont_features = X_transformed.drop(
         columns=bin_in_X + fresh_in_X, errors='ignore')
+    cont_features = cont_features.select_dtypes(include=[np.number])
+    cont_features = cont_features.dropna(axis=1, how='any')
+    cont_features = cont_features.reset_index(drop=True)
 
-    # ClusterCentroids su continue
+    if cont_features.shape[1] == 0:
+        # Fallback: uso solo binarie se niente di continuo è disponibile
+        print("[INFO] Nessuna feature continua utilizzabile: uso solo binarie.")
+        X_subset = X_transformed[bin_in_X].copy()
+        cc = ClusterCentroids(random_state=42)
+        X_resampled_bin, y_resampled = cc.fit_resample(X_subset, y)
+
+        X_bin_for_dist = X_transformed[bin_in_X].reset_index(drop=True)
+        closest_idxs, _ = pairwise_distances_argmin_min(
+            X_resampled_bin, X_bin_for_dist)
+
+        # Recupera e reintegra colonne di interesse
+        X_bin_resampled = X_transformed[bin_in_X].iloc[closest_idxs].reset_index(
+            drop=True)
+        X_fresh_resampled = X_transformed[fresh_in_X].iloc[closest_idxs].reset_index(
+            drop=True)
+
+        X_resampled = pd.DataFrame(
+            X_resampled_bin, columns=X_bin_for_dist.columns)
+        X_resampled = pd.concat([X_fresh_resampled, X_resampled], axis=1)
+
+        return X_resampled.reset_index(drop=True), pd.Series(y_resampled, name=y.name)
+
+    # Applica ClusterCentroids su continue
     cc = ClusterCentroids(random_state=42)
     X_resampled_cont, y_resampled = cc.fit_resample(cont_features, y)
 
-    # Indici più vicini ai centroidi
+    # Trova indici dei campioni originali più vicini ai centroidi
     closest_idxs, _ = pairwise_distances_argmin_min(
         X_resampled_cont, cont_features)
 
-    # Recupera variabili originali per reintegro
-    X_bin_resampled = X_tranformed[bin_in_X].iloc[closest_idxs].reset_index(
+    # Recupera e reintegra colonne di interesse
+    X_bin_resampled = X_transformed[bin_in_X].iloc[closest_idxs].reset_index(
         drop=True)
-    X_fresh_resampled = X_tranformed[fresh_in_X].iloc[closest_idxs].reset_index(
+    X_fresh_resampled = X_transformed[fresh_in_X].iloc[closest_idxs].reset_index(
         drop=True)
-
-    # Recupera PR interpretabili (norm)
     pr_norm_resampled = {
         k: v.iloc[closest_idxs].reset_index(drop=True) for k, v in pr_transformed.items()
     }
 
-    # Costruzione finale
+    # Costruzione finale del dataframe
     X_resampled = pd.DataFrame(X_resampled_cont, columns=cont_features.columns)
-    X_resampled = pd.concat([X_resampled.reset_index(drop=True),
+    X_resampled = pd.concat([X_resampled,
                              X_fresh_resampled,
                              X_bin_resampled], axis=1)
 
-    # Rimuove versioni std, aggiunge PR norm (interpretabili)
+    # Rimuove PR std, aggiunge PR norm interpretabile
     for col in pr_cols:
         if f'{col}_std' in X_resampled.columns:
             X_resampled = X_resampled.drop(columns=f'{col}_std')
         if f'{col}_norm' in pr_norm_resampled:
             X_resampled[col] = pr_norm_resampled[f'{col}_norm']
 
-    return X_resampled, pd.Series(y_resampled, name=y.name)
+    return X_resampled.reset_index(drop=True), pd.Series(y_resampled, name=y.name)

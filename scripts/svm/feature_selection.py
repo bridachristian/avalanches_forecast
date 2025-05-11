@@ -97,28 +97,6 @@ if __name__ == '__main__':
                'Tsnow_delta_5d']
     # , 'ConsecWetSnowDays', 'ConsecCrustDays']
 
-    feature_set = ['HSnum',
-                   'HS_delta_1d',
-                   'HS_delta_3d',
-                   'HNnum_bin',
-                   'Precip_1d',
-                   'TempAmplitude_5d',
-                   'TminG_delta_5d',
-                   'Tsnow_delta_1d',
-                   'Tsnow_delta_3d',
-                   'TempAmplitude_1d',
-                   'HS_delta_5d',
-                   'TaG_delta_3d',
-                   'TminG_delta_2d',
-                   'Precip_5d',
-                   'TmaxG_delta_3d',
-                   'TempAmplitude_3d',
-                   'DayOfSeason',
-                   'TaG_delta_1d',
-                   'Tsnow_delta_2d',
-                   'TminG_delta_1d',
-                   'TaG_delta_2d']
-
     # DEFINE PARAMETER GRID (IN SOME CASES SHOULD BE REDUCED)
     param_grid = {
         'C': [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
@@ -157,8 +135,8 @@ if __name__ == '__main__':
 
     X_nm, y_nm = undersampling_clustercentroids_v2(X_new, y)
     # X_nm, y_nm = X_new, y
-    features_low_variance = remove_low_variance(X_nm, threshold=0.1)
-    X_nm = X_nm.drop(columns=features_low_variance)
+    # features_low_variance = remove_low_variance(X_nm, threshold=0.1)
+    # X_nm = X_nm.drop(columns=features_low_variance)
 
     X_train, X_test, y_train, y_test = train_test_split(
         X_nm, y_nm, test_size=0.25, random_state=42)
@@ -247,14 +225,15 @@ if __name__ == '__main__':
     # --- c) FEATURE SELECTION USING SELECT K BEST AND ANOVA      ---
     # ---------------------------------------------------------------
 
-    # Data preparation
-    feature_plus = feature_set + ['AvalDay']
+    # feature_plus = feature_set + ['AvalDay']
+    available_features = [col for col in feature_set if col in mod1.columns]
+    feature_plus = available_features + ['AvalDay']
+
     mod1_clean = mod1[feature_plus]
     mod1_clean = mod1_clean.dropna()
-    mod1_transformed = transform_features(mod1_clean.copy())
 
-    X = mod1_transformed[feature_set]
-    y = mod1_transformed['AvalDay']
+    X = mod1_clean.drop(columns=['AvalDay'])
+    y = mod1_clean['AvalDay']
 
     features_correlated = remove_correlated_features(X, y)
     X_new = X.drop(columns=features_correlated)
@@ -279,12 +258,12 @@ if __name__ == '__main__':
         # Apply random undersampling
         # X_resampled, y_resampled = undersampling_nearmiss(
         #     X_selected, y, version=3, n_neighbors=10)
-        X_resampled, y_resampled = undersampling_clustercentroids(
+        X_resampled, y_resampled = undersampling_clustercentroids_v2(
             X_selected, y)
 
         # Remove correlated features and with low variance
-        features_low_variance = remove_low_variance(X_resampled)
-        X_resampled = X_resampled.drop(columns=features_low_variance)
+        # features_low_variance = remove_low_variance(X_resampled)
+        # X_resampled = X_resampled.drop(columns=features_low_variance)
 
         # Split into training and test set
         X_train, X_test, y_train, y_test = train_test_split(
@@ -350,15 +329,23 @@ if __name__ == '__main__':
     # ---------------------------------------------------------------
     # --- d) FEATURE SELECTION USING SHAP METHOD      ---
     # ---------------------------------------------------------------
+    # feature_plus = feature_set + ['AvalDay']
+    available_features = [col for col in feature_set if col in mod1.columns]
+    feature_plus = available_features + ['AvalDay']
 
-    # Data preparation
-    feature_plus = feature_set + ['AvalDay']
     mod1_clean = mod1[feature_plus]
     mod1_clean = mod1_clean.dropna()
-    mod1_transformed = transform_features(mod1_clean.copy())
 
-    X = mod1_transformed[feature_set]
-    y = mod1_transformed['AvalDay']
+    X = mod1_clean.drop(columns=['AvalDay'])
+    y = mod1_clean['AvalDay']
+    # # Data preparation
+    # feature_plus = feature_set + ['AvalDay']
+    # mod1_clean = mod1[feature_plus]
+    # mod1_clean = mod1_clean.dropna()
+    # mod1_transformed = transform_features(mod1_clean.copy())
+
+    # X = mod1_transformed[feature_set]
+    # y = mod1_transformed['AvalDay']
 
     features_correlated = remove_correlated_features(X, y)
     X = X.drop(columns=features_correlated)
@@ -367,12 +354,12 @@ if __name__ == '__main__':
 
     # X_resampled, y_resampled = undersampling_nearmiss(
     #     X, y, version=3, n_neighbors=10)
-    X_resampled, y_resampled = undersampling_clustercentroids(
+    X_resampled, y_resampled = undersampling_clustercentroids_v2(
         X, y)
 
-    # Remove correlated features and with low variance
-    features_low_variance = remove_low_variance(X_resampled)
-    X_resampled = X_resampled.drop(columns=features_low_variance)
+    # # Remove correlated features and with low variance
+    # features_low_variance = remove_low_variance(X_resampled)
+    # X_resampled = X_resampled.drop(columns=features_low_variance)
 
     # Split into training and test set
     X_train, X_test, y_train, y_test = train_test_split(

@@ -13,7 +13,7 @@ from sklearn.model_selection import GridSearchCV
 from imblearn.under_sampling import RandomUnderSampler, NearMiss
 from scripts.svm.data_loading import load_data
 from scripts.svm.undersampling_methods import (undersampling_random, undersampling_random_timelimited, undersampling_nearmiss,
-                                               undersampling_cnn, undersampling_enn, undersampling_clustercentroids, undersampling_tomeklinks)
+                                               undersampling_cnn, undersampling_enn, undersampling_clustercentroids, undersampling_tomeklinks, undersampling_clustercentroids_v2)
 from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
 from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm, train_evaluate_final_svm
 from scripts.svm.utils import get_adjacent_values, save_outputfile, remove_correlated_features
@@ -144,40 +144,39 @@ def plot_roc_curve(X_test, y_test, clf):
     plt.show()
 
 
-def permutation_ranking(classifier, X, y):
+def permutation_ranking(classifier, X, y, scoring='f1_macro', importance_threshold=0.001):
     """
-    Computes and visualizes the permutation feature importance for a given classifier.
-
-    This function computes feature importance by measuring the decrease in model performance (accuracy) 
-    when each feature is randomly permuted. The greater the decrease in performance, the more important the feature is.
+    Calcola e visualizza la permutation feature importance con opzioni di scoring.
 
     Args:
-        classifier (object): A trained classifier that implements the `predict` method (e.g., `SVC`, `RandomForestClassifier`, etc.).
-        X_test (pd.DataFrame): The test features used to compute permutation importance. It must be a DataFrame with column names.
-        y_test (pd.Series or array-like): The true class labels for the test data.
+        classifier: modello già addestrato (con metodo predict).
+        X (pd.DataFrame): feature di test.
+        y (pd.Series): etichette vere.
+        scoring (str): metrica da usare ('f1_macro', 'mcc', etc.).
+        importance_threshold (float): soglia sotto cui le feature saranno ignorate.
 
     Returns:
-        pd.DataFrame: A DataFrame containing the features sorted by importance, including their mean and standard deviation of importance scores.
-
-    Notes:
-        - The classifier should already be trained before calling this function.
-        - The function uses `permutation_importance` from `sklearn`, which is available for classifiers with the `predict` method.
-        - The importance scores are based on the mean decrease in accuracy when features are permuted.
-
-    Example:
-        feature_importance_df = permutation_ranking(classifier, X_test, y_test)
+        feature_importance_df (pd.DataFrame): DataFrame ordinato con le feature più importanti.
+        important_features (list): elenco delle feature con importanza > soglia.
     """
 
-    # Compute permutation importance
-    # perm_importance = permutation_importance(
-    #     classifier, X, y, n_repeats=100, random_state=42, scoring='f1_macro', n_jobs=-1)
+    # Gestione scoring personalizzato
+    if scoring.lower() == 'mcc':
+        scorer = make_scorer(matthews_corrcoef)
+        score_label = 'MCC'
+    else:
+        scorer = scoring
+        score_label = scoring.upper()
+
+    # Calcolo importanza permutata
     perm_importance = permutation_importance(
-        classifier, X, y, n_repeats=100, random_state=42, scoring='recall_macro', n_jobs=-1)
+        classifier, X, y, n_repeats=100, random_state=42,
+        scoring=scorer, n_jobs=-1
+    )
 
-    # Sort features by mean importance score
-    sorted_idx = perm_importance.importances_mean.argsort()
+    # Ordinamento decrescente
+    sorted_idx = perm_importance.importances_mean.argsort()[::-1]
 
-    # Create DataFrame with sorted feature importance
     feature_importance_df = pd.DataFrame({
         'Feature': X.columns[sorted_idx],
         'Ranking': range(1, len(sorted_idx) + 1),
@@ -185,18 +184,25 @@ def permutation_ranking(classifier, X, y):
         'Importance_Std': perm_importance.importances_std[sorted_idx]
     })
 
-    # Plot permutation importance with error bars
+    # # Filtro per soglia
+    # important_features = feature_importance_df[
+    #     feature_importance_df['Importance_Mean'] >= importance_threshold
+    # ]['Feature'].tolist()
+
+    # Visualizzazione
     plt.figure(figsize=(10, 16))
     plt.barh(
         range(len(sorted_idx)),
-        perm_importance.importances_mean[sorted_idx],
-        xerr=perm_importance.importances_std[sorted_idx],  # Adding error bars
+        # inverti per avere la più importante in alto
+        perm_importance.importances_mean[sorted_idx][::-1],
+        xerr=perm_importance.importances_std[sorted_idx][::-1],
         align='center',
-        capsize=5,  # Adding caps to error bars for clarity
+        capsize=5,
     )
-    plt.yticks(range(len(sorted_idx)), X.columns[sorted_idx])
-    plt.title("Feature Importance (Permutation Importance)")
-    plt.xlabel("Mean Decrease in Accuracy")
+    plt.yticks(range(len(sorted_idx)), X.columns[sorted_idx][::-1])
+    plt.title(f"Feature Importance (Permutation - {score_label})")
+    plt.xlabel("Mean Decrease in Score")
+    plt.tight_layout()
     plt.show()
 
     return feature_importance_df
@@ -230,13 +236,23 @@ def evaluate_svm_with_feature_selection(data, feature_list):
         - 'best_params': Best C and gamma values from the final cross-validation.
     """
 
-    feature_plus = feature_list + ['AvalDay']
+    # feature_plus = feature_set + ['AvalDay']
+    available_features = [col for col in feature_list if col in data.columns]
+    feature_plus = available_features + ['AvalDay']
+
     data_clean = data[feature_plus]
     data_clean = data_clean.dropna()
-    data_transformed = transform_features(data_clean.copy())
 
-    X = data_transformed[feature_list]
-    y = data_transformed['AvalDay']
+    X = data_clean.drop(columns=['AvalDay'])
+    y = data_clean['AvalDay']
+
+    # feature_plus = feature_list + ['AvalDay']
+    # data_clean = data[feature_plus]
+    # data_clean = data_clean.dropna()
+    # data_transformed = transform_features(data_clean.copy())
+
+    # X = data_transformed[feature_list]
+    # y = data_transformed['AvalDay']
 
     features_to_remove = remove_correlated_features(X, y)
 
@@ -256,7 +272,7 @@ def evaluate_svm_with_feature_selection(data, feature_list):
                   1, 2, 3, 4, 5, 6, 7, 8, 9,
                   10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
 
-    X_resampled, y_resampled = undersampling_clustercentroids(X, y)
+    X_resampled, y_resampled = undersampling_clustercentroids_v2(X, y)
 
     X_train, X_test, y_train, y_test = train_test_split(
         X_resampled, y_resampled, test_size=0.25, random_state=42)

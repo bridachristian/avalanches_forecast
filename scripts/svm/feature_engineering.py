@@ -93,11 +93,11 @@ def transform_features(df: pd.DataFrame) -> pd.DataFrame:
         prec_scaler = MinMaxScaler()
         df[prec_feats] = prec_scaler.fit_transform(df[prec_feats])
 
-    # --- MinMax scaling for fresh snow features ---
-    prec_feats = [col for col in precip_features if col in df.columns]
-    if prec_feats:
-        fs_scaler = MinMaxScaler()
-        df[prec_feats] = prec_scaler.fit_transform(df[prec_feats])
+    # # --- MinMax scaling for fresh snow features ---
+    # prec_feats = [col for col in precip_features if col in df.columns]
+    # if prec_feats:
+    #     fs_scaler = MinMaxScaler()
+    #     df[prec_feats] = prec_scaler.fit_transform(df[prec_feats])
 
     # --- Standard scaling for the rest (excluding target, to_ignore, freshsnow, and *_bin columns) ---
     numeric_cols = df.select_dtypes(include=[np.number]).columns
@@ -461,41 +461,3 @@ def plot_feature_comparison_side_by_side(raw_df, transformed_df, feature, bins=1
 
 # plot_feature_comparison_side_by_side(
 #     X, X_resampled, 'HN_2d')
-
-# Mappa tra variabili binarie e feature originali da cui derivano
-binary_map = {
-    'HN_2d_bin': 'HN_2d',
-    'HN_3d_bin': 'HN_3d',
-    'HN_5d_bin': 'HN_5d',
-    'HNnum_bin': 'HNnum'
-}
-
-# 1. Confronta TUTTE le feature originali
-for feat in feature_set:
-    if feat in mod1_clean.columns and feat in X_resampled.columns:
-        plot_feature_comparison_side_by_side(mod1_clean, X_resampled, feat)
-
-# 2. Confronta le feature originali con le loro versioni binarie
-for bin_col, orig_col in binary_map.items():
-    if orig_col in mod1_clean.columns and bin_col in X_resampled.columns:
-        # Subplot a 2 colonne: distribuzione numerica e conteggio binario
-        fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-        fig.suptitle(
-            f"{orig_col} e {bin_col} (dopo undersampling)", fontsize=14)
-
-        # Distribuzione numerica
-        sns.histplot(mod1_clean[orig_col], label='Originale',
-                     ax=axes[0], kde=True, color='blue')
-        sns.histplot(X_resampled[orig_col], label='Resampled',
-                     ax=axes[0], kde=True, color='orange')
-        axes[0].set_title(f'Distribuzione {orig_col}')
-        axes[0].legend()
-
-        # Conteggio binario
-        sns.countplot(x=X_resampled[bin_col], ax=axes[1], palette='Set2')
-        axes[1].set_title(f'Distribuzione {bin_col}')
-        axes[1].set_xticks([0, 1])
-        axes[1].set_xticklabels(['No Snowfall', 'Snowfall'])
-
-        plt.tight_layout()
-        plt.show()

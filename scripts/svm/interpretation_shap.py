@@ -29,7 +29,7 @@ from scripts.svm.data_loading import load_data
 from scripts.svm.undersampling_methods import (undersampling_random, undersampling_random_timelimited,
                                                undersampling_nearmiss, undersampling_cnn,
                                                undersampling_enn, undersampling_clustercentroids,
-                                               undersampling_tomeklinks)
+                                               undersampling_tomeklinks, undersampling_clustercentroids_v2)
 from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
 from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm, train_evaluate_final_svm
 from scripts.svm.evaluation import (plot_learning_curve, plot_confusion_matrix,
@@ -63,55 +63,87 @@ if __name__ == '__main__':
     # -------------------------------------------------------
     # STABILITY VARYING C AND GAMMA
     # -------------------------------------------------------
-    feature_list = ['TaG_delta_5d',
-                    'TminG_delta_3d',
-                    'HS_delta_5d',
-                    # 'WetSnow_Temperature',
-                    'New_MF_Crust',
-                    'Precip_3d',
-                    'Precip_2d',
-                    'TempGrad_HS',
-                    'Tsnow_delta_3d',
+
+    feature_list = ['HS_delta_3d',
+                    'HS_delta_2d',
                     'TmaxG_delta_3d',
+                    'TempGrad_HS',
+                    'DayOfSeason',
+                    'TempAmplitude_5d',
+                    'HS_delta_1d',
+                    'TmaxG_delta_5d',
+                    'TminG_delta_5d',
+                    'TmaxG_delta_1d',
+                    'TaG_delta_3d',
+                    'T_mean',
+                    'HS_delta_5d',
+                    'TH03G',
+                    'Precip_3d_bin',
                     'HSnum',
-                    'TempAmplitude_2d',
-                    # 'WetSnow_CS',
-                    'TaG',
-                    'Tsnow_delta_2d',
-                    'DayOfSeason']
+                    'TaG_delta_2d',
+                    'Precip_5d_bin',
+                    'HNnum_bin',
+                    'Precip_2d']
+    # feature_list = ['TaG_delta_5d',
+    #                 'TminG_delta_3d',
+    #                 'HS_delta_5d',
+    #                 # 'WetSnow_Temperature',
+    #                 'New_MF_Crust',
+    #                 'Precip_3d',
+    #                 'Precip_2d',
+    #                 'TempGrad_HS',
+    #                 'Tsnow_delta_3d',
+    #                 'TmaxG_delta_3d',
+    #                 'HSnum',
+    #                 'TempAmplitude_2d',
+    #                 # 'WetSnow_CS',
+    #                 'TaG',
+    #                 'Tsnow_delta_2d',
+    #                 'DayOfSeason']
     res_shap16 = evaluate_svm_with_feature_selection(mod1, feature_list)
 
+    available_features = [col for col in feature_list if col in mod1.columns]
+    feature_plus = available_features + ['AvalDay']
+
+    mod1_clean = mod1[feature_plus]
+    mod1_clean = mod1_clean.dropna()
+
+    X = mod1_clean.drop(columns=['AvalDay'])
+    y = mod1_clean['AvalDay']
+
 # Add target variable to the feature list
-feature_with_target = feature_list + ['AvalDay']
+# feature_with_target = feature_list + ['AvalDay']
 
-# Data preprocessing: filter relevant features and drop missing values
-clean_data = mod1[feature_with_target].dropna()
+# # Data preprocessing: filter relevant features and drop missing values
+# clean_data = mod1[feature_with_target].dropna()
 
-# Extract features and target variable
-X = clean_data[feature_list]
-y = clean_data['AvalDay']
+# # Extract features and target variable
+# X = clean_data[feature_list]
+# y = clean_data['AvalDay']
 
 features_to_remove = remove_correlated_features(X, y)
 
 X = X.drop(columns=features_to_remove)
 
-X_resampled, y_resampled = undersampling_clustercentroids(X, y)
+X_resampled, y_resampled = undersampling_clustercentroids_v2(X, y)
 
 X_train, X_test, y_train, y_test = train_test_split(
     X_resampled, y_resampled, test_size=0.25, random_state=42)
 
-scaler = MinMaxScaler()
-X_train = pd.DataFrame(scaler.fit_transform(
-    X_train), columns=X_train.columns, index=X_train.index)
-X_test = pd.DataFrame(scaler.transform(
-    X_test), columns=X_test.columns, index=X_test.index)
+# scaler = MinMaxScaler()
+# X_train = pd.DataFrame(scaler.fit_transform(
+#     X_train), columns=X_train.columns, index=X_train.index)
+# X_test = pd.DataFrame(scaler.transform(
+#     X_test), columns=X_test.columns, index=X_test.index)
 
 # Step 6: Train the final model with the best hyperparameters and evaluate it
 classifier, evaluation_metrics = train_evaluate_final_svm(
-    X_train, y_train, X_test, y_test, {'C': 200, 'gamma': 0.3})
+    # X_train, y_train, X_test, y_test, {'C': 200, 'gamma': 0.3})
+    X_train, y_train, X_test, y_test, {'C': 400, 'gamma': 0.004})
 
 # Use SHAP KernelExplainer for non-tree-based models like SVM
-model = svm.SVC(C=200, gamma=0.3, probability=True, random_state=42)
+# model = svm.SVC(C=200, gamma=0.3, probability=True, random_state=42)
+model = svm.SVC(C=400, gamma=0.004, probability=True, random_state=42)
 model.fit(X_train, y_train)
 
 explainer = shap.KernelExplainer(model.predict_proba, X_train)
