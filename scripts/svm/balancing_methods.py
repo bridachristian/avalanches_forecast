@@ -32,6 +32,7 @@ from scripts.svm.utils import (save_outputfile, get_adjacent_values, Permutation
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
 
+from scripts.svm.feature_engineering import transform_features
 
 if __name__ == '__main__':
 
@@ -59,6 +60,15 @@ if __name__ == '__main__':
 
     # --- FEATURES SELECTION ---
     feature = ['HN_3d', 'HSnum']
+    
+    # feature_plus = feature + ['AvalDay']
+    # mod1_clean = mod1[feature_plus]
+    # mod1_clean = mod1_clean.dropna()
+    # mod1_transformed = transform_features(mod1_clean.copy())
+
+    # X = mod1_transformed[feature]
+    # y = mod1_transformed['AvalDay']
+
 
     feature_plus = feature + ['AvalDay']
     mod1_clean = mod1[feature_plus]
@@ -113,11 +123,11 @@ if __name__ == '__main__':
     X_rand_10d_train, X_rand_10d_test, y_rand_10d_train, y_rand_10d_test = train_test_split(
         X_rand_10d, y_rand_10d, test_size=0.25, random_state=42)
 
-    scaler = MinMaxScaler()
-    X_rand_10d_train = pd.DataFrame(scaler.fit_transform(
-        X_rand_10d_train), columns=X_rand_10d_train.columns, index=X_rand_10d_train.index)
-    X_rand_10d_test = pd.DataFrame(scaler.transform(
-        X_rand_10d_test), columns=X_rand_10d_test.columns, index=X_rand_10d_test.index)
+    # scaler = MinMaxScaler()
+    # X_rand_10d_train = pd.DataFrame(scaler.fit_transform(
+    #     X_rand_10d_train), columns=X_rand_10d_train.columns, index=X_rand_10d_train.index)
+    # X_rand_10d_test = pd.DataFrame(scaler.transform(
+    #     X_rand_10d_test), columns=X_rand_10d_test.columns, index=X_rand_10d_test.index)
 
     res_rand_10d = tune_train_evaluate_svm(
         X_rand_10d_train, y_rand_10d_train, X_rand_10d_test, y_rand_10d_test, param_grid,

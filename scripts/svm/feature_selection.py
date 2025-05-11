@@ -16,17 +16,34 @@ from sklearn.preprocessing import FunctionTransformer
 from imblearn.pipeline import Pipeline  # Use imblearn's Pipeline
 from imblearn.under_sampling import NearMiss, ClusterCentroids
 from scripts.svm.data_loading import load_data
-from scripts.svm.undersampling_methods import (undersampling_random, undersampling_random_timelimited,
-                                               undersampling_nearmiss, undersampling_cnn,
-                                               undersampling_enn, undersampling_clustercentroids,
-                                               undersampling_tomeklinks)
-from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
-from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm, train_evaluate_final_svm
-from scripts.svm.evaluation import (plot_learning_curve, plot_confusion_matrix,
-                                    plot_roc_curve, permutation_ranking, evaluate_svm_with_feature_selection)
-from scripts.svm.utils import (save_outputfile, get_adjacent_values, PermutationImportanceWrapper,
-                               remove_correlated_features, remove_low_variance, select_k_best)
-from scripts.svm.feature_engineering import transform_features
+from scripts.svm.undersampling_methods import (undersampling_random,
+                                               undersampling_random_timelimited,
+                                               undersampling_nearmiss,
+                                               undersampling_cnn,
+                                               undersampling_enn,
+                                               undersampling_clustercentroids,
+                                               undersampling_tomeklinks,
+                                               undersampling_clustercentroids_v2)
+from scripts.svm.oversampling_methods import (oversampling_random,
+                                              oversampling_smote,
+                                              oversampling_adasyn,
+                                              oversampling_svmsmote)
+from scripts.svm.svm_training import (cross_validate_svm,
+                                      tune_train_evaluate_svm,
+                                      train_evaluate_final_svm)
+from scripts.svm.evaluation import (plot_learning_curve,
+                                    plot_confusion_matrix,
+                                    plot_roc_curve,
+                                    permutation_ranking,
+                                    evaluate_svm_with_feature_selection)
+from scripts.svm.utils import (save_outputfile,
+                               get_adjacent_values,
+                               PermutationImportanceWrapper,
+                               remove_correlated_features,
+                               remove_low_variance,
+                               select_k_best)
+from scripts.svm.feature_engineering import (transform_features,
+                                             transform_penetration_ratio)
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
@@ -34,7 +51,9 @@ from imblearn.pipeline import Pipeline
 from imblearn.under_sampling import ClusterCentroids
 from sklearn.svm import SVC, LinearSVC
 from sklearn.feature_selection import RFECV
-from sklearn.model_selection import GridSearchCV, StratifiedKFold, train_test_split
+from sklearn.model_selection import (GridSearchCV,
+                                     StratifiedKFold,
+                                     train_test_split)
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import classification_report
 import numpy as np
@@ -68,12 +87,37 @@ if __name__ == '__main__':
                'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
                'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
                'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
-               'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
-               'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
+               'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean',
+               # 'DegreeDays_Pos',
+               # 'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
                'Precip_1d', 'Precip_2d', 'Precip_3d',
-               'Precip_5d', 'Penetration_ratio',
+               'Precip_5d',
+               # 'Penetration_ratio',
                'TempGrad_HS', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-               'Tsnow_delta_5d', 'ConsecWetSnowDays', 'ConsecCrustDays']
+               'Tsnow_delta_5d']
+    # , 'ConsecWetSnowDays', 'ConsecCrustDays']
+
+    feature_set = ['HSnum',
+                   'HS_delta_1d',
+                   'HS_delta_3d',
+                   'HNnum_bin',
+                   'Precip_1d',
+                   'TempAmplitude_5d',
+                   'TminG_delta_5d',
+                   'Tsnow_delta_1d',
+                   'Tsnow_delta_3d',
+                   'TempAmplitude_1d',
+                   'HS_delta_5d',
+                   'TaG_delta_3d',
+                   'TminG_delta_2d',
+                   'Precip_5d',
+                   'TmaxG_delta_3d',
+                   'TempAmplitude_3d',
+                   'DayOfSeason',
+                   'TaG_delta_1d',
+                   'Tsnow_delta_2d',
+                   'TminG_delta_1d',
+                   'TaG_delta_2d']
 
     # DEFINE PARAMETER GRID (IN SOME CASES SHOULD BE REDUCED)
     param_grid = {
@@ -93,13 +137,15 @@ if __name__ == '__main__':
     # --- a) FEATURE SELECTION BASED ON PERMUTATION RANKING       ---
     # ---------------------------------------------------------------
 
-    feature_plus = feature_set + ['AvalDay']
+    # feature_plus = feature_set + ['AvalDay']
+    available_features = [col for col in feature_set if col in mod1.columns]
+    feature_plus = available_features + ['AvalDay']
+
     mod1_clean = mod1[feature_plus]
     mod1_clean = mod1_clean.dropna()
-    mod1_transformed = transform_features(mod1_clean.copy())
 
-    X = mod1_transformed[feature_set]
-    y = mod1_transformed['AvalDay']
+    X = mod1_clean.drop(columns=['AvalDay'])
+    y = mod1_clean['AvalDay']
 
     # features_low_variance = remove_low_variance(X, threshold=0.1)
     # X = X.drop(columns=features_low_variance)
@@ -108,8 +154,9 @@ if __name__ == '__main__':
     X_new = X.drop(columns=features_correlated)
 
     # X_nm, y_nm = undersampling_nearmiss(X_new, y, version=3, n_neighbors=10)
-    X_nm, y_nm = undersampling_clustercentroids(X_new, y)
 
+    X_nm, y_nm = undersampling_clustercentroids_v2(X_new, y)
+    # X_nm, y_nm = X_new, y
     features_low_variance = remove_low_variance(X_nm, threshold=0.1)
     X_nm = X_nm.drop(columns=features_low_variance)
 

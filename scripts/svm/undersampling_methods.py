@@ -6,6 +6,7 @@ from imblearn.under_sampling import (RandomUnderSampler, NearMiss, CondensedNear
 import matplotlib.pyplot as plt
 
 from scripts.svm.utils import plot_scatter_original, plot_scatter_under_over_sampling
+from scripts.svm.feature_engineering import transform_features
 
 
 def undersampling_random(X, y):
@@ -294,7 +295,7 @@ def undersampling_enn(X, y, version=1, n_neighbors=3):
     return X_res, y_res
 
 
-def undersampling_clustercentroids(X, y, version=1, n_neighbors=3):
+def undersampling_clustercentroids(X, y):
     sampling_method = 'Cluster Centroids Undersampling'
     cc = ClusterCentroids(random_state=42)
     X_res, y_res = cc.fit_resample(X, y)
@@ -366,3 +367,96 @@ def undersampling_tomeklinks(X, y, version=1, n_neighbors=3):
         print("Skipping scatter plot: X does not have exactly 2 features.")
 
     return X_res, y_res
+
+
+def undersampling_clustercentroids_v2(X, y):
+    """
+    Applica ClusterCentroids su X, mantenendo binarie, fresh snow e PR interpretabili (norm).
+    Lavora anche se alcune colonne non sono presenti.
+
+    Input:
+        X: pd.DataFrame - tutte le feature
+        y: pd.Series - target binario
+
+    Output:
+        X_resampled: DataFrame bilanciato
+        y_resampled: Series bilanciata
+    """
+    from sklearn.preprocessing import StandardScaler, MinMaxScaler
+    from sklearn.metrics import pairwise_distances_argmin_min
+    from imblearn.under_sampling import ClusterCentroids
+    import numpy as np
+    import pandas as pd
+
+    # Feature note (usa solo se presenti)
+    precip_features = ['HNnum', 'HN_2d', 'HN_3d', 'HN_5d',
+                       'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d']
+    bin_features = ['HNnum_bin', 'HN_2d_bin', 'HN_3d_bin', 'HN_5d_bin',
+                    'Precip_1d_bin', 'Precip_2d_bin', 'Precip_3d_bin', 'Precip_5d_bin']
+
+    # PR features da trattare se presenti
+    pr_cols = ['PR']
+    pr_transformed = {}
+
+    X = X.copy()
+    X_tranformed = transform_features(X.copy())
+
+    # Clipping, log1p, standardizzazione, normalizzazione per PR
+    def transform_pr_column(series):
+        upper_clip = series.quantile(0.99)
+        clipped = series.clip(upper=upper_clip)
+        log_vals = np.log1p(clipped)
+
+        std = StandardScaler().fit_transform(log_vals.values.reshape(-1, 1)).flatten()
+        norm = MinMaxScaler().fit_transform(series.values.reshape(-1, 1)).flatten()
+
+        return pd.Series(std, index=series.index), pd.Series(norm, index=series.index)
+
+    # Applica trasformazioni PR se presenti
+    for col in pr_cols:
+        if col in X_tranformed.columns:
+            std_col, norm_col = transform_pr_column(X_tranformed[col])
+            X_tranformed[f'{col}_std'] = std_col
+            pr_transformed[f'{col}_norm'] = norm_col
+
+    # Separazione feature
+    bin_in_X = [col for col in bin_features if col in X_tranformed.columns]
+    fresh_in_X = [
+        col for col in precip_features if col in X_tranformed.columns]
+
+    cont_features = X_tranformed.drop(
+        columns=bin_in_X + fresh_in_X, errors='ignore')
+
+    # ClusterCentroids su continue
+    cc = ClusterCentroids(random_state=42)
+    X_resampled_cont, y_resampled = cc.fit_resample(cont_features, y)
+
+    # Indici più vicini ai centroidi
+    closest_idxs, _ = pairwise_distances_argmin_min(
+        X_resampled_cont, cont_features)
+
+    # Recupera variabili originali per reintegro
+    X_bin_resampled = X_tranformed[bin_in_X].iloc[closest_idxs].reset_index(
+        drop=True)
+    X_fresh_resampled = X_tranformed[fresh_in_X].iloc[closest_idxs].reset_index(
+        drop=True)
+
+    # Recupera PR interpretabili (norm)
+    pr_norm_resampled = {
+        k: v.iloc[closest_idxs].reset_index(drop=True) for k, v in pr_transformed.items()
+    }
+
+    # Costruzione finale
+    X_resampled = pd.DataFrame(X_resampled_cont, columns=cont_features.columns)
+    X_resampled = pd.concat([X_resampled.reset_index(drop=True),
+                             X_fresh_resampled,
+                             X_bin_resampled], axis=1)
+
+    # Rimuove versioni std, aggiunge PR norm (interpretabili)
+    for col in pr_cols:
+        if f'{col}_std' in X_resampled.columns:
+            X_resampled = X_resampled.drop(columns=f'{col}_std')
+        if f'{col}_norm' in pr_norm_resampled:
+            X_resampled[col] = pr_norm_resampled[f'{col}_norm']
+
+    return X_resampled, pd.Series(y_resampled, name=y.name)
