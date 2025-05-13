@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 from scripts.svm.utils import plot_scatter_original, plot_scatter_under_over_sampling
 from scripts.svm.feature_engineering import transform_features, transform_penetration_ratio
+from sklearn.base import BaseEstimator, TransformerMixin
 
 
 def undersampling_random(X, y):
@@ -493,3 +494,32 @@ def undersampling_clustercentroids_v2(X, y):
             X_resampled[col] = pr_norm_resampled[f'{col}_norm']
 
     return X_resampled.reset_index(drop=True), pd.Series(y_resampled, name=y.name)
+
+
+class CustomUndersampler(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        pass  # Add any parameters here if needed
+
+    def fit(self, X, y=None):
+        # Save y if needed; we’ll pass it to transform
+        self.y_ = y
+        return self
+
+    def transform(self, X):
+        if self.y_ is None:
+            raise ValueError(
+                "y cannot be None in transform. Ensure fit() was called with y.")
+
+        # Call your custom undersampling function
+        X_resampled, y_resampled = undersampling_clustercentroids_v2(
+            X, self.y_)
+
+        # Save y_resampled for possible later use
+        self.y_resampled_ = y_resampled
+        return X_resampled
+
+    def get_resampled_y(self):
+        if hasattr(self, 'y_resampled_'):
+            return self.y_resampled_
+        else:
+            raise AttributeError("The transformer has not been fitted yet.")
