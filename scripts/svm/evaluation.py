@@ -252,14 +252,6 @@ def evaluate_svm_with_feature_selection(data, feature_list):
     X = data_clean.drop(columns=['AvalDay'])
     y = data_clean['AvalDay']
 
-    # feature_plus = feature_list + ['AvalDay']
-    # data_clean = data[feature_plus]
-    # data_clean = data_clean.dropna()
-    # data_transformed = transform_features(data_clean.copy())
-
-    # X = data_transformed[feature_list]
-    # y = data_transformed['AvalDay']
-
     features_to_remove = remove_correlated_features(X, y)
 
     X = X.drop(columns=features_to_remove)
@@ -278,20 +270,20 @@ def evaluate_svm_with_feature_selection(data, feature_list):
                   1, 2, 3, 4, 5, 6, 7, 8, 9,
                   10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
 
-    X_resampled, y_resampled = undersampling_clustercentroids_v2(X, y)
+    X_resampled, y_resampled = undersampling_random(X, y)
 
     X_train, X_test, y_train, y_test = train_test_split(
         X_resampled, y_resampled, test_size=0.25, random_state=42)
 
-    # scaler = MinMaxScaler()
-    # X_train = pd.DataFrame(scaler.fit_transform(
-    #     X_train), columns=X_train.columns, index=X_train.index)
-    # X_test = pd.DataFrame(scaler.transform(
-    #     X_test), columns=X_test.columns, index=X_test.index)
+    scaler = MinMaxScaler()
+    X_train = pd.DataFrame(scaler.fit_transform(
+        X_train), columns=X_train.columns, index=X_train.index)
+    X_test = pd.DataFrame(scaler.transform(
+        X_test), columns=X_test.columns, index=X_test.index)
 
     result = tune_train_evaluate_svm(
         X_train, y_train, X_test, y_test, param_grid,
-        resampling_method='Cluster Centroids')
+        resampling_method='Random undersampling')
 
     # Step 6: Train the final model with the best hyperparameters and evaluate it
     classifier, evaluation_metrics = train_evaluate_final_svm(

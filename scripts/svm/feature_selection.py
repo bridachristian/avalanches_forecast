@@ -242,10 +242,10 @@ if __name__ == '__main__':
     # k_range = [1, 2, 3, 5, 7, 10, 15, 20, 25]
     results = []
     # Tuning of parameter C and gamma for SVM classification
-    param_grid_short = {
-        'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
-        'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
-    }
+    # param_grid_short = {
+    #     'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
+    #     'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
+    # }
 
     for k in k_range:
         # Select the top k features using SelectKBest
@@ -293,11 +293,11 @@ if __name__ == '__main__':
     # Convert results to a DataFrame for easy viewing
     results_df = pd.DataFrame(results)
 
-    # results_path = Path(
-    #     'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\ANOVA\\')
+    results_path = Path(
+        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\0X_FEATURE_SELECTION\\ANOVA\\')
 
-    # save_outputfile(results_df, results_path /
-    #                 'anova_feature_selection_new.csv')
+    save_outputfile(results_df, results_path /
+                    'anova_feature_selection_new.csv')
 
     # Plotting
     plt.figure(figsize=(10, 6))
@@ -308,14 +308,11 @@ if __name__ == '__main__':
                  results_df[metric], marker='o', label=metric)
 
     # Add labels, title, and legend
-    plt.title('Metrics Comparison Across Experiments', fontsize=14)
-    plt.xlabel('Number of Features', fontsize=12)
+    plt.title('Feature Subset Performance - Feature selection with ANOVA')
+    plt.xlabel('Number of Features')
     plt.ylabel('Score', fontsize=12)
-    plt.xticks(results_df['num_features'])
     plt.legend(title='Metrics', fontsize=10)
     plt.grid(True)
-
-    # Show the plot
     plt.tight_layout()
     plt.show()
 
@@ -334,31 +331,39 @@ if __name__ == '__main__':
     features_correlated = remove_correlated_features(X, y)
     X_new = X.drop(columns=features_correlated)
 
-    # 2. Split stratificato
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_new, y, test_size=0.25, random_state=42, stratify=y
-    )
+    # 2.  RandomUnderSampler su TUTTO il set dati --> se no CM sbilanciata
+    X_train_res, y_train_res = undersampling_random(X_new, y)
 
-    # 3. RandomUnderSampler sul training set
-    rus = RandomUnderSampler(random_state=42)
-    X_train_res, y_train_res = rus.fit_resample(X_train, y_train)
+    # 3. Split stratificato
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_train_res, y_train_res, test_size=0.25, random_state=42)
 
     # 4. Scaling: fit su train, transform su test
     scaler = MinMaxScaler()
-    X_train_scaled = scaler.fit_transform(X_train_res)
-    X_test_scaled = scaler.transform(X_test)  # Utile per valutazioni future
+    # Scale the training data
+    X_train_scaled = scaler.fit_transform(X_train)
+    # Convert the scaled data into a pandas DataFrame and assign column names
+    X_train_scaled_df = pd.DataFrame(X_train_scaled, columns=X_train.columns)
 
+    # Scale the test data (using the same scaler)
+    X_test_scaled = scaler.transform(X_test)
+    # Convert the scaled test data into a pandas DataFrame and assign column names
+    X_test_scaled_df = pd.DataFrame(X_test_scaled, columns=X_train.columns)
     # resampling_method = 'ClusterCentroids'
     resampling_method = 'RandomUndersampling'
 
-    res_svm = tune_train_evaluate_svm(X_train_scaled, y_train_res, X_test_scaled,
-                                      y_test, param_grid,
-                                      resampling_method='ClusterCentroids',
-                                      cv=5)    # Train SVM model
+    res_svm = tune_train_evaluate_svm(X_train_scaled, y_train,
+                                         X_test_scaled, y_test,
+                                         param_grid,
+                                         resampling_method=resampling_method)
+    # res_svm = tune_train_evaluate_svm(X_train_scaled, y_train_res, X_test_scaled,
+    #                                   y_test, param_grid,
+    #                                   resampling_method=resampling_method,
+    #                                   cv=5)    # Train SVM model
 
     svm = svm.SVC(kernel='rbf', C=res_svm['best_params']['C'],
                   gamma=res_svm['best_params']['gamma'], probability=True)
-    svm.fit(X_train_scaled, y_train_res)
+    svm.fit(X_train_scaled, y_train)
 
     # Use SHAP Kernel Explainer
     explainer = shap.KernelExplainer(svm.predict_proba, X_train_scaled)
@@ -395,8 +400,8 @@ if __name__ == '__main__':
     selected_features = importance_df[importance_df['cumulative']
         <= 0.85]['feature']
 
-    feature_counts = np.arange(5, 35, step=1)
-
+    # feature_counts = np.arange(1, 35, step=1)
+    feature_counts = np.arange(1, X_train_scaled.shape[1])
     scores = []
 
     for k in feature_counts:
@@ -425,15 +430,24 @@ if __name__ == '__main__':
     # Mostra le prime righe
     print(results_df.head())
 
-    plt.plot(results_df['Num Features'], results_df['F1-score'], marker='o')
+    # Plotting
+    plt.figure(figsize=(10, 6))
+
+    # Plot each metric
+    for metric in ['Precision', 'Accuracy', 'Recall', 'F1-score', 'MCC']:
+        plt.plot(results_df['Num Features'],
+                 results_df[metric], marker='o', label=metric)
+
+    # plt.plot(results_df['Num Features'], results_df['F1-score'], marker='o')
     plt.xlabel('Number of Features')
     plt.ylabel('F1-score')
     plt.title('Feature Selection via SHAP')
     plt.grid(True)
+    plt.legend(title='Metrics', fontsize=10)
     plt.tight_layout()
     plt.show()
 
-    features_22 = results_df.loc[21, 'Features']
+    features_22 = results_df.loc[19, 'Features']
     print("Selected features (n=22):")
     print(features_22)
 
@@ -443,37 +457,61 @@ if __name__ == '__main__':
     save_outputfile(results_df, results_path /
                     'result_shap_values.csv')
 
-# shap_values_abs_df = shap_values_df.abs()
-# # save_outputfile(shap_values_abs_df, results_path /
-# #                 'shap_values_abs.csv')
+    # --- HEATMAP-------
+    shap_values_df = pd.DataFrame(shap_values_class1, columns=X_train.columns)
+    shap_values_df = shap_values_df.T
 
-# # save_outputfile(shap_values_df, results_path /
-# #                 'shap_values.csv')
+    ordered_features = importance_df['feature'].tolist()
+    # Filter to include only the features present in both DataFrames
+    ordered_features = [
+        f for f in ordered_features if f in shap_values_df.index]
 
-# # mean_shap = shap_values_df.mean(axis=0).sort_values(ascending=False)
+    # Reorder the rows of shap_values_df accordingly
+    shap_values_df_ordered = shap_values_df.loc[ordered_features]
+    # (Opzionale) Salva i dati SHAP
+    # shap_values_df.to_csv(results_path / 'shap_values.csv')
+    # shap_values_df.abs().to_csv(results_path / 'shap_values_abs.csv')
 
+    # Calcola limiti min/max per la colorbar
+    vmin = shap_values_df_ordered.min().min()
+    vmax = shap_values_df_ordered.max().max()
 
-# # Create a custom diverging colormap (red, white, blue)
-# cmap = mcolors.TwoSlopeNorm(vmin=shap_values_df.min(
-# ).min(), vcenter=0, vmax=shap_values_df.max().max())
-# # Red to Blue with white as the midpoint
-# cmap = sns.diverging_palette(250, 10, as_cmap=True)
+    # Crea colormap diverging centrata su 0
+    cmap = sns.diverging_palette(250, 10, as_cmap=True)
 
-# # Set up the matplotlib figure
-# plt.figure(figsize=(10, 15))
+    # Setup figura
+    plt.figure(figsize=(12, 16))
 
-# # Create the heatmap with the custom color map
-# sns.heatmap(shap_values_df.T, cmap='RdBu_r', annot=False,
-#             fmt='.2g', center=0, cbar_kws={'label': 'SHAP Value'})
+    # Heatmap con colori centrati su 0
+    sns.heatmap(
+        shap_values_df_ordered,
+        cmap=cmap,
+        center=0,
+        annot=False,
+        fmt=".2g",
+        cbar_kws={'label': 'SHAP Value'}
+    )
 
-# # Add title and labels
-# plt.title('Heatmap of SHAP Values with Red-White-Blue Color Map')
-# plt.xlabel('Samples')
-# plt.ylabel('Features')
+    # Titoli e etichette
+    plt.title('SHAP Value Heatmap: Feature Impact on Predictions', fontsize=14)
+    plt.xlabel('Samples', fontsize=12)
+    plt.ylabel('Features', fontsize=12)
 
-# # Show the plot
-# plt.tight_layout()
-# plt.show()
+    # Migliora layout e mostra il grafico
+    plt.tight_layout()
+    plt.show()
+
+    # --- VIOLIN PLOT ---------
+    plt.figure(figsize=(12, 16))
+
+    shap.summary_plot(
+        shap_values_class1,
+        X_train,
+        plot_type="violin",        # default: 'dot' = beeswarm
+        class_names=['No Avalanche', 'Avalanche'],
+        show=True, max_display=39
+    )
+
 
 # -------------------------------------------------------
 # SHAP + Forward feature selection directly on SVM
@@ -638,18 +676,18 @@ summary_results = []
     X_train_scaled = scaler.fit_transform(X_train_res)
     X_test_scaled = scaler.transform(X_test)  # Utile per valutazioni future
     
-    # 5. Parametri per GridSearch
-    param_grid_short = {
-        'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
-        'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
-    }
+    # # 5. Parametri per GridSearch
+    # param_grid_short = {
+    #     'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
+    #     'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
+    # }
     
     # 6. SVM con GridSearchCV (fuori dalla pipeline)
     svm_model = SVC(kernel='rbf')
     
     grid_search = GridSearchCV(
         estimator=svm_model,
-        param_grid=param_grid_short,
+        param_grid=param_grid,
         scoring='f1_macro',
         cv=5,
         n_jobs=-1
