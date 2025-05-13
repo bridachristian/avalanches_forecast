@@ -662,18 +662,19 @@ summary_results = []
     features_correlated = remove_correlated_features(X, y)
     X_new = X.drop(columns=features_correlated)
     
-    # 2. Split stratificato
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_new, y, test_size=0.25, random_state=42, stratify=y
-    )
-    
     # 3. RandomUnderSampler sul training set
     rus = RandomUnderSampler(random_state=42)
-    X_train_res, y_train_res = rus.fit_resample(X_train, y_train)
+    X_train_res, y_train_res = rus.fit_resample(X_new, y)
     
+    
+    # 2. Split
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_train_res, y_train_res, test_size=0.25, random_state=42)
+    
+ 
     # 4. Scaling: fit su train, transform su test
     scaler = MinMaxScaler()
-    X_train_scaled = scaler.fit_transform(X_train_res)
+    X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)  # Utile per valutazioni future
     
     # # 5. Parametri per GridSearch
@@ -705,7 +706,7 @@ summary_results = []
     )
     
     # 8. Fit SFS su training set bilanciato e scalato
-    sfs_BW.fit(X_train_scaled, y_train_res)
+    sfs_BW.fit(X_train_scaled, y_train)
     
     # 9. Feature selezionate
     selected_feature_indices = sfs_BW.k_feature_idx_
@@ -876,32 +877,33 @@ summary_results = []
     features_correlated = remove_correlated_features(X, y)
     X_new = X.drop(columns=features_correlated)
     
-    # 2. Split stratificato
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_new, y, test_size=0.25, random_state=42, stratify=y
-    )
-    
     # 3. RandomUnderSampler sul training set
     rus = RandomUnderSampler(random_state=42)
     X_train_res, y_train_res = rus.fit_resample(X_train, y_train)
     
+    # 2. Split stratificato
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_train_res, y_train_res, test_size=0.25, random_state=42, stratify=y
+    )
+    
+
     # 4. Scaling: fit su train, transform su test
     scaler = MinMaxScaler()
-    X_train_scaled = scaler.fit_transform(X_train_res)
+    X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)  # Utile per valutazioni future
     
-    # 5. Parametri per GridSearch
-    param_grid_short = {
-        'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
-        'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
-    }
+    # # 5. Parametri per GridSearch
+    # param_grid_short = {
+    #     'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
+    #     'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
+    # }
     
     # 6. SVM con GridSearchCV (fuori dalla pipeline)
     svm_model = SVC(kernel='rbf')
     
     grid_search = GridSearchCV(
         estimator=svm_model,
-        param_grid=param_grid_short,
+        param_grid=param_grid,
         scoring='f1_macro',
         cv=5,
         n_jobs=-1
@@ -912,7 +914,7 @@ summary_results = []
         estimator=grid_search,
         # k_features=10,          # Select the top 10 features
         # Explore all possible subset sizes
-        k_features=(1, X_new.shape[1]),
+        k_features=(1, X_train_scaled.shape[1]),
         # k_features=(1, 10),
         forward=True,         # Forward selection
         floating=False,        # Disable floating step
@@ -922,11 +924,11 @@ summary_results = []
     )
 
     # Fit SFS to the data
-    sfs_FW.fit(X_train_scaled, y_train_res)
+    sfs_FW.fit(X_train_scaled, y_train)
 
     # Retrieve the names of the selected features
     if isinstance(X_new, pd.DataFrame):
-        selected_feature_names_FW=[X_new.columns[i]
+        selected_feature_names_FW=[X_train_scaled.columns[i]
                                      for i in sfs_FW.k_feature_idx_]
     else:
         selected_feature_names_FW=list(sfs_FW.k_feature_idx_)
