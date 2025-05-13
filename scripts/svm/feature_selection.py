@@ -43,7 +43,8 @@ from scripts.svm.utils import (save_outputfile,
                                PermutationImportanceWrapper,
                                remove_correlated_features,
                                remove_low_variance,
-                               select_k_best)
+                               select_k_best,
+                               plot_threshold_scoring)
 from scripts.svm.feature_engineering import (transform_features,
                                              transform_penetration_ratio)
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
@@ -83,7 +84,8 @@ if __name__ == '__main__':
     # DEFINE INITIAL FEATURE SET
     feature_set = [
         'TaG', 'TminG', 'TmaxG', 'HSnum',
-               'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_2d',
+               'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason',
+               'HS_delta_1d', 'HS_delta_2d',
                'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
                'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
                'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
@@ -91,14 +93,9 @@ if __name__ == '__main__':
                'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
                'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
                'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean',
-               # 'DegreeDays_Pos',
-               # 'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-               'Precip_1d', 'Precip_2d', 'Precip_3d',
-               'Precip_5d',
-               # 'Penetration_ratio',
+               'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d',
                'TempGrad_HS', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
                'Tsnow_delta_5d']
-    # , 'ConsecWetSnowDays', 'ConsecCrustDays']
 
     # DEFINE PARAMETER GRID (IN SOME CASES SHOULD BE REDUCED)
     param_grid = {
@@ -130,43 +127,49 @@ if __name__ == '__main__':
     features_correlated = remove_correlated_features(X, y)
     X_new = X.drop(columns=features_correlated)
 
-    # 2. Split stratificato
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_new, y, test_size=0.25, random_state=42, stratify=y
-    )
+    # 2.  RandomUnderSampler su TUTTO il set dati --> se no CM sbilanciata
+    X_train_res, y_train_res = undersampling_random(X_new, y)
 
-    # 3. RandomUnderSampler sul training set
-    rus = RandomUnderSampler(random_state=42)
-    X_train_res, y_train_res = rus.fit_resample(X_train, y_train)
+    # 3. Split stratificato
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_train_res, y_train_res, test_size=0.25, random_state=42)
 
     # 4. Scaling: fit su train, transform su test
     scaler = MinMaxScaler()
-    X_train_scaled = scaler.fit_transform(X_train_res)
-    X_test_scaled = scaler.transform(X_test)  # Utile per valutazioni future
+    # Scale the training data
+    X_train_scaled = scaler.fit_transform(X_train)
+    # Convert the scaled data into a pandas DataFrame and assign column names
+    X_train_scaled_df = pd.DataFrame(X_train_scaled, columns=X_train.columns)
+
+    # Scale the test data (using the same scaler)
+    X_test_scaled = scaler.transform(X_test)
+    # Convert the scaled test data into a pandas DataFrame and assign column names
+    X_test_scaled_df = pd.DataFrame(X_test_scaled, columns=X_train.columns)
 
     res_tuning = tune_train_evaluate_svm(
-        X_train_scaled, y_train_res, X_test_scaled, y_test, param_grid,
+        X_train_scaled, y_train, X_test_scaled, y_test, param_grid,
         resampling_method=f'Random Undersampling')
 
     classifier = train_evaluate_final_svm(
-        X_train_scaled, y_train_res, X_test_scaled, y_test, res_tuning['best_params'])
+        X_train_scaled, y_train, X_test_scaled, y_test, res_tuning['best_params'])
 
     # --- PERMUTATION IMPORTANCE FEATURE SELECTION ---
 
-    feature_importance_df = permutation_ranking(
-        classifier[0], X_test, y_test)
+    feature_importance_df, important_features = permutation_ranking(
+        classifier[0], X_train_scaled_df, y_train)
+
     # Supponendo che il DataFrame abbia una colonna chiamata 'importance'
-    positive_features_df = feature_importance_df[feature_importance_df['Importance_Mean'] > 0]
+    positive_features_df = feature_importance_df[feature_importance_df['Importance_Mean'] > 0.001]
 
     # Opzionalmente, puoi ordinarle per importanza decrescente
     positive_features_df = positive_features_df.sort_values(
         by='Importance_Mean', ascending=False)
 
     # Visualizza le feature con importanza positiva
-    print(positive_features_df)
+    print(positive_features_df['Feature'].tolist())
     positive_feature_names = positive_features_df['Feature'].tolist()
     results_path = Path(
-        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\01_FEATURE_SELECTION\\Permutation_ranking\\')
+        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\0X_FEATURE_SELECTION\\Permutation_ranking\\')
 
     save_outputfile(feature_importance_df, results_path /
                     'permutation_ranking_cluster_centroids.csv')
@@ -222,16 +225,15 @@ if __name__ == '__main__':
     # --- c) FEATURE SELECTION USING SELECT K BEST AND ANOVA      ---
     # ---------------------------------------------------------------
 
-    # feature_plus = feature_set + ['AvalDay']
+    # 0. Prepara i dati
     available_features = [col for col in feature_set if col in mod1.columns]
     feature_plus = available_features + ['AvalDay']
-
-    mod1_clean = mod1[feature_plus]
-    mod1_clean = mod1_clean.dropna()
+    mod1_clean = mod1[feature_plus].dropna()
 
     X = mod1_clean.drop(columns=['AvalDay'])
     y = mod1_clean['AvalDay']
 
+    # 1. Rimuovi feature correlate
     features_correlated = remove_correlated_features(X, y)
     X_new = X.drop(columns=features_correlated)
 
@@ -252,23 +254,15 @@ if __name__ == '__main__':
         print(f'k = {k}, Features Selected: {features_selected}')
 
         X_selected = X_new[features_selected]
-        # Apply random undersampling
-        # X_resampled, y_resampled = undersampling_nearmiss(
-        #     X_selected, y, version=3, n_neighbors=10)
-        # X_resampled, y_resampled = undersampling_clustercentroids_v2(
-        #     X_selected, y)
 
+        # 2.  RandomUnderSampler su TUTTO il set dati --> se no CM sbilanciata
         X_resampled, y_resampled = undersampling_random(X_selected, y)
 
-        # Remove correlated features and with low variance
-        # features_low_variance = remove_low_variance(X_resampled)
-        # X_resampled = X_resampled.drop(columns=features_low_variance)
-
-        # Split into training and test set
+        # 3. Split
         X_train, X_test, y_train, y_test = train_test_split(
             X_resampled, y_resampled, test_size=0.25, random_state=42)
 
-        # Normalization
+        # 4. Scaling: fit su train, transform su test
         scaler = MinMaxScaler()
         X_train_scaled = pd.DataFrame(
             scaler.fit_transform(X_train), columns=X_train.columns)
@@ -277,11 +271,11 @@ if __name__ == '__main__':
 
         # SVM model tuning, training and evaluation
         result_SVM = tune_train_evaluate_svm(
-            X_train, y_train, X_test, y_test, param_grid_short, resampling_method=f'feature setup {k}')
+            X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method=f'feature setup {k}')
 
         # Final SVM classifier and evaluation
         classifier_SVM, evaluation_metrics_SVM = train_evaluate_final_svm(
-            X_train, y_train, X_test, y_test, result_SVM['best_params'])
+            X_train_scaled, y_train, X_test_scaled, y_test, result_SVM['best_params'])
 
         # Store results
         results.append({

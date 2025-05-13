@@ -147,6 +147,7 @@ def plot_roc_curve(X_test, y_test, clf):
 def permutation_ranking(classifier, X, y, scoring='f1_macro', importance_threshold=0.001):
     """
     Calcola e visualizza la permutation feature importance con opzioni di scoring.
+    Inoltre, seleziona le feature sopra una soglia di importanza.
 
     Args:
         classifier: modello già addestrato (con metodo predict).
@@ -177,6 +178,7 @@ def permutation_ranking(classifier, X, y, scoring='f1_macro', importance_thresho
     # Ordinamento decrescente
     sorted_idx = perm_importance.importances_mean.argsort()[::-1]
 
+    # Creazione DataFrame con le importanze
     feature_importance_df = pd.DataFrame({
         'Feature': X.columns[sorted_idx],
         'Ranking': range(1, len(sorted_idx) + 1),
@@ -184,28 +186,32 @@ def permutation_ranking(classifier, X, y, scoring='f1_macro', importance_thresho
         'Importance_Std': perm_importance.importances_std[sorted_idx]
     })
 
-    # # Filtro per soglia
-    # important_features = feature_importance_df[
-    #     feature_importance_df['Importance_Mean'] >= importance_threshold
-    # ]['Feature'].tolist()
+    # Filtro per soglia (importance_threshold)
+    important_features = feature_importance_df[
+        feature_importance_df['Importance_Mean'] >= importance_threshold
+    ]['Feature'].tolist()
 
     # Visualizzazione
     plt.figure(figsize=(10, 16))
     plt.barh(
         range(len(sorted_idx)),
-        # inverti per avere la più importante in alto
         perm_importance.importances_mean[sorted_idx][::-1],
         xerr=perm_importance.importances_std[sorted_idx][::-1],
         align='center',
         capsize=5,
+        color='skyblue'
     )
     plt.yticks(range(len(sorted_idx)), X.columns[sorted_idx][::-1])
+    plt.axvline(x=importance_threshold, color='red', linestyle='--',
+                label=f'Threshold = {importance_threshold}')
     plt.title(f"Feature Importance (Permutation - {score_label})")
     plt.xlabel("Mean Decrease in Score")
     plt.tight_layout()
+    plt.legend(loc="best")
     plt.show()
 
-    return feature_importance_df
+    # Restituire sia il DataFrame con importanze che le feature sopra la soglia
+    return feature_importance_df, important_features
 
 
 def evaluate_svm_with_feature_selection(data, feature_list):

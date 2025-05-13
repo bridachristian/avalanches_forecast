@@ -17,7 +17,10 @@ from sklearn.inspection import permutation_importance
 from scripts.svm.data_loading import load_data
 from scripts.svm.undersampling_methods import undersampling_random, undersampling_random_timelimited, undersampling_nearmiss
 from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
-from scripts.svm.utils import plot_decision_boundary, get_adjacent_values, detect_grid_type, plot_threshold_scoring
+from scripts.svm.utils import (plot_decision_boundary, get_adjacent_values,
+                               detect_grid_type, plot_threshold_scoring)
+from scripts.svm.evaluation import (plot_learning_curve, plot_confusion_matrix,
+                                    plot_roc_curve)
 
 
 def randomsearch_cross_validate_svm(X, y, param_distributions, n_iter=50, cv=5, scoring='f1_macro', random_state=42):
@@ -182,7 +185,7 @@ def tune_svm_with_optuna(X, y, n_trials=50, cv=5, scoring="accuracy"):
     return best_model, best_params, best_score
 
 
-def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method, cv=10):
+def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method, cv=5):
     '''
     Performs hyperparameter tuning, training, and evaluation of an SVM classifier.
 
@@ -208,10 +211,27 @@ def tune_train_evaluate_svm(X, y, X_test, y_test, param_grid, resampling_method,
     and the best hyperparameters (C, gamma) found during tuning.
     '''
     from scripts.svm.evaluation import plot_learning_curve
+    from sklearn.model_selection import StratifiedKFold
 
-    # 1. Hyperparameter Tuning: Cross-validation to find the best C and gamma
+    # 🔒 Safe Stratified CV Setup
+    if isinstance(cv, int):
+        cv_strategy = StratifiedKFold(
+            n_splits=cv, shuffle=True, random_state=42)
+    else:
+        cv_strategy = cv
+
+    print(
+        f"[INFO] Resampled label distribution:\n{np.unique(y, return_counts=True)}")
+
+    # 1. Hyperparameter tuning (Stratified)
     cv_results_coarse = cross_validate_svm(
-        X, y, param_grid, cv, title=f'1st run - CV scores for {resampling_method} ', scoring='f1_macro')
+        X, y, param_grid, cv=cv_strategy,
+        title=f'1st run - CV scores for {resampling_method}', scoring='f1_macro'
+    )
+
+    # # 1. Hyperparameter Tuning: Cross-validation to find the best C and gamma
+    # cv_results_coarse = cross_validate_svm(
+    #     X, y, param_grid, cv, title=f'1st run - CV scores for {resampling_method} ', scoring='f1_macro')
 
     # optuna_results_coarse = tune_svm_with_optuna(
     #     X, y, n_trials=100, cv=10, scoring="f1_macro")
@@ -280,101 +300,74 @@ def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params, disp
     '''
     Train and evaluate an SVM model using the best hyperparameters.
 
-    This function takes in training and test datasets along with the optimal 
-    hyperparameters (C and gamma) to train an SVM model with an RBF kernel. 
-    It performs cross-validation on the training set, evaluates performance 
-    on the test set, and computes key performance metrics such as accuracy, 
-    precision, recall, and F1 score. It also visualizes the learning curve, 
-    confusion matrix, and ROC curve for the trained model.
-
     Parameters
     ----------
     X_train : array-like, shape (n_samples, n_features)
-        The training input samples.
-
     y_train : array-like, shape (n_samples,)
-        The target values for training.
-
     X_test : array-like, shape (n_samples, n_features)
-        The test input samples.
-
     y_test : array-like, shape (n_samples,)
-        The true target values for the test set.
-
     best_params : dict
-        A dictionary containing the best hyperparameters for the SVM model. 
-        Expected keys are:
-            - 'C': Regularization parameter (float)
-            - 'gamma': Kernel coefficient (float)
+        Expected keys: 'C', 'gamma'
+    display_plot : bool
+        If True, display plots
 
     Returns
     -------
-    model : object
-        The trained SVM model (fitted estimator).
-
+    model : Trained SVM model
     metrics : dict
-        A dictionary containing the evaluation metrics:
-            - 'accuracy': Test set accuracy (float)
-            - 'precision': Test set precision (float)
-            - 'recall': Test set recall (float)
-            - 'f1': Test set F1 score (float)
-            - 'best_params': Best hyperparameters used in the model (dict)
+        Evaluation metrics
     '''
-    from scripts.svm.evaluation import plot_learning_curve, plot_confusion_matrix, plot_confusion_matrix, plot_roc_curve
+    from sklearn.model_selection import cross_val_score, StratifiedKFold
+    import warnings
 
-    # Creating new SVM model with the best parameters
-    clf = svm.SVC(kernel='rbf', C=best_params['C'], gamma=best_params['gamma'])
+    # Validate best_params
+    if not all(k in best_params for k in ['C', 'gamma']):
+        raise ValueError("best_params must contain keys 'C' and 'gamma'")
 
-    # Cross-validation on the training set
-    scores = cross_val_score(clf, X_train, y_train, cv=10)
-    print("Average Cross-Validation Score:", scores.mean())
-    print("Standard Deviation of Scores:", scores.std())
+    # Create SVM with best hyperparameters
+    clf = svm.SVC(
+        kernel='rbf', C=best_params['C'], gamma=best_params['gamma'], probability=True)
 
-    # Training the new SVM model
+    # Use StratifiedKFold for balanced CV splits
+    cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
+
+    # Cross-validation on training set
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning)
+        scores = cross_val_score(clf, X_train, y_train, cv=cv)
+
+    print(f"Average Cross-Validation Score: {scores.mean():.4f}")
+    print(f"Standard Deviation of Scores: {scores.std():.4f}")
+
+    # Train model on full training data
     model = clf.fit(X_train, y_train)
 
-    # Test set evaluation
-    test_accuracy = model.score(X_test, y_test)
-    print("Test Set Accuracy:", test_accuracy)
-
-    # Evaluate Training Performance with a Learning Curve
-    if display_plot == True:
-        plot_learning_curve(clf, X_train, y_train, cv=10,
-                            title='Learning Curve Final SVM')
-        plot_threshold_scoring(X_train, y_train, X_test, y_test, clf)
-
-    # Predicting on the test data
+    # Predict on test set
     y_pred = model.predict(X_test)
 
-    # Create confusion matrix
-    if display_plot == True:
-        cm = plot_confusion_matrix(y_test, y_pred)
-
-    # Calculate evaluation metrics
+    # Compute metrics
     accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred, average='macro')
-    recall = recall_score(y_test, y_pred, average='macro')
-    f1 = f1_score(y_test, y_pred, average='macro')
+    precision = precision_score(
+        y_test, y_pred, average='macro', zero_division=0)
+    recall = recall_score(y_test, y_pred, average='macro', zero_division=0)
+    f1 = f1_score(y_test, y_pred, average='macro', zero_division=0)
     mcc = matthews_corrcoef(y_test, y_pred)
 
-    # Print the evaluation metrics
-    # print(f'Accuracy: {accuracy:.4f}')
-    # print(f'Precision: {precision:.4f}')
-    # print(f'Recall: {recall:.4f}')
-    # print(f'F1: {f1:.4f}')
+    print(f"Test Set Accuracy: {accuracy:.4f}")
 
-    # Compute and plot the ROC curve
-    if display_plot == True:
+    # Plots
+    if display_plot:
+        plot_learning_curve(clf, X_train, y_train, cv=cv,
+                            title='Learning Curve - Final SVM')
+        plot_threshold_scoring(X_train, y_train, X_test, y_test, clf)
+        plot_confusion_matrix(y_test, y_pred)
         plot_roc_curve(X_test, y_test, clf)
 
-    # Return model and performance metrics
-    metrics = {
-        'precision': precision,
+    return model, {
         'accuracy': accuracy,
+        'precision': precision,
         'recall': recall,
         'f1': f1,
         'MCC': mcc,
         'best_params': best_params
     }
-
-    return model, metrics
