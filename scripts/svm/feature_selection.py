@@ -149,26 +149,18 @@ if __name__ == '__main__':
         X_train_scaled, y_train, X_test_scaled, y_test, param_grid,
         resampling_method=f'Random Undersampling')
 
-    classifier = train_evaluate_final_svm(
+    classifier_svm = train_evaluate_final_svm(
         X_train_scaled, y_train, X_test_scaled, y_test, res_tuning['best_params'])
 
     # --- PERMUTATION IMPORTANCE FEATURE SELECTION ---
 
     feature_importance_df, important_features = permutation_ranking(
-        classifier[0], X_train_scaled_df, y_train)
-
-    # Supponendo che il DataFrame abbia una colonna chiamata 'importance'
-    positive_features_df = feature_importance_df[feature_importance_df['Importance_Mean'] > 0.001]
-
-    # Opzionalmente, puoi ordinarle per importanza decrescente
-    positive_features_df = positive_features_df.sort_values(
-        by='Importance_Mean', ascending=False)
+        classifier_svm[0], X_train_scaled_df, y_train)
 
     # Visualizza le feature con importanza positiva
-    print(positive_features_df['Feature'].tolist())
-    positive_feature_names = positive_features_df['Feature'].tolist()
+    print(important_features)
     results_path = Path(
-        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\0X_FEATURE_SELECTION\\Permutation_ranking\\')
+        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\0X_FEATURE_SELECTION\\PERMUTATION_RANKING\\')
 
     save_outputfile(feature_importance_df, results_path /
                     'permutation_ranking_cluster_centroids.csv')
@@ -839,7 +831,7 @@ summary_results = []
 
     # Retrieve the names of the selected features
     if isinstance(X_new, pd.DataFrame):
-        selected_feature_names_FW=[X_train_scaled.columns[i]
+        selected_feature_names_FW=[X_train_scaled_df.columns[i]
                                      for i in sfs_FW.k_feature_idx_]
     else:
         selected_feature_names_FW=list(sfs_FW.k_feature_idx_)
@@ -848,7 +840,7 @@ summary_results = []
 
     # Retrieve information about subsets
     subsets_FW=sfs_FW.subsets_
-    subsets_FW_df=pd.DataFrame(subsets_FW)
+    subsets_FW_df=pd.DataFrame(subsets_FW).T
 
     results_path=Path(
         'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\0X_FEATURE_SELECTION\\FORWARD_FEATURE_SELECTION\\')
@@ -887,6 +879,9 @@ summary_results = []
     plt.grid(True)
     plt.show()
 
+    selected_4_indices =(1, 8, 9, 34)
+    selected_4_features = [X_train_scaled_df.columns[i] for i in selected_4_indices]
+    print(selected_4_features)
     # ---------------------------------------------------------------
     # --- e) RECURSIVE FEATURE EXTRACTION: RFE  ---
     # ---------------------------------------------------------------
@@ -903,18 +898,30 @@ summary_results = []
     features_correlated = remove_correlated_features(X, y)
     X_new = X.drop(columns=features_correlated)
     
-    # 2. Split stratificato
+    # 3. RandomUnderSampler sul training set
+    X_train_res, y_train_res = undersampling_random(X_new, y)
+    
+    # 2. Split
     X_train, X_test, y_train, y_test = train_test_split(
-        X_new, y, test_size=0.25, random_state=42, stratify=y
-    )
+        X_train_res, y_train_res, test_size=0.25, random_state=42)
     
-    # 3. Scaling
+
+    # 4. Scaling: fit su train, transform su test
     scaler = MinMaxScaler()
+    # Scale the training data
     X_train_scaled = scaler.fit_transform(X_train)
+    # Convert the scaled data into a pandas DataFrame and assign column names
+    X_train_scaled_df = pd.DataFrame(X_train_scaled, columns=X_train.columns)
+
+    # Scale the test data (using the same scaler)
     X_test_scaled = scaler.transform(X_test)
+    # Convert the scaled test data into a pandas DataFrame and assign column names
+    X_test_scaled_df = pd.DataFrame(X_test_scaled, columns=X_train.columns)
+    # resampling_method = 'ClusterCentroids'
+    resampling_method = 'RandomUndersampling'
     
-    # 4. Hyperparameter Tuning per SVM con kernel RBF (su dati scalati e sbilanciati)
-    param_grid = {
+    # 5. Parametri per GridSearch
+    param_grid_short = {
         'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
         'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
     }
@@ -922,10 +929,11 @@ summary_results = []
     base_svc = SVC(kernel='rbf', random_state=42)
     grid_search = GridSearchCV(
         estimator=base_svc,
-        param_grid=param_grid,
+        param_grid=param_grid_short,
         scoring='f1_macro',
         cv=5,
-        n_jobs=-1
+        n_jobs=-1,
+        verbose=2
     )
     grid_search.fit(X_train_scaled, y_train)
     best_params = grid_search.best_params_
@@ -936,28 +944,32 @@ summary_results = []
     
     # 6. Pipeline finale: undersampling + RFECV + RBF-SVM
     pipeline = Pipeline([
-        ('undersample', RandomUnderSampler()),  # Bilanciamento
-        ('scaler', MinMaxScaler()),             # Scaling interno alla pipeline
+        # ('undersample', RandomUnderSampler()),  # Bilanciamento
+        # ('scaler', MinMaxScaler()),             # Scaling interno alla pipeline
         ('feature_selection', RFECV(
             estimator=linear_svc,
             step=1,
             cv=StratifiedKFold(n_splits=5),
             scoring='f1_macro',
-            n_jobs=-1
+            n_jobs=-1,
+            verbose=1  # <-- Print progress for each step
+
         )),
         ('svc', SVC(
             kernel='rbf',
             C=best_params['C'],
             gamma=best_params['gamma'],
-            random_state=42
+            random_state=42,
+            verbose=True  # Optional: shows convergence info for SVC
+
         ))
     ])
     
-    # 7. Fit della pipeline sui dati originali (non scalare prima!)
-    pipeline.fit(X_train, y_train)
+    # 7. Fit della pipeline sui dati originali 
+    pipeline.fit(X_train_scaled, y_train)
     
-    # 8. Valutazione finale sul test set (non scalare perché lo fa la pipeline)
-    y_pred = pipeline.predict(X_test)
+    # 8. Valutazione finale sul test set
+    y_pred = pipeline.predict(X_test_scaled)
     print("Test Set Classification Report:")
     print(classification_report(y_test, y_pred))
     
@@ -967,6 +979,8 @@ summary_results = []
     
     print("Selected Features:", selected_features)
     print("Feature Rankings:", rfecv.ranking_)
+    
+    333
     
     # 10. Plot delle performance in funzione del numero di feature
     mean_cv_scores = rfecv.cv_results_['mean_test_score']
@@ -1004,220 +1018,226 @@ summary_results = []
     # ---------------------------------------------------------------
     # 1. LDA on full feature dataset
     # Data preparation
-    feature_plus=feature_set + ['AvalDay']
-    mod1_clean=mod1[feature_plus]
-    mod1_clean=mod1_clean.dropna()
-    mod1_transformed=transform_features(mod1_clean.copy())
 
-    X=mod1_transformed[feature_set]
-    y=mod1_transformed['AvalDay']
-
-    X_resampled, y_resampled=undersampling_clustercentroids(X, y)
-
-    # Split into training and test set
-    X_train, X_test, y_train, y_test=train_test_split(
-        X_resampled, y_resampled, test_size=0.25, random_state=42)
+    # 0. Prepara i dati
+    available_features = [col for col in feature_set if col in mod1.columns]
+    feature_plus = available_features + ['AvalDay']
+    mod1_clean = mod1[feature_plus].dropna()
+    
+    X = mod1_clean.drop(columns=['AvalDay'])
+    y = mod1_clean['AvalDay']
+    
+    # 1. Rimuovi feature correlate
+    features_correlated = remove_correlated_features(X, y)
+    X_new = X.drop(columns=features_correlated)
+    
+    # 3. RandomUnderSampler sul training set
+    X_train_res, y_train_res = undersampling_random(X_new, y)
+    
+    # 2. Split
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_train_res, y_train_res, test_size=0.25, random_state=42)
 
     common_indices=X_train.index.intersection(X_test.index)
 
-    # # scaler = StandardScaler()
-    # scaler = MinMaxScaler()
-    # X_train_scaled = scaler.fit_transform(X_train)
-    # X_test_scaled = scaler.transform(X_test)
+    # scaler = StandardScaler()
+    scaler = MinMaxScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
 
-    # X_train_scaled = pd.DataFrame(
-    #     X_train_scaled, columns=X_train.columns, index=X_train.index)
-    # X_test_scaled = pd.DataFrame(
-    #     X_test_scaled, columns=X_test.columns, index=X_test.index)
+    result_SVM_full=tune_train_evaluate_svm(
+        X_train_scaled, y_train, X_test_scaled, y_test,
+        param_grid, resampling_method='Random Undersampling')
 
-    result_SVM=tune_train_evaluate_svm(
-        X_train, y_train, X_test, y_test,
-        param_grid, resampling_method='Cluster Centroids')
-
-    classifier_SVM, evaluation_metrics_SVM=train_evaluate_final_svm(
-        X_train, y_train, X_test, y_test, result_SVM['best_params'])
+    classifier_SVM_full, evaluation_metrics_SVM_full=train_evaluate_final_svm(
+        X_train_scaled, y_train, X_test_scaled, y_test, result_SVM_full['best_params'])
 
     # Apply LDA for dimensionality reduction
     lda=LDA(n_components=1)
 
-    X_train_lda=lda.fit_transform(X_train, y_train)
-    X_test_lda=lda.transform(X_test)
+    X_train_lda=lda.fit_transform(X_train_scaled, y_train)
+    X_test_lda=lda.transform(X_test_scaled)
 
     # Convert back to DataFrame for compatibility
     X_train_lda=pd.DataFrame(X_train_lda, index=X_train.index)
     X_test_lda=pd.DataFrame(X_test_lda, index=X_test.index)
 
     # Train and evaluate SVM on LDA-transformed features
-    result_SVM_LDA=tune_train_evaluate_svm(
+    result_SVM_LDA_full=tune_train_evaluate_svm(
         X_train_lda, y_train, X_test_lda, y_test, param_grid, resampling_method='Cluster Centroids')
 
-    classifier_SVM_LDA, evaluation_metrics_SVM_LDA=train_evaluate_final_svm(
-        X_train_lda, y_train, X_test_lda, y_test, result_SVM_LDA['best_params'])
+    classifier_SVM_LDA_full, evaluation_metrics_SVM_LDA_full=train_evaluate_final_svm(
+        X_train_lda, y_train, X_test_lda, y_test, result_SVM_LDA_full['best_params'])
 
     # 2. SHAP without LDA
 
-    SHAP=['TaG_delta_5d',
-            'TminG_delta_3d',
-            'HS_delta_5d',
-            'Precip_3d',
-            'Precip_2d',
-            'TempGrad_HS',
-            'Tsnow_delta_3d',
-            'TmaxG_delta_3d',
-            'HSnum',
-            'TempAmplitude_2d',
-            'TaG',
-            'Tsnow_delta_2d',
-            'DayOfSeason']
+    SHAP20 = ['HSnum', 'TH01G', 'PR', 'DayOfSeason', 'TmaxG_delta_5d',
+            'HS_delta_5d', 'TH03G', 'HS_delta_1d', 'TmaxG_delta_3d',
+            'Precip_3d', 'TempGrad_HS', 'HS_delta_2d', 'TmaxG_delta_2d',
+            'TminG_delta_5d', 'TminG_delta_3d', 'Tsnow_delta_3d',
+            'TaG_delta_5d', 'Tsnow_delta_1d',
+            'TmaxG_delta_1d', 'Precip_2d']  # 20 features 
 
-    # best_features = list(set(BestFeatures_FW_20 + BestFeatures_BW_27))
-
-    # Data preparation
-    feature_plus=SHAP + ['AvalDay']
-    mod1_clean=mod1[feature_plus].dropna()
-    X=mod1_clean[SHAP]
-    y=mod1_clean['AvalDay']
-
-    X_resampled, y_resampled=undersampling_clustercentroids(X, y)
-
-    # Split into training and test set
-    X_train, X_test, y_train, y_test=train_test_split(
-        X_resampled, y_resampled, test_size=0.25, random_state=42)
+    # 0. Prepara i dati
+    available_features = [col for col in SHAP20 if col in mod1.columns]
+    feature_plus = available_features + ['AvalDay']
+    mod1_clean = mod1[feature_plus].dropna()
+    
+    X = mod1_clean.drop(columns=['AvalDay'])
+    y = mod1_clean['AvalDay']
+    
+    # 1. Rimuovi feature correlate
+    features_correlated = remove_correlated_features(X, y)
+    X_new = X.drop(columns=features_correlated)
+    
+    # 3. RandomUnderSampler sul training set
+    X_train_res, y_train_res = undersampling_random(X_new, y)
+    
+    # 2. Split
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_train_res, y_train_res, test_size=0.25, random_state=42)
 
     common_indices=X_train.index.intersection(X_test.index)
 
-    # # scaler = StandardScaler()
-    # scaler = MinMaxScaler()
-    # X_train_scaled = scaler.fit_transform(X_train)
-    # X_test_scaled = scaler.transform(X_test)
+    # scaler = StandardScaler()
+    scaler = MinMaxScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
 
-    # X_train_scaled = pd.DataFrame(
-    #     X_train_scaled, columns=X_train.columns, index=X_train.index)
-    # X_test_scaled = pd.DataFrame(
-    #     X_test_scaled, columns=X_test.columns, index=X_test.index)
+    result_SVM_SHAP=tune_train_evaluate_svm(
+        X_train_scaled, y_train, X_test_scaled, y_test, param_grid, resampling_method='Cluster Centroids')
 
-    result_SVM=tune_train_evaluate_svm(
-        X_train, y_train, X_test, y_test, param_grid, resampling_method='Cluster Centroids')
-
-    classifier_SVM, evaluation_metrics_SVM=train_evaluate_final_svm(
-        X_train, y_train, X_test, y_test, result_SVM['best_params'])
+    classifier_SVM_SHAP, evaluation_metrics_SVM_SHAP=train_evaluate_final_svm(
+       X_train_scaled, y_train, X_test_scaled, y_test,  result_SVM_SHAP['best_params'])
 
     # 3. SHAP + LDA
 
     # Apply LDA for dimensionality reduction
     lda=LDA(n_components=1)
 
-    X_train_lda=lda.fit_transform(X_train, y_train)
-    X_test_lda=lda.transform(X_test)
+    X_train_lda=lda.fit_transform(X_train_scaled, y_train)
+    X_test_lda=lda.transform(X_test_scaled)
 
     # Convert back to DataFrame for compatibility
     X_train_lda=pd.DataFrame(X_train_lda, index=X_train.index)
     X_test_lda=pd.DataFrame(X_test_lda, index=X_test.index)
 
     # Train and evaluate SVM on LDA-transformed features
-    result_SVM_LDA=tune_train_evaluate_svm(
+    result_SVM_LDA_SHAP=tune_train_evaluate_svm(
         X_train_lda, y_train, X_test_lda, y_test, param_grid, resampling_method='Cluster Centroids')
 
-    classifier_SVM_LDA, evaluation_metrics_SVM_LDA=train_evaluate_final_svm(
-        X_train_lda, y_train, X_test_lda, y_test, result_SVM_LDA['best_params'])
+    classifier_SVM_LDA_SHAP, evaluation_metrics_SVM_LDA_SHAP=train_evaluate_final_svm(
+        X_train_lda, y_train, X_test_lda, y_test, result_SVM_LDA_SHAP['best_params'])
+    
+    summary_table = pd.DataFrame([
+        {
+            'Method': 'SHAP',
+            'N.Feature': 20,
+            'C': result_SVM_SHAP['best_params']['C'],
+            'gamma': result_SVM_SHAP['best_params']['gamma'],
+            'F1-score': evaluation_metrics_SVM_SHAP['f1'],
+            'MCC': evaluation_metrics_SVM_SHAP['MCC'],
+            'Precision': evaluation_metrics_SVM_SHAP['precision'],
+            'Recall': evaluation_metrics_SVM_SHAP['recall'],
+            'Accuracy': evaluation_metrics_SVM_SHAP['accuracy']
+        },
+        {
+            'Method': 'All features',
+            'N.Feature': 39,
+            'C': result_SVM_full['best_params']['C'],
+            'gamma': result_SVM_full['best_params']['gamma'],
+            'F1-score': evaluation_metrics_SVM_full['f1'],
+            'MCC': evaluation_metrics_SVM_full['MCC'],
+            'Precision': evaluation_metrics_SVM_full['precision'],
+            'Recall': evaluation_metrics_SVM_full['recall'],
+            'Accuracy': evaluation_metrics_SVM_full['accuracy']
+        },
+        {
+            'Method': 'SHAP + LDA',
+            'N.Feature': 1,
+            'C': result_SVM_LDA_SHAP['best_params']['C'],
+            'gamma': result_SVM_LDA_SHAP['best_params']['gamma'],
+            'F1-score': evaluation_metrics_SVM_LDA_SHAP['f1'],
+            'MCC': evaluation_metrics_SVM_LDA_SHAP['MCC'],
+            'Precision': evaluation_metrics_SVM_LDA_SHAP['precision'],
+            'Recall': evaluation_metrics_SVM_LDA_SHAP['recall'],
+            'Accuracy': evaluation_metrics_SVM_LDA_SHAP['accuracy']
+        },
+        {
+            'Method': 'All features + LDA',
+            'N.Feature': 1,
+            'C': result_SVM_LDA_full['best_params']['C'],
+            'gamma': result_SVM_LDA_full['best_params']['gamma'],
+            'F1-score': evaluation_metrics_SVM_LDA_full['f1'],
+            'MCC': evaluation_metrics_SVM_LDA_full['MCC'],
+            'Precision': evaluation_metrics_SVM_LDA_full['precision'],
+            'Recall': evaluation_metrics_SVM_LDA_full['recall'],
+            'Accuracy': evaluation_metrics_SVM_LDA_full['accuracy']
+        }
+    ])
+    
+    # Visualizza la tabella
+    print(summary_table)
 
     # ---------------------------------------------------------------
     # --- E) COMPARE FEATURE SELECTIONS ---
     # ---------------------------------------------------------------
 
-    FULL=feature_set
+    FULL = ['TaG', 'TminG', 'TmaxG', 'HSnum',
+                'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason',
+                'HS_delta_1d', 'HS_delta_2d',
+                'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
+                'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
+                'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
+                'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
+                'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
+                'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
+                'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean',
+                'Precip_1d', 'Precip_2d', 'Precip_3d', 'Precip_5d',
+                'TempGrad_HS', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
+                'Tsnow_delta_5d']
+    
     res_FULL=evaluate_svm_with_feature_selection(mod1, FULL)
 
-    ANOVA=['HSnum', 'TH01G', 'DayOfSeason', 'HS_delta_1d', 'Tmin_2d', 'TaG_delta_5d', 'TminG_delta_5d', 'TmaxG_delta_2d', 'TmaxG_delta_3d', 'TmaxG_delta_5d',
-             'T_mean', 'DegreeDays_Pos', 'Precip_2d', 'Precip_3d', 'Precip_5d', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'SnowConditionIndex']
+    ANOVA = ['HSnum', 'TH01G', 'TH03G', 'HS_delta_1d', 'TminG_delta_5d',
+             'TmaxG_delta_5d', 'Precip_2d', 'Precip_3d',
+             'Precip_5d', 'TempGrad_HS']  # 10 features
+   
     res_ANOVA=evaluate_svm_with_feature_selection(mod1, ANOVA)
 
-    BFE=['TaG', 'HNnum', 'TH01G', 'DayOfSeason', 'HS_delta_1d', 'HS_delta_3d',
-           'HS_delta_5d', 'DaysSinceLastSnow', 'TempAmplitude_1d',
-           'TempAmplitude_2d', 'TempAmplitude_3d', 'TempAmplitude_5d',
-           'TaG_delta_1d', 'TaG_delta_2d', 'TaG_delta_3d', 'TaG_delta_5d',
-           'TminG_delta_1d', 'TminG_delta_2d', 'TminG_delta_3d', 'TminG_delta_5d',
-           'TmaxG_delta_1d', 'TmaxG_delta_2d', 'TmaxG_delta_3d', 'TmaxG_delta_5d',
-           'T_mean', 'DegreeDays_Pos', 'Precip_1d', 'WetSnow_CS', 'TH10_tanh',
-           'TH30_tanh', 'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d',
-           'Tsnow_delta_5d', 'ConsecWetSnowDays', 'ConsecCrustDays']
+    BFE = ['HSnum', 'TH03G', 'HS_delta_1d', 'HS_delta_5d', 'TempAmplitude_2d',
+           'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_3d', 'TmaxG_delta_5d',
+           'Precip_3d', 'Tsnow_delta_3d']  # 11 features
     res_BFE=evaluate_svm_with_feature_selection(mod1, BFE)
 
-    FFS=['HS_delta_3d', 'HS_delta_5d', 'DaysSinceLastSnow', 'TempAmplitude_1d',
-           'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d', 'TaG_delta_3d',
-           'TaG_delta_5d', 'TminG_delta_2d', 'TminG_delta_3d', 'TmaxG_delta_3d',
-           'TmaxG_delta_5d', 'DegreeDays_Pos', 'Precip_3d', 'Precip_5d',
-           'WetSnow_CS', 'WetSnow_Temperature', 'TempGrad_HS', 'TH10_tanh',
-           'Tsnow_delta_1d', 'Tsnow_delta_2d', 'Tsnow_delta_3d', 'Tsnow_delta_5d',
-           'MF_Crust_Present', 'New_MF_Crust', 'ConsecCrustDays']
+    FFS = ['TaG', 'HSnum', 'HS_delta_2d', 'HS_delta_3d', 'DaysSinceLastSnow',
+           'Tmin_2d', 'TempAmplitude_1d', 'TempAmplitude_2d', 'TempAmplitude_3d',
+           'TaG_delta_2d', 'TaG_delta_3d', 'TminG_delta_1d', 'TminG_delta_2d',
+           'TminG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'Precip_1d', 'Precip_2d',
+           'Precip_3d', 'TempGrad_HS',
+           'Tsnow_delta_2d', 'Tsnow_delta_5d']  # 22 features
     res_FFS=evaluate_svm_with_feature_selection(mod1, FFS)
 
-    RFE=['TaG', 'New_MF_Crust', 'TaG_delta_5d', 'TH10_tanh', 'TH30_tanh',
-           'TmaxG_delta_2d', 'TempAmplitude_5d', 'TempAmplitude_3d', 'Tsnow_delta_1d',
-           'TempAmplitude_1d', 'TminG_delta_5d', 'TmaxG_delta_3d', 'HS_delta_5d',
-           'HS_delta_3d', 'Tsnow_delta_3d', 'HS_delta_1d', 'DayOfSeason', 'PR',
-           'Penetration_ratio', 'Precip_2d', 'HSnum', 'WetSnow_Temperature',
-           'TminG_delta_3d']
-    res_RFE=evaluate_svm_with_feature_selection(mod1, RFE)
+    RFECV = ['HSnum', 'TH01G', 'PR', 'HS_delta_1d', 'HS_delta_5d',
+             'TminG_delta_3d', 'TminG_delta_5d', 
+             'TmaxG_delta_3d', 'Precip_3d']  # 8 features
+    res_RFE=evaluate_svm_with_feature_selection(mod1, RFECV)
 
-    Permutation_ranking=['AvalDay_2d',
-                           'TH10_tanh',
-                           'TH30_tanh',
-                           'DegreeDays_cumsum_2d',
-                           'TH01G',
-                           'PR',
-                           'HS_delta_2d',
-                           'DayOfSeason',
-                           'TmaxG_delta_1d',
-                           'TaG',
-                           'ConsecWetSnowDays',
-                           'HS_delta_1d',
-                           'Precip_2d',
-                           'TempAmplitude_1d',
-                           'TminG_delta_1d',
-                           'Tmin_3d',
-                           'T_mean',
-                           'TminG_delta_2d',
-                           'TmaxG_delta_5d',
-                           'TminG_delta_5d',
-                           'TempAmplitude_2d',
-                           'HS_delta_3d',
-                           'TaG_delta_2d',
-                           'TaG_delta_1d',
-                           'Precip_5d',
-                           'Tsnow_delta_5d',
-                           'TempAmplitude_5d',
-                           'Tsnow_delta_2d',
-                           'TminG_delta_3d',
-                           'TempAmplitude_3d',
-                           'TmaxG_delta_2d',
-                           'HS_delta_5d',
-                           'Tsnow_delta_3d',
-                           'Precip_3d',
-                           'TaG_delta_5d',
-                           'Precip_1d',
-                           'Tsnow_delta_1d']
+   PERMUTATION_RANKING = ['HSnum', 'HS_delta_5d', 'Tsnow_delta_3d', 
+                          'HS_delta_2d', 'PR', 'HS_delta_1d', 'TminG_delta_3d',
+                          'TmaxG_delta_5d', 'DayOfSeason', 'TmaxG_delta_3d', 
+                          'TmaxG_delta_2d', 'TH01G', 'Precip_3d']  # 13 features
 
-    res_PR=evaluate_svm_with_feature_selection(mod1, Permutation_ranking)
+    res_PR=evaluate_svm_with_feature_selection(mod1, PERMUTATION_RANKING)
 
-    SHAP_16=['TaG_delta_5d',
-               'TminG_delta_3d',
-               'HS_delta_5d',
-               'WetSnow_Temperature',
-               'New_MF_Crust',
-               'Precip_3d',
-               'Precip_2d',
-               'TempGrad_HS',
-               'Tsnow_delta_3d',
-               'TmaxG_delta_3d',
-               'HSnum',
-               'TempAmplitude_2d',
-               'WetSnow_CS',
-               'TaG',
-               'Tsnow_delta_2d',
-               'DayOfSeason']
+    SHAP = ['HSnum', 'TH01G', 'PR', 'DayOfSeason', 'TmaxG_delta_5d',
+            'HS_delta_5d', 'TH03G', 'HS_delta_1d', 'TmaxG_delta_3d',
+            'Precip_3d', 'TempGrad_HS', 'HS_delta_2d', 'TmaxG_delta_2d',
+            'TminG_delta_5d', 'TminG_delta_3d', 'Tsnow_delta_3d',
+            'TaG_delta_5d', 'Tsnow_delta_1d',
+            'TmaxG_delta_1d', 'Precip_2d']  # 20 features
 
-    res_SHAP=evaluate_svm_with_feature_selection(mod1, SHAP_16)
+    res_SHAP=evaluate_svm_with_feature_selection(mod1, SHAP)
 
     results_dict={
         'All features': res_FULL,
@@ -1229,7 +1249,7 @@ summary_results = []
         'SHAP': res_SHAP
     }
 
-   # Step 1: Create DataFrame from results_dict
+    # Step 1: Create DataFrame from results_dict
     results_df=pd.DataFrame.from_dict(results_dict, orient='index')
 
     # Step 2: Set correct column names (3 columns)
@@ -1265,5 +1285,5 @@ summary_results = []
     # Final output
     print(df_expanded)
 
-    outpath=results_path / 'df_expanded.csv'
+    outpath=results_path / 'df_expanded_NEW.csv'
     df_expanded.to_csv(outpath, index=False)

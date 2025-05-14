@@ -16,7 +16,6 @@ from scripts.svm.undersampling_methods import (undersampling_random, undersampli
                                                undersampling_cnn, undersampling_enn, undersampling_clustercentroids, undersampling_tomeklinks, undersampling_clustercentroids_v2)
 from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
 from scripts.svm.utils import get_adjacent_values, save_outputfile, remove_correlated_features
-from scripts.svm.svm_training import train_evaluate_final_svm
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.metrics import make_scorer, matthews_corrcoef
 from scripts.svm.feature_engineering import transform_features
@@ -186,28 +185,43 @@ def permutation_ranking(classifier, X, y, scoring='f1_macro', importance_thresho
         'Importance_Std': perm_importance.importances_std[sorted_idx]
     })
 
-    # Filtro per soglia (importance_threshold)
+    feature_importance_df['Cumulative'] = feature_importance_df['Importance_Mean'].cumsum(
+    )
+    feature_importance_df['Cumulative'] /= feature_importance_df['Importance_Mean'].sum()
+
     important_features = feature_importance_df[
-        feature_importance_df['Importance_Mean'] >= importance_threshold
+        feature_importance_df['Cumulative'] <= 0.95
     ]['Feature'].tolist()
+
+    importance_threshold_95 = feature_importance_df[
+        feature_importance_df['Cumulative'] <= 0.95
+    ]['Importance_Mean'].min()
+
+    # # Filtro per soglia (importance_threshold)
+    # important_features = feature_importance_df[
+    #     feature_importance_df['Importance_Mean'] >= importance_threshold
+    # ]['Feature'].tolist()
+
+    # Preparazione colori (blu per positivo, rosso per negativo)
+    colors = ['skyblue' if val >= importance_threshold_95 else 'salmon'
+              for val in feature_importance_df['Importance_Mean'][::-1]]
 
     # Visualizzazione
     plt.figure(figsize=(10, 16))
     plt.barh(
         range(len(sorted_idx)),
-        perm_importance.importances_mean[sorted_idx][::-1],
-        xerr=perm_importance.importances_std[sorted_idx][::-1],
+        feature_importance_df['Importance_Mean'][::-1],
         align='center',
         capsize=5,
-        color='skyblue'
+        color=colors
     )
-    plt.yticks(range(len(sorted_idx)), X.columns[sorted_idx][::-1])
-    plt.axvline(x=importance_threshold, color='red', linestyle='--',
-                label=f'Threshold = {importance_threshold}')
-    plt.title(f"Feature Importance (Permutation - {score_label})")
+    plt.yticks(range(len(sorted_idx)), feature_importance_df['Feature'][::-1])
+    plt.axvline(x=importance_threshold_95, color='grey', linestyle='--',
+                label=f'Threshold 95% = {importance_threshold_95:.4f}')
+    plt.title(f"Feature Importance (Permutation - F1-score)")
     plt.xlabel("Mean Decrease in Score")
     plt.tight_layout()
-    plt.legend(loc="best")
+    plt.legend(loc="lower right")
     plt.show()
 
     # Restituire sia il DataFrame con importanze che le feature sopra la soglia
@@ -242,19 +256,36 @@ def evaluate_svm_with_feature_selection(data, feature_list):
         - 'best_params': Best C and gamma values from the final cross-validation.
     """
     from scripts.svm.svm_training import tune_train_evaluate_svm
-    # feature_plus = feature_set + ['AvalDay']
+    from scripts.svm.svm_training import train_evaluate_final_svm
+
+    # 0. Prepara i dati
     available_features = [col for col in feature_list if col in data.columns]
     feature_plus = available_features + ['AvalDay']
-
-    data_clean = data[feature_plus]
-    data_clean = data_clean.dropna()
+    data_clean = data[feature_plus].dropna()
 
     X = data_clean.drop(columns=['AvalDay'])
     y = data_clean['AvalDay']
 
-    features_to_remove = remove_correlated_features(X, y)
+    # 1. Rimuovi feature correlate
+    features_correlated = remove_correlated_features(X, y)
+    X_new = X.drop(columns=features_correlated)
 
-    X = X.drop(columns=features_to_remove)
+    # 2.  RandomUnderSampler su TUTTO il set dati --> se no CM sbilanciata
+    X_train_res, y_train_res = undersampling_random(X_new, y)
+
+    # 3. Split stratificato
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_train_res, y_train_res, test_size=0.25, random_state=42)
+
+    # 4. Scaling: fit su train, transform su test
+    scaler = MinMaxScaler()
+    # Scale the training data
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_train_scaled_df = pd.DataFrame(X_train_scaled, columns=X_train.columns)
+
+    # Scale the test data (using the same scaler)
+    X_test_scaled = scaler.transform(X_test)
+    X_test_scaled_df = pd.DataFrame(X_test_scaled, columns=X_train.columns)
 
     param_grid = {
         'C': [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
@@ -270,24 +301,24 @@ def evaluate_svm_with_feature_selection(data, feature_list):
                   1, 2, 3, 4, 5, 6, 7, 8, 9,
                   10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
 
-    X_resampled, y_resampled = undersampling_random(X, y)
+    # X_resampled, y_resampled = undersampling_random(X, y)
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_resampled, y_resampled, test_size=0.25, random_state=42)
+    # X_train, X_test, y_train, y_test = train_test_split(
+    #     X_resampled, y_resampled, test_size=0.25, random_state=42)
 
-    scaler = MinMaxScaler()
-    X_train = pd.DataFrame(scaler.fit_transform(
-        X_train), columns=X_train.columns, index=X_train.index)
-    X_test = pd.DataFrame(scaler.transform(
-        X_test), columns=X_test.columns, index=X_test.index)
+    # scaler = MinMaxScaler()
+    # X_train = pd.DataFrame(scaler.fit_transform(
+    #     X_train), columns=X_train.columns, index=X_train.index)
+    # X_test = pd.DataFrame(scaler.transform(
+    #     X_test), columns=X_test.columns, index=X_test.index)
 
     result = tune_train_evaluate_svm(
-        X_train, y_train, X_test, y_test, param_grid,
+        X_train_scaled, y_train, X_test_scaled, y_test, param_grid,
         resampling_method='Random undersampling')
 
     # Step 6: Train the final model with the best hyperparameters and evaluate it
     classifier, evaluation_metrics = train_evaluate_final_svm(
-        X_train, y_train, X_test, y_test, result['best_params']
+        X_train_scaled, y_train, X_test_scaled, y_test, result['best_params']
     )
 
     return feature_list, classifier, evaluation_metrics

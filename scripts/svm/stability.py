@@ -80,54 +80,41 @@ if __name__ == '__main__':
     # -------------------------------------------------------
     # STABILITY VARYING C AND GAMMA
     # -------------------------------------------------------
-    SHAP_16 = ['TaG_delta_5d',
-               'TminG_delta_3d',
-               'HS_delta_5d',
-               'WetSnow_Temperature',
-               'New_MF_Crust',
-               'Precip_3d',
-               'Precip_2d',
-               'TempGrad_HS',
-               'Tsnow_delta_3d',
-               'TmaxG_delta_3d',
-               'HSnum',
-               'TempAmplitude_2d',
-               'WetSnow_CS',
-               'TaG',
-               'Tsnow_delta_2d',
-               'DayOfSeason']
-    res_shap16 = evaluate_svm_with_feature_selection(mod1, SHAP_16)
+    SHAP = ['HSnum', 'TH01G', 'PR', 'DayOfSeason', 'TmaxG_delta_5d',
+            'HS_delta_5d', 'TH03G', 'HS_delta_1d', 'TmaxG_delta_3d',
+            'Precip_3d', 'TempGrad_HS', 'HS_delta_2d', 'TmaxG_delta_2d',
+            'TminG_delta_5d', 'TminG_delta_3d', 'Tsnow_delta_3d',
+            'TaG_delta_5d', 'Tsnow_delta_1d',
+            'TmaxG_delta_1d', 'Precip_2d']  # 20 features
+
+    res_shap = evaluate_svm_with_feature_selection(mod1, SHAP)
 
     # -------------------------------------------------------
     # OPTIMIZATION OF PARAMERTER C
     # -------------------------------------------------------
 
     # --- Load Best Hyperparameters from Previous Optimization ---
-    best_C = res_shap16[2]['best_params']['C']
-    best_gamma = res_shap16[2]['best_params']['gamma']
+    best_C = res_shap[2]['best_params']['C']
+    best_gamma = res_shap[2]['best_params']['gamma']
 
     # --- Feature Preparation ---
-    feature_plus = SHAP_16 + ['AvalDay']
+    feature_plus = SHAP + ['AvalDay']
     mod1_clean = mod1[feature_plus].dropna()
-    X = mod1_clean[SHAP_16]
+
+    X = mod1_clean.drop(columns=['AvalDay'])
     y = mod1_clean['AvalDay']
 
-    # --- Apply Undersampling ---
-    X_resampled, y_resampled = undersampling_clustercentroids(X, y)
+    # 3. RandomUnderSampler sul training set
+    X_train_res, y_train_res = undersampling_random(X, y)
 
-    # --- Train-Test Split ---
+    # 2. Split
     X_train, X_test, y_train, y_test = train_test_split(
-        X_resampled, y_resampled, test_size=0.25, random_state=42
-    )
+        X_train_res, y_train_res, test_size=0.25, random_state=42)
 
-    # --- Feature Scaling ---
+    # scaler = StandardScaler()
     scaler = MinMaxScaler()
-    X_train_scaled = pd.DataFrame(
-        scaler.fit_transform(X_train), columns=X_train.columns, index=X_train.index
-    )
-    X_test_scaled = pd.DataFrame(
-        scaler.transform(X_test), columns=X_test.columns, index=X_test.index
-    )
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
 
     # -------------------------------------------------------
     # STABILITY USING BOOTSTRAP
@@ -137,13 +124,15 @@ if __name__ == '__main__':
 
     from sklearn.utils import resample
 
-    best_C = res_shap16[2]['best_params']['C']
-    best_gamma = res_shap16[2]['best_params']['gamma']
+    best_C = res_shap[2]['best_params']['C']
+    best_gamma = res_shap[2]['best_params']['gamma']
 
     print(f'Best paramter from GridSearch: C = {best_C}, gamma = {best_gamma}')
 
-    C_values = np.linspace(500, 1000, 51)     # 7 valori
-    gamma_values = np.linspace(0.06, 0.10, 21)  # 5 valori
+    # C_values = np.linspace(0.1, 10, 51)     # 50 valori
+    C_values = np.arange(0.2, 10.1, 0.2)
+    # gamma_values = np.linspace(0.06, 0.10, 21)  # 20 valori
+    gamma_values = np.arange(0.02, 1.01, 0.02)  # 5 valori
     # [0.04, 0.06, 0.08, 0.10, 0.12]
 
     n_iterations = 50
