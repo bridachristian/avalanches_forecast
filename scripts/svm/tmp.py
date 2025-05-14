@@ -39,7 +39,9 @@ SHAP = ['HSnum', 'TH01G', 'PR', 'DayOfSeason', 'TmaxG_delta_5d',
         'TaG_delta_5d', 'Tsnow_delta_1d', 'TmaxG_delta_1d', 'Precip_2d']
 
 
-BFE = []
+BFE = ['HSnum', 'TH03G', 'HS_delta_1d', 'HS_delta_5d', 'TempAmplitude_2d',
+       'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_3d', 'TmaxG_delta_5d',
+       'Precip_3d', 'Tsnow_delta_3d']
 
 FFS = []
 

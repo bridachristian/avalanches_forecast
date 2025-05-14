@@ -101,7 +101,7 @@ if __name__ == '__main__':
     #                 'Tsnow_delta_2d',
     #                 'DayOfSeason']
     res_shap16 = evaluate_svm_with_feature_selection(mod1, feature_list)
-    res_shap16 = evaluate_svm_with_feature_selection(mod1, SHAP)
+    res_shap16 = evaluate_svm_with_feature_selection(mod1, BFE)
 
     available_features = [col for col in feature_list if col in mod1.columns]
     feature_plus = available_features + ['AvalDay']

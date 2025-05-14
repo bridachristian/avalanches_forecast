@@ -30,8 +30,7 @@ from scripts.svm.oversampling_methods import (oversampling_random,
                                               oversampling_smote,
                                               oversampling_adasyn,
                                               oversampling_svmsmote)
-from scripts.svm.svm_training import (cross_validate_svm,
-                                      tune_train_evaluate_svm,
+from scripts.svm.svm_training import (tune_train_evaluate_svm,
                                       train_evaluate_final_svm)
 from scripts.svm.evaluation import (plot_learning_curve,
                                     plot_confusion_matrix,
@@ -663,32 +662,39 @@ summary_results = []
     X_new = X.drop(columns=features_correlated)
     
     # 3. RandomUnderSampler sul training set
-    rus = RandomUnderSampler(random_state=42)
-    X_train_res, y_train_res = rus.fit_resample(X_new, y)
-    
+    X_train_res, y_train_res = undersampling_random(X_new, y)
     
     # 2. Split
     X_train, X_test, y_train, y_test = train_test_split(
         X_train_res, y_train_res, test_size=0.25, random_state=42)
     
- 
+
     # 4. Scaling: fit su train, transform su test
     scaler = MinMaxScaler()
+    # Scale the training data
     X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)  # Utile per valutazioni future
+    # Convert the scaled data into a pandas DataFrame and assign column names
+    X_train_scaled_df = pd.DataFrame(X_train_scaled, columns=X_train.columns)
+
+    # Scale the test data (using the same scaler)
+    X_test_scaled = scaler.transform(X_test)
+    # Convert the scaled test data into a pandas DataFrame and assign column names
+    X_test_scaled_df = pd.DataFrame(X_test_scaled, columns=X_train.columns)
+    # resampling_method = 'ClusterCentroids'
+    resampling_method = 'RandomUndersampling'
     
-    # # 5. Parametri per GridSearch
-    # param_grid_short = {
-    #     'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
-    #     'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
-    # }
+    # 5. Parametri per GridSearch
+    param_grid_short = {
+        'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
+        'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
+    }
     
     # 6. SVM con GridSearchCV (fuori dalla pipeline)
     svm_model = SVC(kernel='rbf')
     
     grid_search = GridSearchCV(
         estimator=svm_model,
-        param_grid=param_grid,
+        param_grid=param_grid_short,
         scoring='f1_macro',
         cv=5,
         n_jobs=-1
@@ -702,7 +708,8 @@ summary_results = []
         floating=False,
         cv=5,
         scoring='f1_macro',
-        n_jobs=-1
+        n_jobs=-1,
+        verbose=2 
     )
     
     # 8. Fit SFS su training set bilanciato e scalato
@@ -716,7 +723,7 @@ summary_results = []
     print(selected_feature_names)
     # Retrieve information about subsets
     subsets_BW=sfs_BW.subsets_
-    subsets_BW_df=pd.DataFrame(subsets_BW)
+    subsets_BW_df=pd.DataFrame(subsets_BW).T
     results_path=Path(
         'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\0X_FEATURE_SELECTION\\BACKWARD_FEATURE_ELIMINATION\\')
     
@@ -753,115 +760,11 @@ summary_results = []
     plt.title("Feature Subset Performance - Backward feature elimination")
     plt.grid(True)
     plt.show()
-
-    # # ---------------------------------------------------------------
-    # # --- d) FEATURE SELECTION USING BACKWARD FEATURE ELIMINATION  OLD     ---
-    # # ---------------------------------------------------------------
-    # # feature_plus = feature_set + ['AvalDay']
-    # available_features = [col for col in feature_set if col in mod1.columns]
-    # feature_plus = available_features + ['AvalDay']
-
-    # mod1_clean = mod1[feature_plus]
-    # mod1_clean = mod1_clean.dropna()
-
-    # X = mod1_clean.drop(columns=['AvalDay'])
-    # y = mod1_clean['AvalDay']
-
-    # # Remove correlated features
-    # features_correlated=remove_correlated_features(X, y)
-    # X_new=X.drop(columns=features_correlated)
     
-    # X_train, X_test, y_train, y_test = train_test_split(
-    #     X_new, y, test_size=0.25, random_state=42)
-
-    # param_grid_short={
-    #     'svc__C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
-    #     'svc__gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
-    # }
-    
-    # # Create a pipeline with undersampling and SVC
-    # pipeline=Pipeline([
-    #     # ('undersample', NearMiss(version=3, n_neighbors=10)),  # Apply NearMiss
-    #     # ('undersample', ClusterCentroids(random_state=42)),  # Apply CC
-    #     ('undersample',  RandomUnderSampler(random_state=42)),  # 1. Apply RUS
-    #     ('scaler', MinMaxScaler()),                             # 2. Scaling
-    #     ('svc', svm.SVC(kernel='rbf'))                          # 3. SVM
-    # ])
-
-    # # Use GridSearchCV to tune hyperparameters during SFS
-    # grid_search=GridSearchCV(
-    #     estimator=pipeline,
-    #     param_grid=param_grid_short,
-    #     scoring='f1_macro',
-    #     cv=5,
-    #     n_jobs=6
-    # )
-
-    # # Perform Sequential Feature Selection (SFS)
-    # sfs_BW=SFS(
-    #     estimator=grid_search,
-    #     # k_features=10,          # Select the top 10 features
-    #     # Explore all possible subset sizes
-    #     k_features=(1, X_new.shape[1]),
-    #     forward=False,         # Forward selection
-    #     floating=False,        # Disable floating step
-    #     cv=5,                  # 5-fold cross-validation
-    #     scoring='f1_macro',    # Use F1 macro as the scoring metric
-    #     n_jobs=6              # Use all available CPU cores
-    # )
-
-    # # Fit SFS to the data
-    # # sfs_BW.fit(X_resampled, y_resampled)
-    # sfs_BW.fit(X_new, y)
- 
-    # # Retrieve the names of the selected features
-    # if isinstance(X_new, pd.DataFrame):
-    #     selected_feature_names_BW=[X_new.columns[i]
-    #                                  for i in sfs_BW.k_feature_idx_]
-    # else:
-    #     selected_feature_names_BW=list(sfs_BW.k_feature_idx_)
-
-    # print("Selected Features:", selected_feature_names_BW)
-
-    # # Retrieve information about subsets
-    # subsets_BW=sfs_BW.subsets_
-    # subsets_BW_df=pd.DataFrame(subsets_BW)
-    # results_path=Path(
-    #     'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\0X_FEATURE_SELECTION\\BACKWARD_FEATURE_ELIMINATION\\')
-
-    # save_outputfile(subsets_BW_df, results_path /
-    #                 'BFE_feature_selection_CC.csv')
-
-    # # Extract the best subset
-    # best_subset_BW=max(subsets_BW.items(), key=lambda x: x[1]['avg_score'])
-
-    # # Retrieve the indices and names of the best features
-    # best_feature_indices_BW=best_subset_BW[1]['feature_idx']
-    # if isinstance(X_new, pd.DataFrame):
-    #     best_feature_names_BW=[X_new.columns[i]
-    #                              for i in best_feature_indices_BW]
-    # else:
-    #     best_feature_names_BW=list(best_feature_indices_BW)
-
-    # # Print the results
-    # print(f"Best Feature Subset Size: {len(best_feature_names_BW)}")
-    # print(f"Best Features: {best_feature_names_BW}")
-    # print(f"Best Average Score (F1 Macro): {best_subset_BW[1]['avg_score']}")
-
-    # # Extract data for visualization
-    # subset_sizes_BW=[len(subset_BW['feature_idx'])
-    #                    for subset_BW in subsets_BW.values()]
-    # avg_scores_BW=[subset_BW['avg_score']
-    #                  for subset_BW in subsets_BW.values()]
-
-    # # Plot
-    # plt.figure(figsize=(10, 6))
-    # plt.plot(subset_sizes_BW, avg_scores_BW, marker='o')
-    # plt.xlabel("Number of Selected Features")
-    # plt.ylabel("Average F1 Macro Score")
-    # plt.title("Feature Subset Performance - Backward feature elimination")
-    # plt.grid(True)
-    # plt.show()
+    selected_11_indices =(1, 4, 7, 10, 14, 23, 24, 27, 28, 32, 37)
+    selected_11_features = [X_train_scaled_df.columns[i] for i in selected_11_indices]
+    print(selected_11_features)
+   
     # ---------------------------------------------------------------
     # --- d) FEATURE SELECTION USING FORWARD FEATURE SELECTION      ---
     # ---------------------------------------------------------------
@@ -878,32 +781,39 @@ summary_results = []
     X_new = X.drop(columns=features_correlated)
     
     # 3. RandomUnderSampler sul training set
-    rus = RandomUnderSampler(random_state=42)
-    X_train_res, y_train_res = rus.fit_resample(X_train, y_train)
+    X_train_res, y_train_res = undersampling_random(X_new, y)
     
-    # 2. Split stratificato
+    # 2. Split
     X_train, X_test, y_train, y_test = train_test_split(
-        X_train_res, y_train_res, test_size=0.25, random_state=42, stratify=y
-    )
+        X_train_res, y_train_res, test_size=0.25, random_state=42)
     
 
     # 4. Scaling: fit su train, transform su test
     scaler = MinMaxScaler()
+    # Scale the training data
     X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)  # Utile per valutazioni future
+    # Convert the scaled data into a pandas DataFrame and assign column names
+    X_train_scaled_df = pd.DataFrame(X_train_scaled, columns=X_train.columns)
+
+    # Scale the test data (using the same scaler)
+    X_test_scaled = scaler.transform(X_test)
+    # Convert the scaled test data into a pandas DataFrame and assign column names
+    X_test_scaled_df = pd.DataFrame(X_test_scaled, columns=X_train.columns)
+    # resampling_method = 'ClusterCentroids'
+    resampling_method = 'RandomUndersampling'
     
-    # # 5. Parametri per GridSearch
-    # param_grid_short = {
-    #     'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
-    #     'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
-    # }
+    # 5. Parametri per GridSearch
+    param_grid_short = {
+        'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
+        'gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
+    }
     
     # 6. SVM con GridSearchCV (fuori dalla pipeline)
     svm_model = SVC(kernel='rbf')
     
     grid_search = GridSearchCV(
         estimator=svm_model,
-        param_grid=param_grid,
+        param_grid=param_grid_short,
         scoring='f1_macro',
         cv=5,
         n_jobs=-1
@@ -920,7 +830,8 @@ summary_results = []
         floating=False,        # Disable floating step
         cv=5,                  # 5-fold cross-validation
         scoring='f1_macro',    # Use F1 macro as the scoring metric
-        n_jobs=-1              # Use all available CPU cores
+        n_jobs=-1,              # Use all available CPU cores
+        verbose=2
     )
 
     # Fit SFS to the data
@@ -975,113 +886,6 @@ summary_results = []
     plt.title("Feature Subset Performance - Forward Selection")
     plt.grid(True)
     plt.show()
-    # # ---------------------------------------------------------------
-    # # --- e) FEATURE SELECTION USING FORWARD FEATURE SELECTION  OLD   ---
-    # # ---------------------------------------------------------------
-
-    # # feature_plus = feature_set + ['AvalDay']
-    # available_features = [col for col in feature_set if col in mod1.columns]
-    # feature_plus = available_features + ['AvalDay']
-    
-    # mod1_clean = mod1[feature_plus]
-    # mod1_clean = mod1_clean.dropna()
-    
-    # X = mod1_clean.drop(columns=['AvalDay'])
-    # y = mod1_clean['AvalDay']
-    
-    # # Remove correlated features
-    # features_correlated=remove_correlated_features(X, y)
-    # X_new=X.drop(columns=features_correlated)
-    
-    # param_grid_short={
-    #     'svc__C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
-    #     'svc__gamma': [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
-    # }
-    
-    # # Create a pipeline with undersampling and SVC
-    # pipeline=Pipeline([
-    #     # ('undersample', NearMiss(version=3, n_neighbors=10)),  # Apply NearMiss
-    #     # ('undersample', ClusterCentroids(random_state=42)),  # Apply CC
-    #     ('undersample',  RandomUnderSampler(random_state=42)),  # 1. Apply RUS
-    #     ('scaler', MinMaxScaler()),                             # 2. Scaling
-    #     ('svc', svm.SVC(kernel='rbf'))                          # 3. SVM
-    # ])
-
-    # # Use GridSearchCV to tune hyperparameters during SFS
-    # grid_search=GridSearchCV(
-    #     estimator=pipeline,
-    #     param_grid=param_grid_short,
-    #     scoring='f1_macro',
-    #     cv=5,
-    #     n_jobs=6
-    # )
-
-    # # Perform Sequential Feature Selection (SFS)
-    # sfs=SFS(
-    #     estimator=grid_search,
-    #     # k_features=10,          # Select the top 10 features
-    #     # Explore all possible subset sizes
-    #     k_features=(1, X_new.shape[1]),
-    #     # k_features=(1, 10),
-    #     forward=True,         # Forward selection
-    #     floating=False,        # Disable floating step
-    #     cv=5,                  # 5-fold cross-validation
-    #     scoring='f1_macro',    # Use F1 macro as the scoring metric
-    #     n_jobs=-1              # Use all available CPU cores
-    # )
-
-    # # Fit SFS to the data
-    # sfs.fit(X_new, y)
-
-    # # Retrieve the names of the selected features
-    # if isinstance(X_new, pd.DataFrame):
-    #     selected_feature_names_FW=[X_new.columns[i]
-    #                                  for i in sfs.k_feature_idx_]
-    # else:
-    #     selected_feature_names_FW=list(sfs.k_feature_idx_)
-
-    # print("Selected Features:", selected_feature_names_FW)
-
-    # # Retrieve information about subsets
-    # subsets_FW=sfs.subsets_
-    # subsets_FW_df=pd.DataFrame(subsets_FW)
-
-    # results_path=Path(
-    #     'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\0X_FEATURE_SELECTION\\FORWARD_FEATURE_SELECTION\\')
-
-    # save_outputfile(subsets_FW_df, results_path /
-    #                 'FFS_feature_selection_2.csv')
-
-    # # Extract the best subset
-    # best_subset_FW=max(subsets_FW.items(), key=lambda x: x[1]['avg_score'])
-
-    # # Retrieve the indices and names of the best features
-    # best_feature_indices_FW=best_subset_FW[1]['feature_idx']
-    # if isinstance(X_new, pd.DataFrame):
-    #     best_feature_names_FW=[X_new.columns[i]
-    #                              for i in best_feature_indices_FW]
-    # else:
-    #     best_feature_names_FW=list(best_feature_indices_FW)
-
-    # # Print the results
-    # print(f"Best Feature Subset Size: {len(best_feature_names_FW)}")
-    # print(f"Best Features: {best_feature_names_FW}")
-    # print(f"Best Average Score (F1 Macro): {best_subset_FW[1]['avg_score']}")
-
-    # # Extract data for visualization
-    # subset_sizes_FW=[len(subset_FW['feature_idx'])
-    #                    for subset_FW in subsets_FW.values()]
-    # avg_scores_FW=[subset_FW['avg_score']
-    #                  for subset_FW in subsets_FW.values()]
-
-    # # Plot
-    # plt.figure(figsize=(10, 6))
-    # plt.plot(subset_sizes_FW, avg_scores_FW, marker='o')
-    # plt.xlabel("Number of Selected Features")
-    # plt.ylabel("Average F1 Macro Score")
-    # plt.title("Feature Subset Performance - Forward Selection")
-    # plt.grid(True)
-    # plt.show()
 
     # ---------------------------------------------------------------
     # --- e) RECURSIVE FEATURE EXTRACTION: RFE  ---
