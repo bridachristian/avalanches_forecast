@@ -107,15 +107,20 @@ if __name__ == '__main__':
     # 3. RandomUnderSampler sul training set
     X_resampled, y_resampled = undersampling_random(X, y)
 
-    # # 2. Split
-    # X_train, X_test, y_train, y_test = train_test_split(
-    #     X_resampled, y_resampled, test_size=0.25, random_state=42)
+    # 2. Split
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_resampled, y_resampled, test_size=0.25, random_state=42)
 
-    # # scaler = StandardScaler()
-    # scaler = MinMaxScaler()
-    # X_train_scaled = scaler.fit_transform(X_train)
-    # X_test_scaled = scaler.transform(X_test)
+    # scaler = StandardScaler()
+    scaler = MinMaxScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
 
+    best_params = {'C': 100, 'gamma': 10}
+
+    train_evaluate_final_svm(
+        X_train_scaled, y_train, X_test_scaled, y_test,
+        best_params, display_plot=True)
     # -------------------------------------------------------
     # STABILITY USING BOOTSTRAP
     # -------------------------------------------------------
@@ -195,6 +200,8 @@ if __name__ == '__main__':
     df_summary = pd.DataFrame(results_summary)
     print("\n📊 Risultati sintetici (minima deviazione standard):")
     print(df_summary.sort_values(by=["f1_std", "mcc_std"]).head())
+
+    summarise = df_summary.describe()
 
     # # SCATTER PLOT OF MEAN AND STANDARD DEVIATION OF F1
     # plt.figure(figsize=(10, 6))
@@ -276,8 +283,6 @@ if __name__ == '__main__':
     # plt.tight_layout()
     # plt.show()
 
-    summarise = df_summary.describe()
-
     # CONTOUR PLOT STANDARD DEVIATION
     C_vals = sorted(df_summary['C'].unique())
     gamma_vals = sorted(df_summary['gamma'].unique())
@@ -289,40 +294,44 @@ if __name__ == '__main__':
     mcc_std_grid = df_summary.pivot(
         index="C", columns="gamma", values="mcc_std").values
 
-    fig, axes = plt.subplots(1, 2, figsize=(20, 8), sharex=True, sharey=True)
+# fig, axes = plt.subplots(1, 2, figsize=(20, 8), sharex=True, sharey=True)
 
-    # Colormaps chosen to emphasize low std dev
-    f1_cmap = plt.cm.Blues  # reversed to make low std darker
-    mcc_cmap = plt.cm.Oranges     # reversed to highlight low std
+# # Colormaps chosen to emphasize low std dev
+# f1_cmap = plt.cm.magma_r  # low std = dark
+# mcc_cmap = plt.cm.cividis_r
 
-    # F1 Std Dev plot
-    cf1 = axes[0].contourf(gamma_grid, C_grid, f1_std_grid,
-                           levels=30, cmap=f1_cmap)
-    cbar1 = fig.colorbar(cf1, ax=axes[0])
-    axes[0].set_title("F1 Std Dev (Bootstrap)", fontsize=16)
-    axes[0].set_xlabel("Gamma")
-    axes[0].set_ylabel("C")
-    axes[0].plot(best_gamma, best_C, marker='o', color='red',
-                 markersize=10, label='Best (C, γ)')
-    axes[0].legend()
-    axes[0].contour(gamma_grid, C_grid, f1_std_grid,
-                    levels=10, colors='black', linewidths=0.5)
+# # F1 Std Dev plot
+# cf1 = axes[0].contourf(gamma_grid, C_grid, f1_std_grid, levels=30, cmap=f1_cmap)
+# cbar1 = fig.colorbar(cf1, ax=axes[0])
+# axes[0].set_title("F1 Std Dev (Bootstrap)", fontsize=16)
+# axes[0].set_xlabel("Gamma")
+# axes[0].set_ylabel("C")
+# axes[0].plot(best_gamma, best_C, marker='o', color='red',
+#              markersize=10, label='Best (C, γ)')
+# axes[0].legend()
+# axes[0].contour(gamma_grid, C_grid, f1_std_grid, levels=10, colors='black', linewidths=0.5)
 
-    # MCC Std Dev plot
-    cf2 = axes[1].contourf(gamma_grid, C_grid, mcc_std_grid,
-                           levels=30, cmap=mcc_cmap)
-    cbar2 = fig.colorbar(cf2, ax=axes[1])
-    axes[1].set_title("MCC Std Dev (Bootstrap)", fontsize=16)
-    axes[1].set_xlabel("Gamma")
-    axes[1].set_ylabel("")
-    axes[1].plot(best_gamma, best_C, marker='o', color='red',
-                 markersize=10, label='Best (C, γ)')
-    axes[1].legend()
-    axes[1].contour(gamma_grid, C_grid, mcc_std_grid,
-                    levels=10, colors='black', linewidths=0.5)
+# # Add text on colorbar 1
+# cbar1.ax.text(1.1, -0.03, 'Stable', ha='left', va='center', fontsize=12, transform=cbar1.ax.transAxes)
+# cbar1.ax.text(1.1, 1.0, 'Unstable', ha='left', va='center', fontsize=12, transform=cbar1.ax.transAxes)
 
-    plt.tight_layout()
-    plt.show()
+# # MCC Std Dev plot
+# cf2 = axes[1].contourf(gamma_grid, C_grid, mcc_std_grid, levels=30, cmap=mcc_cmap)
+# cbar2 = fig.colorbar(cf2, ax=axes[1])
+# axes[1].set_title("MCC Std Dev (Bootstrap)", fontsize=16)
+# axes[1].set_xlabel("Gamma")
+# axes[1].set_ylabel("")
+# axes[1].plot(best_gamma, best_C, marker='o', color='red',
+#              markersize=10, label='Best (C, γ)')
+# axes[1].legend()
+# axes[1].contour(gamma_grid, C_grid, mcc_std_grid, levels=10, colors='black', linewidths=0.5)
+
+# # Add text on colorbar 2
+# cbar2.ax.text(1.1, -0.03, 'Stable', ha='left', va='center', fontsize=12, transform=cbar2.ax.transAxes)
+# cbar2.ax.text(1.1, 1.0, 'Unstable', ha='left', va='center', fontsize=12, transform=cbar2.ax.transAxes)
+
+# plt.tight_layout()
+# plt.show()
 
     # CONTOUR PLOT MEAN VALUES
     C_vals = sorted(df_summary['C'].unique())
@@ -370,6 +379,47 @@ if __name__ == '__main__':
     plt.tight_layout()
     plt.show()
 
+# # Parametro di penalizzazione
+# lambda_penalty = 0  # puoi aumentare a 1.5, 2, ecc.
+
+# # Calcolo score penalizzati
+# df_summary['f1_penalized'] = df_summary['f1_mean'] - lambda_penalty * df_summary['f1_std']
+# df_summary['mcc_penalized'] = df_summary['mcc_mean'] - lambda_penalty * df_summary['mcc_std']
+
+# # Griglie
+# C_vals = sorted(df_summary['C'].unique())
+# gamma_vals = sorted(df_summary['gamma'].unique())
+# C_grid, gamma_grid = np.meshgrid(C_vals, gamma_vals, indexing='ij')
+
+# f1_pen_grid = df_summary.pivot(index="C", columns="gamma", values="f1_penalized").values
+# mcc_pen_grid = df_summary.pivot(index="C", columns="gamma", values="mcc_penalized").values
+
+# # Trova massimo penalizzato per indicare il miglior punto
+# best_f1 = df_summary.loc[df_summary['f1_penalized'].idxmax()]
+# best_mcc = df_summary.loc[df_summary['mcc_penalized'].idxmax()]
+
+# # Plot
+# fig, axes = plt.subplots(1, 2, figsize=(20, 8), sharex=True, sharey=True)
+
+# cf1 = axes[0].contourf(gamma_grid, C_grid, f1_pen_grid, levels=30, cmap='viridis')
+# axes[0].contour(gamma_grid, C_grid, f1_pen_grid, levels=10, colors='black', linewidths=0.5)
+# axes[0].plot(best_f1['gamma'], best_f1['C'], 'ro', label='Best penalized (C, γ)')
+# axes[0].set_title(f"F1 Mean - λ·Std (λ = {lambda_penalty})", fontsize=16)
+# axes[0].set_xlabel("Gamma")
+# axes[0].set_ylabel("C")
+# axes[0].legend()
+# fig.colorbar(cf1, ax=axes[0])
+
+# cf2 = axes[1].contourf(gamma_grid, C_grid, mcc_pen_grid, levels=30, cmap='viridis')
+# axes[1].contour(gamma_grid, C_grid, mcc_pen_grid, levels=10, colors='black', linewidths=0.5)
+# axes[1].plot(best_mcc['gamma'], best_mcc['C'], 'ro', label='Best penalized (C, γ)')
+# axes[1].set_title(f"MCC Mean - λ·Std (λ = {lambda_penalty})", fontsize=16)
+# axes[1].set_xlabel("Gamma")
+# axes[1].legend()
+# fig.colorbar(cf2, ax=axes[1])
+
+# plt.tight_layout()
+# plt.show()
 
 # # --- Define Search Grid ---
 # C_values = np.arange(100, 1501, 5)  # C ∈ [100, 1500] with step of 5
