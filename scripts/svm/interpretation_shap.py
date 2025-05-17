@@ -110,7 +110,7 @@ if __name__ == '__main__':
     classifier, evaluation_metrics = train_evaluate_final_svm(
         X_train_scaled, y_train, X_test_scaled, y_test, {'C': 2, 'gamma': 0.5})
     # Ottieni le predizioni dal modello
-    y_pred = classifier.predict(X_test_scaled)
+    y_pred = pd.Series(classifier.predict(X_test_scaled), index=X_test.index)
 
     # Confronta con i valori veri
     prediction_status = pd.Series(
@@ -127,6 +127,7 @@ if __name__ == '__main__':
 
     # spiegazione sui dati di test
     shap_values = explainer.shap_values(X_test_scaled)
+    base_value = explainer.expected_value[1]
 
     shap_values_class1 = shap_values[:, :, 1]
 
@@ -136,18 +137,39 @@ if __name__ == '__main__':
                       max_display=20, plot_type='violin')
 
     # 2. Analisi di dipendenza (dependence plot) per feature chiave
-    shap.dependence_plot('PR', shap_values_class1, X_test_scaled_df)
+    # Calcolo delle 6 feature più importanti
+    shap_abs_mean = np.abs(shap_values_class1).mean(axis=0)
+    # Indici delle top 6 feature
+    top_features = shap_abs_mean.argsort()[-6:][::-1]
+    top_feature_names = [X.columns[i] for i in top_features]
 
-    # 3. Spiegazione di singole predizioni (force plot)
-    shap.force_plot(explainer.expected_value[1],
-                    shap_values_class1[0],
-                    X_test_scaled_df.iloc[0])
+    # 1. Calcolo dei limiti comuni delle SHAP values
+    y_min = np.min(shap_values_class1)
+    y_max = np.max(shap_values_class1)
 
-    # 4. Opzionale: Feature interaction
-    shap.dependence_plot('Precip_3d', shap_values_class1, X_test_scaled_df,
-                         interaction_index='HS_delta_1d')
+    # 2. Creazione dei subplot
+    fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(18, 10))
+    axes = axes.flatten()
 
-    # 5. Heatmap SHAP per tutte le osservazioni
+    # 3. Plot dei dependence plot per le 6 feature principali
+    for i, feature in enumerate(top_feature_names):
+        shap.dependence_plot(
+            feature,
+            shap_values_class1,
+            X_test,
+            ax=axes[i],
+            show=False,
+            interaction_index='DayOfSeason'
+        )
+        axes[i].set_title(f"Dependence plot: {feature}", fontsize=12)
+        axes[i].set_ylim([y_min, y_max])  # Imposta la stessa scala y per tutti
+
+    fig.suptitle("SHAP Dependence Plots for Top 6 Features",
+                 fontsize=16, y=1.02)
+    plt.tight_layout()
+    plt.show()
+
+    # 4. Heatmap SHAP per tutte le osservazioni
     import matplotlib.dates as mdates
     import matplotlib.patches as mpatches
 
@@ -180,59 +202,69 @@ if __name__ == '__main__':
     # ordina le feature per importanza
     mean_abs_shap = np.abs(shap_df).mean().sort_values(ascending=False)
     shap_df = shap_df[mean_abs_shap.index]
-    # Estrai solo le prime 6 feature più importanti
-    top6_features = mean_abs_shap.index[:6]
-    shap_df_top6 = shap_df[top6_features]
 
     # Allinea y_test all'indice (datetime) della heatmap
     y_test_aligned = y_test.loc[shap_df.index]
-
-    # Crea una mappa colore binaria per la presenza di valanghe
-    aval_colors = y_test_aligned.map({0: 'lightgrey', 1: 'red'})
-
-    # Ordina l'indice (datetime) in ordine crescente
-    shap_df_top6_sorted = shap_df_top6.sort_index()
-
-    # Riordina anche color_labels in base al nuovo ordine
-    sorted_indices = shap_df_top6_sorted.index
-    color_labels_sorted = [
-        color_labels[shap_df_top6.index.get_loc(idx)] for idx in sorted_indices]
-
-    # Heatmap
-    plt.figure(figsize=(9, 16))
-    sns.heatmap(shap_df_top6_sorted, cmap='coolwarm', center=0,
-                cbar_kws={'label': 'SHAP value'},
-                yticklabels=shap_df_top6_sorted.index.strftime('%Y-%m-%d'))
-
-    # Colora le etichette Y
-    for ytick, color in zip(plt.gca().get_yticklabels(), color_labels_sorted):
-        ytick.set_color(color)
-
-    plt.title('SHAP Values Heatmap (Class 1)\nColor = Prediction Outcome')
-    plt.ylabel('Date')
-    plt.xlabel('Feature')
-    plt.legend(handles=legend_labels, loc='upper right')
-    plt.tight_layout()
-    plt.show()
+    y_pred_aligned = y_pred[shap_df.index]
 
     # FULL DATASET
     # Ordina l'indice (datetime) in ordine crescente
     shap_df_sorted = shap_df.sort_index()
+    # Calcola la somma dei valori SHAP per ogni riga
+    shap_df_sorted['Sum of SHAP'] = shap_df_sorted.sum(axis=1)
+    first_col = shap_df_sorted.pop('Sum of SHAP')
+    shap_df_sorted.insert(0, 'Sum of SHAP', first_col)
+    shap_df_sorted.insert(1, ' ', np.nan)
 
     # Riordina anche color_labels in base al nuovo ordine
     sorted_indices = shap_df_sorted.index
     color_labels_sorted = [
         color_labels[shap_df.index.get_loc(idx)] for idx in sorted_indices]
 
+    from matplotlib.colors import ListedColormap, Normalize
+    from matplotlib.cm import ScalarMappable
+    from matplotlib import cm
+
+    # Base colormap (coolwarm con 256 step)
+    base_cmap = cm.get_cmap(shap.plots.colors.red_blue, 256)
+    colors = base_cmap(np.linspace(0, 1, 256))
+
+    # Applica trasparenza massima al centro (valori SHAP ~0), decrescente verso gli estremi
+    for i in range(256):
+        # Distanza dal centro (128)
+        dist = abs(i - 128) / 128  # Normalizza da 0 a 1
+        # 0 in centro (max trasparenza), 1 agli estremi (nessuna trasparenza)
+        alpha = dist
+        colors[i, -1] = alpha
+
+    # Colormap con alfa lineare centrata su zero
+    fade_cmap = ListedColormap(colors)
+
+    base_cmap = cm.get_cmap(shap.plots.colors.red_blue, 256)
+    # Define color gradients: lightblue to blue (negative), lightred to red (positive)
+    neg_colors = cm.get_cmap('Blues_r', 128)(
+        np.linspace(0, 1, 128))   # skip very light blue
+    pos_colors = cm.get_cmap('Reds', 128)(
+        np.linspace(0.02, 1, 128))    # skip very light red
+
+    # Combine the two colormaps with a hard break at zero
+    combined_colors = np.vstack((neg_colors, pos_colors))
+    custom_cmap = ListedColormap(combined_colors)
+
     # Heatmap
     plt.figure(figsize=(12, 16))
-    sns.heatmap(shap_df_sorted, cmap='coolwarm', center=0,
+    sns.heatmap(shap_df_sorted, cmap=custom_cmap, center=0,
                 cbar_kws={'label': 'SHAP value'},
-                yticklabels=shap_df_top6_sorted.index.strftime('%Y-%m-%d'))
+                yticklabels=shap_df_sorted.index.strftime('%Y-%m-%d'))
 
     # Colora le etichette Y
     for ytick, color in zip(plt.gca().get_yticklabels(), color_labels_sorted):
         ytick.set_color(color)
+
+    # Grassetto alla prima colonna
+    xticklabels = plt.gca().get_xticklabels()
+    if xticklabels:
+        xticklabels[0].set_fontweight('bold')
 
     plt.title('SHAP Values Heatmap (Class 1)\nColor = Prediction Outcome')
     plt.ylabel('Date')
@@ -241,142 +273,175 @@ if __name__ == '__main__':
     plt.tight_layout()
     plt.show()
 
-    # # Heatmap SHAP con formato data YYYY-mm-dd
-    # plt.figure(figsize=(9, 16))
-    # ax = sns.heatmap(shap_df, cmap='coolwarm', center=0)
-
-    # # Converti l'indice in datetime (se necessario)
-    # shap_df_top6.index = pd.to_datetime(shap_df_top6.index)
-
-    # # Mostra tutte le date sull'asse Y
-    # ax.set_yticks(np.arange(len(shap_df_top6)) + 0.5)
-    # ax.set_yticklabels(shap_df.index.strftime('%Y-%m-%d'), rotation=0, fontsize=8)
-
-    # plt.title('SHAP Values Heatmap (Class 1)')
-    # plt.ylabel('Date')
-    # plt.xlabel('Feature')
-    # plt.tight_layout()
-    # plt.show()
-
-# shap.dependence_plot("WetSnow_Temperature", shap_values_class1, X_test)
-
-# shap_exp = shap.Explanation(
-#     values=shap_values[:, :, 1],       # SHAP values for class 1
-#     base_values=explainer.expected_value[1],  # Base value for class 1
-#     data=X_test_scaled.values,                # Feature values
-#     feature_names=X_test_scaled.columns       # Column names
-# )
-
-# y_test_np = X_test_scaled.to_numpy() if hasattr(
-#     X_test_scaled, "to_numpy") else np.array(X_test_scaled)
-
-# # Now create cohorts using boolean indexing
-# cohorts = {
-#     "No Avalanche": shap_exp[y_test_np == 0],
-#     "Avalanche": shap_exp[y_test_np == 1]
-# }
-# shap.plots.bar(cohorts, max_display=16)
-
-# shap.summary_plot(cohorts["Avalanche"], X_test[y_test == 1])
-# shap.summary_plot(cohorts["No Avalanche"], X_test[y_test == 0])
-
-# # Replace 'shap_values' with the correct key if needed
-# shap.plots.violin(cohorts['Avalanche'])
-# # Replace 'shap_values' with the correct key if needed
-# shap.plots.violin(cohorts['No Avalanche'])
-
-# # for i in range(len(shap_exp)):  # Loop through the indices of shap_exp
-# #     shap.plots.waterfall(shap_exp[i])
+    # Mappa colore per somma SHAP: positivo (blu), negativo (arancio), zero (grigio)
 
 
-# # ✅ 1. Global Feature Importance (Summary Plot)
-# shap.summary_plot(shap_values[:, :, 1], X_test)
+# 1. Scegli l'indice della predizione da analizzare
+date_list = ['2009-03-06', '2005-01-10', '2018-01-20', '2016-03-29']
 
-# clustering = shap.utils.hclust(X_test, y_test)
-# shap.plots.bar(shap_values[:, :, 1], clustering=clustering)
+for data_target in date_list:
+    if data_target in X_test.index:
+        i = X_test.index.get_loc(data_target)
+        prob = model.predict_proba(X_test_scaled)[i, 1]
+        pred = 'Valanga' if prob > 0.5 else 'Non valanga'
+        true = 'Valanga' if y_test.loc[data_target] == 1 else 'Non valanga'
 
-# # Crea Explanation object (classe positiva: 1)
-# explanation1 = shap.Explanation(
-#     values=shap_values[:, :, 1],
-#     base_values=explainer.expected_value[1],
-#     data=X_test,
-#     feature_names=X_test.columns
-# )
+        print(
+            f"\n📅 {data_target} - Probabilità: {prob:.3f} | Pred: {pred} | Reale: {true}")
 
-# explanation0 = shap.Explanation(
-#     values=shap_values[:, :, 0],
-#     base_values=explainer.expected_value[0],
-#     data=X_test,
-#     feature_names=X_test.columns
-# )
+        shap.force_plot(
+            base_value=explainer.expected_value[1],
+            shap_values=shap_values[:, :, 1][i],
+            features=X_test.iloc[i],
+            feature_names=X_test.columns,
+            matplotlib=True  # oppure rimuovilo per output interattivo
+        )
+        # plt.title(f"SHAP - {data_target}")
+        plt.show()
 
+date_list = ['2009-03-06', '2005-01-10', '2018-01-20', '2016-03-29']
+html_blocks = []
 
-# # Ora puoi usare il bar plot
-# shap.plots.bar(explanation1, max_display=16)
-# shap.plots.bar(explanation0, max_display=16)
+# Range fisso desiderato
+x_min_fixed = 0
+x_max_fixed = 1.15
 
+for data_target in date_list:
+    if data_target in X_test.index:
+        i = X_test.index.get_loc(data_target)
+        prob = model.predict_proba(X_test_scaled)[i, 1]
+        pred = 'Valanga' if prob > base_value else 'Non valanga'
+        true = 'Valanga' if y_test.loc[data_target] == 1 else 'Non valanga'
 
-# # ✅ 2. Summary Bar Plot
-# shap.summary_plot(shap_values[:, :, 1], X_test, plot_type="bar")
+        description = f"<h3>{data_target} | Prob: {prob:.3f} | Pred: {pred} | Reale: {true}</h3>"
 
-# # ✅ 3. Force Plot (Local Explanation for One Prediction)
-# i = 0  # Index of the sample to explain
-# shap.initjs()  # Enable JS visualizations
+        # Crea il force_plot interattivo
+        force = shap.force_plot(
+            base_value=explainer.expected_value[1],
+            shap_values=shap_values[i, :, 1],
+            features=X_test.iloc[i],
+            feature_names=X_test.columns,
+            show=False
+        )
 
-# shap.force_plot(
-#     explainer.expected_value[1],   # base value for class 1
-#     shap_values[i, :, 1],          # SHAP values for instance i and class 1
-#     X_test.iloc[i]                 # Feature values for instance i
-# )
+        # Ottieni HTML e forza xMin e xMax modificando il JS del grafico
+        html = force.html()
+        html = html.replace(
+            '"plot_cmap":', f'"xMin": {x_min_fixed}, "xMax": {x_max_fixed}, "plot_cmap":')
 
+        html_blocks.append(description + html)
 
-# force_plot = shap.force_plot(
-#     explainer.expected_value[1],
-#     shap_values[i, :, 1],
-#     X_test.iloc[i]
-# )
-# display(force_plot)  # <- This makes the plot appear in the notebook
-# # Create the force plot
-# force_plot = shap.force_plot(
-#     explainer.expected_value[1],
-#     shap_values[10, :, 1],
-#     X_test.iloc[i]
-# )
+# Crea HTML completo
+final_html = "<html><head><meta charset='utf-8'>" + \
+    shap.getjs() + "</head><body>" + "".join(html_blocks) + "</body></html>"
 
-# # Save it to an HTML file
-# shap.save_html("shap_force_plot.html", force_plot)
-
-
-# # ✅ 4. Decision Plot
-# shap.decision_plot(
-#     explainer.expected_value[1],
-#     shap_values[:2, :, 1],        # first 5 samples
-#     X_test.iloc[:2]
-# )
-
-# # ✅ 5. Dependence Plot
-# shap.dependence_plot(
-#     "Precip_3d",               # replace with a column name from X_test
-#     shap_values[:, :, 1],
-#     X_test
-# )
-
-# shap.dependence_plot(
-#     "Precip_3d",
-#     shap_values[:, :, 1],
-#     X_test,
-#     interaction_index="auto"
-# )
-
-# # ✅ 6. Waterfall Plot
-# shap.plots._waterfall.waterfall_legacy(
-#     explainer.expected_value[1],
-#     shap_values[96, :, 1],
-#     X_test.iloc[96]
-# )
+# Salva su file
+output_file = Path("shap_force_fixed_range.html")
+output_file.write_text(final_html, encoding='utf-8')
+print(f"✅ Salvato con asse X da 0 a 1.15: {output_file.absolute()}")
 
 
-# # shap_values_df = pd.DataFrame(
-# #     shap_values[:, :, 1], columns=X_train.columns)
+date_list = ['2009-03-06', '2005-01-10', '2018-01-20', '2016-03-29']
+html_blocks = []
+base_value = explainer.expected_value[1]
 
-# # shap.plots.bar(shap_values)
+x_min_fixed = 0.0
+x_max_fixed = 1.15
+
+for data_target in date_list:
+    if data_target in X_test.index:
+        i = X_test.index.get_loc(data_target)
+        prob = model.predict_proba(X_test_scaled)[i, 1]
+        pred = 'Valanga' if prob > 0.5 else 'Non valanga'
+        true = 'Valanga' if y_test.loc[data_target] == 1 else 'Non valanga'
+
+        color = {
+            ('Avalanche', 'Avalanche'): 'green',     # corretto positivo
+            ('No Avalanche', 'No Avalanchea'): 'gray',  # corretto negativo
+            ('No Avalanche', 'Avalanche'): 'red',       # falso negativo
+            ('Avalanche', 'No Avalanche'): 'orange'     # falso positivo
+        }[(pred, true)]
+
+        description = f"<h3 style='color:{color}'>{data_target} | Sum of SHAP: {prob:.3f} | Prediction: {pred} | Reale: {true}</h3>"
+
+        # Force plot
+        force = shap.force_plot(
+            base_value=base_value,
+            shap_values=shap_values[i, :, 1],
+            features=X_test.iloc[i],
+            feature_names=X_test.columns,
+            show=False
+        )
+
+        html = force.html()
+        html = html.replace(
+            '"plot_cmap":', f'"xMin": {x_min_fixed}, "xMax": {x_max_fixed}, "plot_cmap":'
+        )
+
+        html_blocks.append(description + html)
+
+# Componi e salva l’HTML finale
+final_html = "<html><head><meta charset='utf-8'>" + \
+    shap.getjs() + "</head><body>" + "".join(html_blocks) + "</body></html>"
+
+output_file = Path("shap_force_4_cases.html")
+output_file.write_text(final_html, encoding='utf-8')
+
+print(f"✅ File creato: {output_file.absolute()}")
+
+# ------------------------
+date_list = ['2009-03-06', '2005-01-10', '2018-01-20', '2016-03-29']
+html_blocks = []
+base_value = explainer.expected_value[1]
+
+x_min_fixed = 0.0
+x_max_fixed = 1.15
+
+# Mappa colori e descrizioni come heatmap
+color_map = {
+    ('Avalanche', 'Avalanche'): ('green', '✅ Correct avalanche prediction'),
+    ('No Avalanche', 'No Avalanche'): ('gray', '✅ Correct no avalanche prediction'),
+    ('No Avalanche', 'Avalanche'): ('red', '❌ Missed avalanche prediction'),
+    ('Avalanche', 'No Avalanche'): ('orange', '⚠️ False alarm')
+}
+
+for data_target in date_list:
+    if data_target in X_test.index:
+        i = X_test.index.get_loc(data_target)
+        prob = model.predict_proba(X_test_scaled)[i, 1]
+        pred = 'Avalanche' if prob > 0.5 else 'No Avalanche'
+        true = 'Avalanche' if y_test.loc[data_target] == 1 else 'No Avalanche'
+
+        color, label = color_map[(pred, true)]
+
+        # Blocco descrizione con bordo colorato
+        description = f"""
+        <div style='border-left: 10px solid {color}; padding-left: 10px; margin: 15px 0; background-color: #f0f0f0'>
+            <h3>{data_target} | SHAP SUM: {prob:.3f} | Prediction: {pred} | Observation: {true} → <span style='color:{color}; font-weight:bold'>{label}</span></h3>
+        </div>
+        """
+
+        # Force plot con asse x fissato
+        force = shap.force_plot(
+            base_value=base_value,
+            shap_values=shap_values[i, :, 1],
+            features=X_test.iloc[i],
+            feature_names=X_test.columns,
+            show=False
+        )
+
+        html = force.html()
+        html = html.replace(
+            '"plot_cmap":', f'"xMin": {x_min_fixed}, "xMax": {x_max_fixed}, "plot_cmap":'
+        )
+
+        html_blocks.append(description + html)
+
+# HTML finale
+final_html = "<html><head><meta charset='utf-8'>" + \
+    shap.getjs() + "</head><body>" + "".join(html_blocks) + "</body></html>"
+
+# Salva su file
+output_file = Path("shap_force_4_cases.html")
+output_file.write_text(final_html, encoding='utf-8')
+print(f"✅ File salvato: {output_file.absolute()}")
