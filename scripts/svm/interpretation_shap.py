@@ -353,3 +353,126 @@ if __name__ == '__main__':
     output_file = Path("shap_force_4_cases.html")
     output_file.write_text(final_html, encoding='utf-8')
     print(f"✅ File salvato: {output_file.absolute()}")
+
+    # # ---- linear fit on dependece plots ---- NOT ALL ARE LINEAR (PRECIP...)
+    # from sklearn.linear_model import LinearRegression
+
+    # def estimate_flipping_point(x, shap_values, feature_name="Feature", plot=True):
+    #     import numpy as np
+    #     import matplotlib.pyplot as plt
+    #     from sklearn.linear_model import LinearRegression
+    #     from scipy.stats import t
+
+    #     # Convert to numpy arrays
+    #     x = np.array(x).reshape(-1, 1)
+    #     y = np.array(shap_values).reshape(-1, 1)
+
+    #     n = len(x)
+    #     x_mean = np.mean(x)
+    #     dof = n - 2
+
+    #     # Linear regression fit
+    #     model = LinearRegression().fit(x, y)
+    #     y_pred = model.predict(x)
+    #     a = model.coef_[0][0]
+    #     b = model.intercept_[0]
+
+    #     # Residual variance
+    #     residuals = y - y_pred
+    #     residual_var = np.sum(residuals**2) / dof
+    #     Sxx = np.sum((x - x_mean)**2)
+
+    #     # Standard errors
+    #     sigma_a = np.sqrt(residual_var / Sxx)
+    #     sigma_b = np.sqrt(residual_var * (1/n + x_mean**2 / Sxx))
+
+    #     # Flip point and uncertainty
+    #     if a != 0:
+    #         x_flip = -b / a
+    #         sigma_x_flip = np.sqrt(
+    #             (b / a**2)**2 * sigma_a**2 + (1 / a)**2 * sigma_b**2)
+    #     else:
+    #         x_flip = None
+    #         sigma_x_flip = None
+
+    #     # Plot
+    #     if plot:
+    #         plt.figure(figsize=(8, 5))
+    #         plt.scatter(x, y, alpha=0.3, label="SHAP values")
+    #         plt.plot(x, y_pred, color='red', label="Linear Fit")
+
+    #         # Confidence interval
+    #         x_sorted = np.sort(x, axis=0)
+    #         y_fit = model.predict(x_sorted)
+    #         se_fit = np.sqrt(
+    #             residual_var * (1/n + (x_sorted - x_mean)**2 / Sxx))
+    #         t_val = t.ppf(0.975, dof)
+    #         upper = y_fit + t_val * se_fit
+    #         lower = y_fit - t_val * se_fit
+
+    #         plt.fill_between(x_sorted.flatten(), lower.flatten(), upper.flatten(),
+    #                          color='red', alpha=0.2, label='95% Confidence Interval')
+
+    #         if x_flip is not None:
+    #             plt.axvline(x_flip, color='green', linestyle='--',
+    #                         label=f"Flip: {x_flip:.2f} ± {sigma_x_flip:.2f}")
+    #             plt.axvspan(x_flip - sigma_x_flip, x_flip + sigma_x_flip,
+    #                         color='green', alpha=0.1, label='±1σ Flip Range')
+
+    #         plt.axhline(0, color='gray', linestyle=':')
+    #         plt.xlabel(f"{feature_name}")
+    #         plt.ylabel("SHAP Value")
+    #         plt.title(f"SHAP Dependence for '{feature_name}' with Linear Fit")
+    #         plt.legend()
+    #         plt.tight_layout()
+    #         plt.show()
+
+    #     return x_flip, sigma_x_flip
+
+    # # feature_name = 'DayOfSeason'
+    # # i = X_test.columns.get_loc(feature_name)  # Get column index
+
+    # # x_feature = X_test[feature_name]
+    # # shap_feature_values = shap_values_class1[:, i]
+
+    # # flip_point, flip_std = estimate_flipping_point(x_feature,
+    # #                                                shap_feature_values,
+    # #                                                feature_name = feature_name)
+    # # print(f"Flip Point: {flip_point:.2f} ± {flip_std:.2f}")
+    # # Initialize results list
+    # flip_results = []
+
+    # # Loop through all features
+    # for feature_name in X_test.columns:
+    #     try:
+    #         i = X_test.columns.get_loc(feature_name)
+    #         x_feature = X_test[feature_name]
+    #         shap_feature_values = shap_values_class1[:, i]
+
+    #         flip_point, flip_std = estimate_flipping_point(
+    #             x_feature,
+    #             shap_feature_values,
+    #             feature_name=feature_name,
+    #             plot=True  # Disable plot for batch
+    #         )
+
+    #         # Append to list
+    #         flip_results.append({
+    #             "feature": feature_name,
+    #             "flip_point": flip_point,
+    #             "flip_std": flip_std
+    #         })
+
+    #     except Exception as e:
+    #         print(f"Skipping feature {feature_name} due to error: {e}")
+    #         flip_results.append({
+    #             "feature": feature_name,
+    #             "flip_point": None,
+    #             "flip_std": None
+    #         })
+
+    # # Convert to DataFrame
+    # flip_df = pd.DataFrame(flip_results)
+
+    # # Display or save
+    # print(flip_df)
