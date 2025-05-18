@@ -275,173 +275,81 @@ if __name__ == '__main__':
 
     # Mappa colore per somma SHAP: positivo (blu), negativo (arancio), zero (grigio)
 
+    # 1. Scegli l'indice della predizione da analizzare
+    date_list = ['2009-03-06', '2005-01-10', '2018-01-20', '2016-03-29']
 
-# 1. Scegli l'indice della predizione da analizzare
-date_list = ['2009-03-06', '2005-01-10', '2018-01-20', '2016-03-29']
+    for data_target in date_list:
+        if data_target in X_test.index:
+            i = X_test.index.get_loc(data_target)
+            prob = model.predict_proba(X_test_scaled)[i, 1]
+            pred = 'Valanga' if prob > 0.5 else 'Non valanga'
+            true = 'Valanga' if y_test.loc[data_target] == 1 else 'Non valanga'
 
-for data_target in date_list:
-    if data_target in X_test.index:
-        i = X_test.index.get_loc(data_target)
-        prob = model.predict_proba(X_test_scaled)[i, 1]
-        pred = 'Valanga' if prob > 0.5 else 'Non valanga'
-        true = 'Valanga' if y_test.loc[data_target] == 1 else 'Non valanga'
+            print(
+                f"\n📅 {data_target} - Probabilità: {prob:.3f} | Pred: {pred} | Reale: {true}")
 
-        print(
-            f"\n📅 {data_target} - Probabilità: {prob:.3f} | Pred: {pred} | Reale: {true}")
+            shap.force_plot(
+                base_value=explainer.expected_value[1],
+                shap_values=shap_values[:, :, 1][i],
+                features=X_test.iloc[i],
+                feature_names=X_test.columns,
+                matplotlib=True  # oppure rimuovilo per output interattivo
+            )
+            # plt.title(f"SHAP - {data_target}")
+            plt.show()
 
-        shap.force_plot(
-            base_value=explainer.expected_value[1],
-            shap_values=shap_values[:, :, 1][i],
-            features=X_test.iloc[i],
-            feature_names=X_test.columns,
-            matplotlib=True  # oppure rimuovilo per output interattivo
-        )
-        # plt.title(f"SHAP - {data_target}")
-        plt.show()
+    # ------------------------
+    date_list = ['2009-03-06', '2005-01-10', '2018-01-20', '2016-03-29']
+    html_blocks = []
+    base_value = explainer.expected_value[1]
 
-date_list = ['2009-03-06', '2005-01-10', '2018-01-20', '2016-03-29']
-html_blocks = []
+    x_min_fixed = 0.0
+    x_max_fixed = 1.15
 
-# Range fisso desiderato
-x_min_fixed = 0
-x_max_fixed = 1.15
+    # Mappa colori e descrizioni come heatmap
+    color_map = {
+        ('Avalanche', 'Avalanche'): ('green', '✅ Correct avalanche prediction'),
+        ('No Avalanche', 'No Avalanche'): ('gray', '✅ Correct no avalanche prediction'),
+        ('No Avalanche', 'Avalanche'): ('red', '❌ Missed avalanche prediction'),
+        ('Avalanche', 'No Avalanche'): ('orange', '⚠️ False alarm')
+    }
 
-for data_target in date_list:
-    if data_target in X_test.index:
-        i = X_test.index.get_loc(data_target)
-        prob = model.predict_proba(X_test_scaled)[i, 1]
-        pred = 'Valanga' if prob > base_value else 'Non valanga'
-        true = 'Valanga' if y_test.loc[data_target] == 1 else 'Non valanga'
+    for data_target in date_list:
+        if data_target in X_test.index:
+            i = X_test.index.get_loc(data_target)
+            prob = model.predict_proba(X_test_scaled)[i, 1]
+            pred = 'Avalanche' if prob > 0.5 else 'No Avalanche'
+            true = 'Avalanche' if y_test.loc[data_target] == 1 else 'No Avalanche'
 
-        description = f"<h3>{data_target} | Prob: {prob:.3f} | Pred: {pred} | Reale: {true}</h3>"
+            color, label = color_map[(pred, true)]
 
-        # Crea il force_plot interattivo
-        force = shap.force_plot(
-            base_value=explainer.expected_value[1],
-            shap_values=shap_values[i, :, 1],
-            features=X_test.iloc[i],
-            feature_names=X_test.columns,
-            show=False
-        )
+            # Blocco descrizione con bordo colorato
+            description = f"""
+            <div style='border-left: 10px solid {color}; padding-left: 10px; margin: 15px 0; background-color: #f0f0f0'>
+                <h3>{data_target} | SHAP SUM: {prob:.3f} | Prediction: {pred} | Obe: {true} → <span style='color:{color}; font-weight:bold'>{label}</span></h3>
+            </div>
+            """
+            # Force plot con asse x fissato
+            force = shap.force_plot(
+                base_value=base_value,
+                shap_values=shap_values[i, :, 1],
+                features=X_test.iloc[i],
+                feature_names=X_test.columns,
+                show=False
+            )
 
-        # Ottieni HTML e forza xMin e xMax modificando il JS del grafico
-        html = force.html()
-        html = html.replace(
-            '"plot_cmap":', f'"xMin": {x_min_fixed}, "xMax": {x_max_fixed}, "plot_cmap":')
+            html = force.html()
+            html = html.replace(
+                '"plot_cmap":', f'"xMin": {x_min_fixed}, "xMax": {x_max_fixed}, "plot_cmap":'
+            )
 
-        html_blocks.append(description + html)
+            html_blocks.append(description + html)
 
-# Crea HTML completo
-final_html = "<html><head><meta charset='utf-8'>" + \
-    shap.getjs() + "</head><body>" + "".join(html_blocks) + "</body></html>"
+    # HTML finale
+    final_html = "<html><head><meta charset='utf-8'>" + \
+        shap.getjs() + "</head><body>" + "".join(html_blocks) + "</body></html>"
 
-# Salva su file
-output_file = Path("shap_force_fixed_range.html")
-output_file.write_text(final_html, encoding='utf-8')
-print(f"✅ Salvato con asse X da 0 a 1.15: {output_file.absolute()}")
-
-
-date_list = ['2009-03-06', '2005-01-10', '2018-01-20', '2016-03-29']
-html_blocks = []
-base_value = explainer.expected_value[1]
-
-x_min_fixed = 0.0
-x_max_fixed = 1.15
-
-for data_target in date_list:
-    if data_target in X_test.index:
-        i = X_test.index.get_loc(data_target)
-        prob = model.predict_proba(X_test_scaled)[i, 1]
-        pred = 'Valanga' if prob > 0.5 else 'Non valanga'
-        true = 'Valanga' if y_test.loc[data_target] == 1 else 'Non valanga'
-
-        color = {
-            ('Avalanche', 'Avalanche'): 'green',     # corretto positivo
-            ('No Avalanche', 'No Avalanchea'): 'gray',  # corretto negativo
-            ('No Avalanche', 'Avalanche'): 'red',       # falso negativo
-            ('Avalanche', 'No Avalanche'): 'orange'     # falso positivo
-        }[(pred, true)]
-
-        description = f"<h3 style='color:{color}'>{data_target} | Sum of SHAP: {prob:.3f} | Prediction: {pred} | Reale: {true}</h3>"
-
-        # Force plot
-        force = shap.force_plot(
-            base_value=base_value,
-            shap_values=shap_values[i, :, 1],
-            features=X_test.iloc[i],
-            feature_names=X_test.columns,
-            show=False
-        )
-
-        html = force.html()
-        html = html.replace(
-            '"plot_cmap":', f'"xMin": {x_min_fixed}, "xMax": {x_max_fixed}, "plot_cmap":'
-        )
-
-        html_blocks.append(description + html)
-
-# Componi e salva l’HTML finale
-final_html = "<html><head><meta charset='utf-8'>" + \
-    shap.getjs() + "</head><body>" + "".join(html_blocks) + "</body></html>"
-
-output_file = Path("shap_force_4_cases.html")
-output_file.write_text(final_html, encoding='utf-8')
-
-print(f"✅ File creato: {output_file.absolute()}")
-
-# ------------------------
-date_list = ['2009-03-06', '2005-01-10', '2018-01-20', '2016-03-29']
-html_blocks = []
-base_value = explainer.expected_value[1]
-
-x_min_fixed = 0.0
-x_max_fixed = 1.15
-
-# Mappa colori e descrizioni come heatmap
-color_map = {
-    ('Avalanche', 'Avalanche'): ('green', '✅ Correct avalanche prediction'),
-    ('No Avalanche', 'No Avalanche'): ('gray', '✅ Correct no avalanche prediction'),
-    ('No Avalanche', 'Avalanche'): ('red', '❌ Missed avalanche prediction'),
-    ('Avalanche', 'No Avalanche'): ('orange', '⚠️ False alarm')
-}
-
-for data_target in date_list:
-    if data_target in X_test.index:
-        i = X_test.index.get_loc(data_target)
-        prob = model.predict_proba(X_test_scaled)[i, 1]
-        pred = 'Avalanche' if prob > 0.5 else 'No Avalanche'
-        true = 'Avalanche' if y_test.loc[data_target] == 1 else 'No Avalanche'
-
-        color, label = color_map[(pred, true)]
-
-        # Blocco descrizione con bordo colorato
-        description = f"""
-        <div style='border-left: 10px solid {color}; padding-left: 10px; margin: 15px 0; background-color: #f0f0f0'>
-            <h3>{data_target} | SHAP SUM: {prob:.3f} | Prediction: {pred} | Observation: {true} → <span style='color:{color}; font-weight:bold'>{label}</span></h3>
-        </div>
-        """
-
-        # Force plot con asse x fissato
-        force = shap.force_plot(
-            base_value=base_value,
-            shap_values=shap_values[i, :, 1],
-            features=X_test.iloc[i],
-            feature_names=X_test.columns,
-            show=False
-        )
-
-        html = force.html()
-        html = html.replace(
-            '"plot_cmap":', f'"xMin": {x_min_fixed}, "xMax": {x_max_fixed}, "plot_cmap":'
-        )
-
-        html_blocks.append(description + html)
-
-# HTML finale
-final_html = "<html><head><meta charset='utf-8'>" + \
-    shap.getjs() + "</head><body>" + "".join(html_blocks) + "</body></html>"
-
-# Salva su file
-output_file = Path("shap_force_4_cases.html")
-output_file.write_text(final_html, encoding='utf-8')
-print(f"✅ File salvato: {output_file.absolute()}")
+    # Salva su file
+    output_file = Path("shap_force_4_cases.html")
+    output_file.write_text(final_html, encoding='utf-8')
+    print(f"✅ File salvato: {output_file.absolute()}")
