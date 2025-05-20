@@ -326,7 +326,8 @@ def train_evaluate_final_svm(X_train, y_train, X_test, y_test, best_params, disp
 
     # Create SVM with best hyperparameters
     clf = svm.SVC(
-        kernel='rbf', C=best_params['C'], gamma=best_params['gamma'], probability=True)
+        kernel='rbf', C=best_params['C'], gamma=best_params['gamma'],
+        probability=True, class_weight='balanced')
 
     # Use StratifiedKFold for balanced CV splits
     cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
