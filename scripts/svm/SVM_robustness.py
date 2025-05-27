@@ -17,7 +17,22 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from scripts.svm.svm_training import train_evaluate_final_svm
 from sklearn import svm
-
+import numpy as np
+import matplotlib.dates as mdates
+import seaborn as sns
+import pandas as pd
+import matplotlib.dates as mdates
+import matplotlib.patches as mpatches
+from matplotlib.colors import ListedColormap, Normalize
+from matplotlib.cm import ScalarMappable
+from matplotlib import cm
+import matplotlib.patches as mpatches
+import seaborn as sns
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from matplotlib.colors import ListedColormap
+import matplotlib.cm as cm
 
 if __name__ == '__main__':
     # Filepath and plot folder paths
@@ -133,8 +148,9 @@ if __name__ == '__main__':
     X_ordered = X[ordine_shap]
 
     X_scaled = scaler.transform(X)
-   # 1. Previsione
+    # 1. Previsione
     y_pred = svm_model.predict(X_scaled)
+    y_pred_df = pd.DataFrame(y_pred, index=X.index)
 
     # 2. Probabilità di classe positiva (AvalDay = 1)
     # colonna indice 1 → classe positiva
@@ -146,10 +162,6 @@ if __name__ == '__main__':
         'Predicted_AvalDay': y_pred,
         'Prob_AvalDay': y_proba
     }, index=y.index)
-
-    import matplotlib.dates as mdates
-    import seaborn as sns
-    import pandas as pd
 
     # Assicurati che l'indice sia datetime
     if not pd.api.types.is_datetime64_any_dtype(results_df.index):
@@ -239,11 +251,205 @@ if __name__ == '__main__':
     # plt.savefig("avalanche_probability_plot.png", dpi=300)  # Salva ad alta risoluzione
     plt.show()
 
-    # SHAP ANALYSIS
+    # ---- SHAP ANALYSIS ---------------------------------------------
 
-    # Real-world data: scale it
+    # 1. Scala i dati reali
     X_real_scaled = scaler.transform(X)
-    shap_values = explainer.shap_values(X_real_scaled)
+    X_real_scaled_df = pd.DataFrame(
+        X_real_scaled, columns=X.columns, index=results_df.index)
 
-    # Plot example SHAP explanation
-    shap.summary_plot(shap_values, X)
+    # 2. Calcola SHAP
+    shap_values = explainer.shap_values(X_real_scaled)
+    shap_values_class1 = shap_values[:, :, 1]
+
+    # 3. SHAP dataframe
+    shap_df = pd.DataFrame(
+        shap_values_class1, columns=X.columns, index=results_df.index)
+
+    # 4. Ordina feature per importanza media assoluta
+    mean_abs_shap = np.abs(shap_df).mean().sort_values(ascending=False)
+    shap_df = shap_df[mean_abs_shap.index]
+
+    # 5. Ordina per data
+    shap_df_sorted = shap_df.sort_index()
+
+    # 6. Somma SHAP
+    shap_df_sorted['Sum of SHAP'] = shap_df_sorted.sum(axis=1)
+    first_col = shap_df_sorted.pop('Sum of SHAP')
+    shap_df_sorted.insert(0, 'Sum of SHAP', first_col)
+    shap_df_sorted.insert(1, ' ', np.nan)
+
+    # 7. Allinea `results_df` all’indice shap_df_sorted
+    results_df = results_df.set_index(pd.to_datetime(results_df.index))
+    results_aligned = results_df.loc[shap_df_sorted.index]
+    results_aligned = results_aligned.dropna(
+        subset=['True_AvalDay', 'Predicted_AvalDay'])
+
+    # 8. Aggiorna shap_df_sorted con solo le date valide
+    shap_df_sorted = shap_df_sorted.loc[results_aligned.index]
+
+    # 9. Funzione mappatura colore
+    def color_map(true, pred):
+        if true in [1, 2] and pred == 1:
+            return 'green'       # Valanga corretta
+        elif true in [1, 2] and pred == 0:
+            return 'red'         # Valanga mancata
+        elif true == 0 and pred == 0:
+            return 'lightgrey'   # No-valanga corretta
+        elif true == 0 and pred == 1:
+            return 'orange'      # Falso allarme
+        return 'black'
+
+    # 10. Etichette colorate
+    color_labels_sorted = [
+        color_map(t, p) for t, p in zip(results_aligned['True_AvalDay'], results_aligned['Predicted_AvalDay'])
+    ]
+
+    # 11. Colormap SHAP personalizzata
+    neg_colors = plt.colormaps['Blues_r'](np.linspace(0, 1, 128))
+    pos_colors = plt.colormaps['Reds'](np.linspace(0.02, 1, 128))
+    combined_colors = np.vstack((neg_colors, pos_colors))
+    custom_cmap = ListedColormap(combined_colors)
+
+    # 12. Heatmap
+    plt.figure(figsize=(12, 16))
+    sns.heatmap(
+        shap_df_sorted,
+        cmap=custom_cmap,
+        center=0,
+        cbar_kws={'label': 'SHAP value'},
+        yticklabels=shap_df_sorted.index.strftime('%Y-%m-%d')
+    )
+
+    # 13. Colora etichette Y
+    yticks = plt.gca().get_yticklabels()
+    for label, color in zip(yticks, color_labels_sorted):
+        label.set_color(color)
+
+    # 14. Grassetto prima colonna X
+    xticklabels = plt.gca().get_xticklabels()
+    if xticklabels:
+        xticklabels[0].set_fontweight('bold')
+
+    # 15. Legenda
+    legend_labels = [
+        mpatches.Patch(color='green', label='Correct Avalanche'),
+        mpatches.Patch(color='red', label='Missed Avalanche'),
+        mpatches.Patch(color='orange', label='False Alarm'),
+        mpatches.Patch(color='lightgrey', label='Correct No Avalanche')
+    ]
+
+    # 16. Titolo e salvataggio
+    plt.title('SHAP Values Heatmap (Class 1)\nColor = Prediction Outcome')
+    plt.ylabel('Date')
+    plt.xlabel('Feature')
+    plt.legend(handles=legend_labels, loc='upper right')
+    plt.tight_layout()
+    plt.show()
+
+    # Base colormap (coolwarm con 256 step)
+    base_cmap = cm.get_cmap(shap.plots.colors.red_blue, 256)
+    colors = base_cmap(np.linspace(0, 1, 256))
+
+    # Applica trasparenza massima al centro (valori SHAP ~0), decrescente verso gli estremi
+    for i in range(256):
+        # Distanza dal centro (128)
+        dist = abs(i - 128) / 128  # Normalizza da 0 a 1
+        # 0 in centro (max trasparenza), 1 agli estremi (nessuna trasparenza)
+        alpha = dist
+        colors[i, -1] = alpha
+
+    # Colormap con alfa lineare centrata su zero
+    fade_cmap = ListedColormap(colors)
+
+    base_cmap = cm.get_cmap(shap.plots.colors.red_blue, 256)
+    # Define color gradients: lightblue to blue (negative), lightred to red (positive)
+    neg_colors = cm.get_cmap('Blues_r', 128)(
+        np.linspace(0, 1, 128))   # skip very light blue
+    pos_colors = cm.get_cmap('Reds', 128)(
+        np.linspace(0.02, 1, 128))    # skip very light red
+
+    # Combine the two colormaps with a hard break at zero
+    combined_colors = np.vstack((neg_colors, pos_colors))
+    custom_cmap = ListedColormap(combined_colors)
+
+    # Heatmap
+    plt.figure(figsize=(12, 16))
+    sns.heatmap(shap_df_sorted, cmap=custom_cmap, center=0,
+                cbar_kws={'label': 'SHAP value'},
+                yticklabels=shap_df_sorted.index.strftime('%Y-%m-%d'))
+
+    # Colora le etichette Y
+    for ytick, color in zip(plt.gca().get_yticklabels(), color_labels_sorted):
+        ytick.set_color(color)
+
+    # Grassetto alla prima colonna
+    xticklabels = plt.gca().get_xticklabels()
+    if xticklabels:
+        xticklabels[0].set_fontweight('bold')
+
+    plt.title('SHAP Values Heatmap (Class 1)\nColor = Prediction Outcome')
+    plt.ylabel('Date')
+    plt.xlabel('Feature')
+    plt.legend(handles=legend_labels, loc='upper right')
+    plt.tight_layout()
+    plt.show()
+
+    # DEPENDENCE PLOT DI ALCUNE DATA SELEZIONATE
+
+    date_list = ['2025-01-28', '2025-02-04', '2025-02-19', '2025-03-12']
+    html_blocks = []
+    base_value = explainer.expected_value[1]
+
+    x_min_fixed = 0.0
+    x_max_fixed = 1.15
+
+    # Mappa colori e descrizioni come heatmap
+    color_map = {
+        ('Avalanche', 'Avalanche'): ('green', '✅ Correct avalanche prediction'),
+        ('No Avalanche', 'No Avalanche'): ('gray', '✅ Correct no avalanche prediction'),
+        ('No Avalanche', 'Avalanche'): ('red', '❌ Missed avalanche prediction'),
+        ('Avalanche', 'No Avalanche'): ('orange', '⚠️ False alarm')
+    }
+
+    for data_target in date_list:
+        if data_target in results_df.index:
+            i = results_df.index.get_loc(data_target)
+            # prob = model.predict_proba(X_test_scaled)[i, 1]
+            prob = results_df.iloc[i, 2]
+            pred = 'Avalanche' if prob > 0.5 else 'No Avalanche'
+            true = 'Avalanche' if y.loc[data_target] in [
+                1, 2] else 'No Avalanche'
+
+            color, label = color_map[(pred, true)]
+
+            # Blocco descrizione con bordo colorato
+            description = f"""
+             <div style='border-left: 10px solid {color}; padding-left: 10px; margin: 15px 0; background-color: #f0f0f0'>
+                 <h3>{data_target} | SHAP SUM: {prob:.3f} | Prediction: {pred} | Obe: {true} → <span style='color:{color}; font-weight:bold'>{label}</span></h3>
+             </div>
+             """
+            # Force plot con asse x fissato
+            force = shap.force_plot(
+                base_value=base_value,
+                shap_values=shap_values[i, :, 1],
+                features=X.iloc[i],
+                feature_names=X.columns,
+                show=False
+            )
+
+            html = force.html()
+            html = html.replace(
+                '"plot_cmap":', f'"xMin": {x_min_fixed}, "xMax": {x_max_fixed}, "plot_cmap":'
+            )
+
+            html_blocks.append(description + html)
+
+    # HTML finale
+    final_html = "<html><head><meta charset='utf-8'>" + \
+        shap.getjs() + "</head><body>" + "".join(html_blocks) + "</body></html>"
+
+    # Salva su file
+    output_file = Path("shap_force_4_cases.html")
+    output_file.write_text(final_html, encoding='utf-8')
+    print(f"✅ File salvato: {output_file.absolute()}")
