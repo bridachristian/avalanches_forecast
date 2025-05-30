@@ -1,165 +1,148 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu May  8 15:29:57 2025
+Created on Thu May 29 09:30:40 2025
 
 @author: Christian
 """
 
 import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from collections import Counter
 import matplotlib.pyplot as plt
 import seaborn as sns
-from pathlib import Path
-from sklearn import svm
-from sklearn import svm
-from sklearn.feature_selection import RFE
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.model_selection import cross_val_score
-from sklearn.model_selection import GridSearchCV
-from sklearn.preprocessing import FunctionTransformer
-# from sklearn.pipeline import Pipeline
-from imblearn.pipeline import Pipeline  # Use imblearn's Pipeline
-from imblearn.under_sampling import NearMiss
-
-from scripts.svm.data_loading import load_data
-from scripts.svm.undersampling_methods import (undersampling_random, undersampling_random_timelimited,
-                                               undersampling_nearmiss, undersampling_cnn,
-                                               undersampling_enn, undersampling_clustercentroids,
-                                               undersampling_tomeklinks)
-from scripts.svm.oversampling_methods import oversampling_random, oversampling_smote, oversampling_adasyn, oversampling_svmsmote
-from scripts.svm.svm_training import cross_validate_svm, tune_train_evaluate_svm, train_evaluate_final_svm
-from scripts.svm.evaluation import (plot_learning_curve, plot_confusion_matrix,
-                                    plot_roc_curve, permutation_ranking, evaluate_svm_with_feature_selection)
-from scripts.svm.utils import (save_outputfile, get_adjacent_values, PermutationImportanceWrapper,
-                               remove_correlated_features, remove_low_variance, select_k_best)
-
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
-from mlxtend.feature_selection import SequentialFeatureSelector as SFS
-
-from scripts.svm.eda_analysis import run_eda
-
-import pandas as pd
+import matplotlib.colors as mcolors
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from scipy.stats import ks_2samp
+
+# Dati
+methods = [
+    "Random Undersampling", "Random Undersampling 10d", "NearMiss v3 (k=1)", "NearMiss v3 (k=3)",
+    "NearMiss v3 (k=5)", "NearMiss v3 (k=10)", "NearMiss v3 (k=25)", "NearMiss v3 (k=50)",
+    "CNN Undersampling", "ENN Undersampling", "Cluster Centroids Und. ", "TomekLinks Und. ",
+    "Random Oversampling", "SMOTE Oversampling", "ADASYN Oversampling", "SVMSMOTE Oversampling"
+]
+
+cases = ["Case 1", "Case 2", "Case 3", "Case 4"]
+
+# F1-scores
+f1_scores = [
+    [0.649, 0.734, 0.621, 0.744],
+    [0.593, 0.687, 0.585, 0.616],
+    [0.621, 0.646, 0.634, 0.670],
+    [0.674, 0.634, 0.739, 0.610],
+    [0.663, 0.621, 0.757, 0.692],
+    [0.684, 0.672, 0.757, 0.616],
+    [0.684, 0.711, 0.740, 0.638],
+    [0.663, 0.683, 0.760, 0.681],
+    [0.610, 0.685, 0.523, 0.567],
+    [0.690, 0.740, 0.693, 0.663],
+    [0.674, 0.687, 0.608, 0.666],
+    [0.595, 0.672, 0.588, 0.642],
+    [0.626, 0.442, 0.543, 0.477],
+    [0.574, 0.491, 0.570, 0.577],
+    [0.575, 0.499, 0.516, 0.533],
+    [0.620, 0.491, 0.580, 0.579]
+]
+
+# MCC
+mcc_scores = [
+    [0.318, 0.469, 0.289, 0.487],
+    [0.195, 0.375, 0.183, 0.234],
+    [0.256, 0.292, 0.268, 0.347],
+    [0.369, 0.270, 0.492, 0.228],
+    [0.360, 0.242, 0.528, 0.396],
+    [0.427, 0.344, 0.528, 0.232],
+    [0.402, 0.424, 0.486, 0.277],
+    [0.360, 0.366, 0.574, 0.371],
+    [0.298, 0.370, 0.083, 0.145],
+    [0.450, 0.489, 0.484, 0.351],
+    [0.348, 0.378, 0.313, 0.350],
+    [0.262, 0.367, 0.279, 0.306],
+    [0.260, 0.000, 0.114, 0.000],
+    [0.173, 0.110, 0.198, 0.193],
+    [0.191, 0.096, 0.108, 0.129],
+    [0.242, 0.110, 0.163, 0.204]
+]
+
+# DataFrame in formato "long" per Seaborn
+df_f1 = pd.DataFrame(f1_scores, index=methods, columns=cases).reset_index().melt(
+    id_vars="index", var_name="Case", value_name="F1-score")
+df_f1.rename(columns={"index": "Method"}, inplace=True)
+
+df_mcc = pd.DataFrame(mcc_scores, index=methods, columns=cases).reset_index(
+).melt(id_vars="index", var_name="Case", value_name="MCC")
+df_mcc.rename(columns={"index": "Method"}, inplace=True)
+
+# plt.figure(figsize=(14, 6))
+# sns.barplot(data=df_f1, x="Method", y="F1-score", hue="Case")
+# plt.xticks(rotation=90)
+# plt.title("F1-score per metodo e caso")
+# plt.tight_layout()
+# plt.legend(title="Case")
+# plt.grid(True, axis='y', linestyle='--', alpha=0.5)
+# plt.show()
+
+# plt.figure(figsize=(14, 6))
+# sns.barplot(data=df_mcc, x="Method", y="MCC", hue="Case")
+# plt.xticks(rotation=90)
+# plt.title("MCC per metodo e caso")
+# plt.tight_layout()
+# plt.legend(title="Case")
+# plt.grid(True, axis='y', linestyle='--', alpha=0.5)
+# plt.show()
 
 
-def compare_distributions(original, resampled, feature, save_path=None):
-    plt.figure(figsize=(8, 4))
-    sns.kdeplot(original[feature], label='Original', fill=True, alpha=0.5)
-    sns.kdeplot(resampled[feature], label='Resampled', fill=True, alpha=0.5)
-    plt.title(f'Distribution Comparison: {feature}')
-    plt.legend()
-    if save_path:
-        plt.savefig(f"{save_path}/{feature}_dist_comparison.png")
-    plt.show()
+# f1_df = pd.DataFrame(f1_scores, index=methods, columns=cases)
+
+# plt.figure(figsize=(12, 8))
+# sns.heatmap(f1_df, annot=True, fmt=".3f", cmap="YlGnBu",
+#             cbar_kws={'label': 'F1-score'})
+# plt.title("F1-score ")
+# plt.ylabel("Methods")
+# plt.tight_layout()
+# plt.show()
+
+# # Dati MCC
+# mcc_df = pd.DataFrame(mcc_scores, index=methods, columns=cases)
+
+# plt.figure(figsize=(12, 8))
+# sns.heatmap(mcc_df, annot=True, fmt=".3f",
+#             cmap="YlGnBu", cbar_kws={'label': 'MCC'})
+# plt.title("MCC")
+# plt.ylabel("Metodo")
+# plt.tight_layout()
+# plt.show()
 
 
-def ks_test_features(original, resampled):
-    print("\n📊 Kolmogorov-Smirnov Test Results:")
-    results = []
-    for col in original.columns:
-        try:
-            stat, p = ks_2samp(original[col], resampled[col])
-            results.append((col, stat, p))
-        except Exception as e:
-            print(f"{col}: error - {e}")
-    results_df = pd.DataFrame(
-        results, columns=['Feature', 'KS_Statistic', 'p-value'])
-    return results_df.sort_values('KS_Statistic', ascending=False)
+# DataFrames già definiti
+f1_df = pd.DataFrame(f1_scores, index=methods, columns=cases)
+mcc_df = pd.DataFrame(mcc_scores, index=methods, columns=cases)
 
+fig, axes = plt.subplots(1, 2, figsize=(12, 10))
 
-def mean_difference(original, resampled):
-    diff = (original.mean() - resampled.mean()).abs()
-    return diff.sort_values(ascending=False)
+# Heatmap F1-score: palette "viridis" con annotazioni e colori
+sns.heatmap(f1_df, annot=True, fmt=".3f", cmap="viridis",
+            cbar_kws={'label': 'F1-score'}, ax=axes[0])
 
+# Sposta le etichette colonne in alto e ruotale per leggibilità
+axes[0].xaxis.set_ticks_position('top')
+axes[0].xaxis.set_label_position('top')
+# axes[0].set_xlabel('Cases', fontsize=12, fontweight='bold', labelpad=10)
+axes[0].set_ylabel('Methods', fontsize=12, fontweight='bold')
+axes[0].tick_params(axis='x')
+axes[0].set_title("F1-score", fontsize=16, fontweight='bold', pad=20)
 
-def check_binarity_violations(df, binary_cols):
-    print("\n🚨 Binarity Violations:")
-    for col in binary_cols:
-        unique_vals = df[col].dropna().unique()
-        if not np.all(np.isin(unique_vals, [0, 1])):
-            print(f"⚠️  {col}: Not binary! Unique values = {unique_vals}")
+# Heatmap MCC: palette "RdYlGn"
+sns.heatmap(mcc_df, annot=True, fmt=".3f", cmap="RdYlGn", center=0,
+            cbar_kws={'label': 'MCC'}, ax=axes[1])
 
-# USAGE EXAMPLE (put this at the bottom of your script or in a notebook):
+# Etichette in alto e stile titolo per MCC
+axes[1].xaxis.set_ticks_position('top')
+axes[1].xaxis.set_label_position('top')
+# axes[1].set_xlabel('Cases', fontsize=12, fontweight='bold', labelpad=10)
+# axes[1].set_ylabel('Methods', fontsize=12, fontweight='bold')
+axes[1].tick_params(axis='x')
+axes[1].set_title("MCC", fontsize=16, fontweight='bold', pad=20)
 
+# Rimuovi etichette y (metodi) sul grafico MCC
+axes[1].set_yticklabels([])
 
-if __name__ == '__main__':
-    # Assume you already have these:
-    # - X: original features (before resampling)
-    # - X_resampled: after cluster centroids
-    # - binary_columns: manually defined if needed
-    # Load and clean data
-    # .........................................................................
-    #  TEST 1: HSnum vs HN_3d, full avalanche dataset
-    # .........................................................................
-
-    # Filepath and plot folder paths
-    common_path = Path(
-        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\MOD1_manipulation\\')
-
-    # filepath = common_path / 'mod1_newfeatures_NEW.csv'
-    # filepath = common_path / 'mod1_newfeatures.csv'
-    filepath = common_path / 'mod1_certified.csv'
-    # results_path = Path(
-    #     'C:\\Users\\Christian\\OneDrive\\Desktop\\Family
-    mod1 = load_data(filepath)
-    print(mod1.dtypes)  # For initial data type
-
-    # --- AFTER RESAMPLING ---
-    feature = ['TaG', 'TminG', 'TmaxG', 'HSnum',
-               'HNnum', 'TH01G', 'TH03G', 'PR', 'DayOfSeason', 'HS_delta_1d',
-               'HS_delta_2d', 'HS_delta_3d', 'HS_delta_5d', 'HN_2d', 'HN_3d', 'HN_5d',
-               'DaysSinceLastSnow', 'Tmin_2d', 'Tmax_2d', 'Tmin_3d', 'Tmax_3d',
-               'Tmin_5d', 'Tmax_5d', 'TempAmplitude_1d', 'TempAmplitude_2d',
-               'TempAmplitude_3d', 'TempAmplitude_5d', 'TaG_delta_1d', 'TaG_delta_2d',
-               'TaG_delta_3d', 'TaG_delta_5d', 'TminG_delta_1d', 'TminG_delta_2d',
-               'TminG_delta_3d', 'TminG_delta_5d', 'TmaxG_delta_1d', 'TmaxG_delta_2d',
-               'TmaxG_delta_3d', 'TmaxG_delta_5d', 'T_mean', 'DegreeDays_Pos',
-               'DegreeDays_cumsum_2d', 'DegreeDays_cumsum_3d', 'DegreeDays_cumsum_5d',
-               'FreshSWE', 'SeasonalSWE_cum', 'Precip_1d', 'Precip_2d', 'Precip_3d',
-               'Precip_5d', 'Penetration_ratio',
-               # 'WetSnow_CS', 'WetSnow_Temperature',
-               'TempGrad_HS', 'TH10_tanh', 'TH30_tanh', 'Tsnow_delta_1d',
-               'Tsnow_delta_2d', 'Tsnow_delta_3d', 'Tsnow_delta_5d',
-               'ConsecWetSnowDays', 'MF_Crust_Present',
-               'New_MF_Crust', 'ConsecCrustDays']
-
-    feature_plus = feature + ['AvalDay']
-    mod1_clean = mod1[feature_plus]
-    mod1_clean = mod1_clean.dropna()
-
-    X = mod1_clean[feature]
-    y = mod1_clean['AvalDay']
-    mod1_clean = mod1_clean.dropna()
-
-    features_correlated = remove_correlated_features(X, y)
-    X_new = X.drop(columns=features_correlated)
-
-    X_resampled, y_resampled = undersampling_clustercentroids(X_new, y)
-
-    df_resampled = X_resampled
-    df_resampled['AvalDay'] = y_resampled
-
-    binary_columns = ['New_MF_Crust', 'MF_Crust_Present'
-                      # 'WetSnow_CS','WetSnow_Temperature'
-                      ]  # update manually!
-
-    print("🔍 Checking binarity...")
-    check_binarity_violations(X_resampled, binary_columns)
-
-    print("\n📉 Calculating mean differences...")
-    mean_diffs = mean_difference(X, X_resampled)
-    print(mean_diffs)
-
-    print("\n🧪 Running KS tests...")
-    ks_results = ks_test_features(X, X_resampled)
-    print(ks_results.head(10))
-
-    print("\n📈 Generating distribution plots...")
-    for feature in mean_diffs.index:  # just top 5 most changed
-        compare_distributions(X, X_resampled, feature)
+plt.tight_layout()
+plt.show()
