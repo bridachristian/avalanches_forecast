@@ -15,7 +15,7 @@ import numpy as np
 methods = [
     "Random Undersampling", "Random Undersampling 10d", "NearMiss v3 (k=1)", "NearMiss v3 (k=3)",
     "NearMiss v3 (k=5)", "NearMiss v3 (k=10)", "NearMiss v3 (k=25)", "NearMiss v3 (k=50)",
-    "CNN Undersampling", "ENN Undersampling", "Cluster Centroids Und. ", "TomekLinks Und. ",
+    "CNN Undersampling", "ENN Undersampling", "Cluster Centroids Und.", "TomekLinks Und.",
     "Random Oversampling", "SMOTE Oversampling", "ADASYN Oversampling", "SVMSMOTE Oversampling"
 ]
 
@@ -115,7 +115,7 @@ df_mcc.rename(columns={"index": "Method"}, inplace=True)
 f1_df = pd.DataFrame(f1_scores, index=methods, columns=cases)
 mcc_df = pd.DataFrame(mcc_scores, index=methods, columns=cases)
 
-fig, axes = plt.subplots(1, 2, figsize=(12, 10))
+fig, axes = plt.subplots(1, 2, figsize=(12, 8))
 
 # Heatmap F1-score: palette "viridis" con annotazioni e colori
 sns.heatmap(f1_df, annot=True, fmt=".3f", cmap="viridis",
