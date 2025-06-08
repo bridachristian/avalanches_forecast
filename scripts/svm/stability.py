@@ -5,6 +5,7 @@ Created on Wed Apr 23 14:55:18 2025
 @author: Christian
 """
 
+import matplotlib.ticker as mticker
 import time
 import pandas as pd
 import numpy as np
@@ -116,7 +117,8 @@ if __name__ == '__main__':
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
 
-    best_params = {'C': 100, 'gamma': 10}
+    # best_params = {'C': 100, 'gamma': 10}
+    best_params = {'C': 2, 'gamma': 0.5}
 
     train_evaluate_final_svm(
         X_train_scaled, y_train, X_test_scaled, y_test,
@@ -195,6 +197,17 @@ if __name__ == '__main__':
     end_time = time.time()
     print(
         f"\n⏱️ Fine del processo: {time.strftime('%H:%M:%S', time.localtime(end_time))}")
+
+    duration_seconds = end_time - start_time
+
+    # Convert to minutes
+    duration_minutes = duration_seconds / 60
+
+    # Convert to hours
+    duration_hours = duration_seconds / 3600
+
+    print(f"Duration in minutes: {duration_minutes:.2f} min")
+    print(f"Duration in hours: {duration_hours:.2f} hr")
 
     # Confronto tra combinazioni
     df_summary = pd.DataFrame(results_summary)
@@ -283,6 +296,8 @@ if __name__ == '__main__':
     # plt.tight_layout()
     # plt.show()
 
+    # --- DEVIAZIONE STANDARD ---
+
     # CONTOUR PLOT STANDARD DEVIATION
     C_vals = sorted(df_summary['C'].unique())
     gamma_vals = sorted(df_summary['gamma'].unique())
@@ -294,91 +309,202 @@ if __name__ == '__main__':
     mcc_std_grid = df_summary.pivot(
         index="C", columns="gamma", values="mcc_std").values
 
+from matplotlib.ticker import MultipleLocator, AutoMinorLocator, ScalarFormatter
+from matplotlib.ticker import FixedLocator, LogLocator, LogFormatter
+
+# Convert to thesis-friendly dimensions (cm → inches)
+# Thesis figure size (cm → inches)
+fig_width = 20 / 2.54  # ~7.9 inches
+fig_height = 10 / 2.54  # ~3.9 inches
+
+fig, axes = plt.subplots(1, 2, figsize=(
+    fig_width, fig_height), sharex=True, sharey=True)
+
+# Colormaps: professional & readable
+f1_cmap = plt.cm.viridis      # Neutral, perceptually uniform
+mcc_cmap = plt.cm.plasma      # Slightly warmer, still professional
+
+# ============================
+# F1 Std Dev Plot
+# ============================
+cf1 = axes[0].contourf(gamma_grid, C_grid, f1_std_grid,
+                       levels=30, cmap=f1_cmap, vmin=0.034, vmax=0.082)
+axes[0].contour(gamma_grid, C_grid, f1_std_grid,
+                levels=10, colors='black', linewidths=0.1, alpha=0.5)
+
+# # Highlight unstable regions (top 1%)
+# threshold_f1 = np.percentile(f1_std_grid, 99)
+# axes[0].contourf(gamma_grid, C_grid, f1_std_grid, levels=[threshold_f1, f1_std_grid.max()],
+#                  colors='none', hatches=['///'], linewidths=0.5)
+
+# Best point
+axes[0].plot(best_gamma, best_C,  'o', color='red', markersize=8,
+             markeredgecolor='black', label='Best (C, γ)')
+axes[0].legend(fontsize=9, loc='upper right')
+
+# Axis labels and grid
+axes[0].set_title("F1 Std Dev (Bootstrap)", fontsize=12, weight='bold')
+axes[0].set_xlabel("Gamma (log scale)", fontsize=11)
+axes[0].set_ylabel("C (log scale)", fontsize=11)
+axes[0].grid(True, linestyle='--', alpha=0.5)
+
+# Log scale
+axes[0].set_xscale('log')
+axes[0].set_yscale('log')
+
+# Colorbar for F1
+# cbar1 = fig.colorbar(cf1, ax=axes[0])
+cbar1 = fig.colorbar(cf1, ax=axes[0], pad=0.02, shrink=0.95)
+
+cbar1.ax.set_ylabel('Std Dev', fontsize=10)
+
+cbar1.ax.tick_params(labelsize=9)
+cbar1.ax.text(1.05, -0.06, 'Stable', ha='left', va='center',
+              fontsize=9, transform=cbar1.ax.transAxes)
+cbar1.ax.text(1.05, 1.05, 'Unstable', ha='left', va='center',
+              fontsize=9, transform=cbar1.ax.transAxes)
+
+# ============================
+# MCC Std Dev Plot
+# ============================
+cf2 = axes[1].contourf(gamma_grid, C_grid, mcc_std_grid,
+                       levels=30, cmap=mcc_cmap, vmin=0.074, vmax=0.120)
+
+axes[1].contour(gamma_grid, C_grid, mcc_std_grid,
+                levels=10, colors='black', linewidths=0.1, alpha=0.5)
+
+# # Highlight unstable regions (top 1%)
+# threshold_mcc = np.percentile(mcc_std_grid, 99)
+# axes[1].contourf(gamma_grid, C_grid, mcc_std_grid, levels=[threshold_mcc, mcc_std_grid.max()],
+#                  colors='none', hatches=['///'], linewidths=0.5)
+
+# Best point
+axes[1].plot(best_gamma, best_C,  'o', color='red', markersize=8,
+             markeredgecolor='black', label='Best (C, γ)')
+axes[1].legend(fontsize=9, loc='upper right')
+
+# Axis labels and grid
+axes[1].set_title("MCC Std Dev (Bootstrap)", fontsize=12, weight='bold')
+axes[1].set_xlabel("Gamma (log scale)", fontsize=11)
+axes[1].set_ylabel("", fontsize=11)
+axes[1].grid(True, linestyle='--', alpha=0.5)
+
+# Log scale
+axes[1].set_xscale('log')
+axes[1].set_yscale('log')
+
+# Colorbar for MCC
+cbar2 = fig.colorbar(cf2, ax=axes[1], pad=0.02, shrink=0.95)
+
+cbar2.ax.set_ylabel('Std Dev', fontsize=10)
+cbar2.ax.tick_params(labelsize=9)
+cbar2.ax.text(1.05, -0.06, 'Stable', ha='left', va='center',
+              fontsize=9, transform=cbar2.ax.transAxes)
+cbar2.ax.text(1.05, 1.05, 'Unstable', ha='left', va='center',
+              fontsize=9, transform=cbar2.ax.transAxes)
+
+# ============================
+# Shared Tick Configuration
+# ============================
+
+# Tick personalizzati
+minor_ticks_x = [0.1, 0.2, 0.5, 0.7, 1, 2]
+minor_ticks_y = [0.05, 0.07, 0.1, 0.2, 0.5, 0.7, 1, 2, 5, 7, 10]
+
+
+def decimal_formatter(x, pos):
+    # Formatta i numeri senza notazione scientifica
+    if x >= 1:
+        return f"{int(x)}"
+    else:
+        return f"{x:g}"  # elimina zeri inutili ma evita scientifico
+
+
+for ax in axes:
+    ax.tick_params(axis='both', labelsize=9)
+
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+
+    # Major ticks log base 10
+    ax.xaxis.set_major_locator(mticker.LogLocator(base=10))
+    ax.yaxis.set_major_locator(mticker.LogLocator(base=10))
+
+    # Minor ticks personalizzati (che trattiamo come major per dimensioni e label)
+    ax.xaxis.set_minor_locator(mticker.FixedLocator(minor_ticks_x))
+    ax.yaxis.set_minor_locator(mticker.FixedLocator(minor_ticks_y))
+
+    formatter = mticker.FuncFormatter(decimal_formatter)
+    ax.xaxis.set_major_formatter(formatter)
+    ax.yaxis.set_major_formatter(formatter)
+    ax.xaxis.set_minor_formatter(formatter)
+    ax.yaxis.set_minor_formatter(formatter)
+
+    # Stesse dimensioni e lunghezza per major e minor ticks
+    ax.tick_params(axis='x', which='major', labelsize=9, length=7)
+    ax.tick_params(axis='y', which='major', labelsize=9, length=7)
+    ax.tick_params(axis='x', which='minor', labelsize=9,
+                   length=7)  # qui minor come major
+    ax.tick_params(axis='y', which='minor', labelsize=9, length=7)
+
+    # ax.grid(True, which='both', linestyle='--', alpha=0.5)
+    ax.grid(False)
+
+# ============================
+# Final Layout
+# ============================
+plt.tight_layout()
+plt.show()
+
+# --- MEDIA ---
+
+# # CONTOUR PLOT MEAN VALUES
+# C_vals = sorted(df_summary['C'].unique())
+# gamma_vals = sorted(df_summary['gamma'].unique())
+# C_grid, gamma_grid = np.meshgrid(C_vals, gamma_vals, indexing='ij')
+
+# # Reshape mean values for contour plots
+# f1_mean_grid = df_summary.pivot(
+#     index="C", columns="gamma", values="f1_mean").values
+# mcc_mean_grid = df_summary.pivot(
+#     index="C", columns="gamma", values="mcc_mean").values
+
 # fig, axes = plt.subplots(1, 2, figsize=(20, 8), sharex=True, sharey=True)
 
-# # Colormaps chosen to emphasize low std dev
-# f1_cmap = plt.cm.magma_r  # low std = dark
-# mcc_cmap = plt.cm.cividis_r
+# # Colormaps to highlight performance (higher = better)
+# f1_cmap = plt.cm.Greens
+# mcc_cmap = plt.cm.Purples
 
-# # F1 Std Dev plot
-# cf1 = axes[0].contourf(gamma_grid, C_grid, f1_std_grid, levels=30, cmap=f1_cmap)
+# # F1 Mean plot
+# cf1 = axes[0].contourf(gamma_grid, C_grid, f1_std_grid,
+#                        levels=30, cmap=f1_cmap)
 # cbar1 = fig.colorbar(cf1, ax=axes[0])
-# axes[0].set_title("F1 Std Dev (Bootstrap)", fontsize=16)
+# axes[0].set_title("F1 Mean (Bootstrap)", fontsize=16)
 # axes[0].set_xlabel("Gamma")
 # axes[0].set_ylabel("C")
 # axes[0].plot(best_gamma, best_C, marker='o', color='red',
 #              markersize=10, label='Best (C, γ)')
 # axes[0].legend()
-# axes[0].contour(gamma_grid, C_grid, f1_std_grid, levels=10, colors='black', linewidths=0.5)
+# axes[0].contour(gamma_grid, C_grid, f1_mean_grid,
+#                 levels=10, colors='black', linewidths=0.5)
 
-# # Add text on colorbar 1
-# cbar1.ax.text(1.1, -0.03, 'Stable', ha='left', va='center', fontsize=12, transform=cbar1.ax.transAxes)
-# cbar1.ax.text(1.1, 1.0, 'Unstable', ha='left', va='center', fontsize=12, transform=cbar1.ax.transAxes)
-
-# # MCC Std Dev plot
-# cf2 = axes[1].contourf(gamma_grid, C_grid, mcc_std_grid, levels=30, cmap=mcc_cmap)
+# # MCC Mean plot
+# cf2 = axes[1].contourf(gamma_grid, C_grid, mcc_mean_grid,
+#                        levels=30, cmap=mcc_cmap)
 # cbar2 = fig.colorbar(cf2, ax=axes[1])
-# axes[1].set_title("MCC Std Dev (Bootstrap)", fontsize=16)
+# axes[1].set_title("MCC Mean (Bootstrap)", fontsize=16)
 # axes[1].set_xlabel("Gamma")
 # axes[1].set_ylabel("")
 # axes[1].plot(best_gamma, best_C, marker='o', color='red',
 #              markersize=10, label='Best (C, γ)')
 # axes[1].legend()
-# axes[1].contour(gamma_grid, C_grid, mcc_std_grid, levels=10, colors='black', linewidths=0.5)
-
-# # Add text on colorbar 2
-# cbar2.ax.text(1.1, -0.03, 'Stable', ha='left', va='center', fontsize=12, transform=cbar2.ax.transAxes)
-# cbar2.ax.text(1.1, 1.0, 'Unstable', ha='left', va='center', fontsize=12, transform=cbar2.ax.transAxes)
+# axes[1].contour(gamma_grid, C_grid, mcc_mean_grid,
+#                 levels=10, colors='black', linewidths=0.5)
 
 # plt.tight_layout()
 # plt.show()
 
-    # CONTOUR PLOT MEAN VALUES
-    C_vals = sorted(df_summary['C'].unique())
-    gamma_vals = sorted(df_summary['gamma'].unique())
-    C_grid, gamma_grid = np.meshgrid(C_vals, gamma_vals, indexing='ij')
-
-    # Reshape mean values for contour plots
-    f1_mean_grid = df_summary.pivot(
-        index="C", columns="gamma", values="f1_mean").values
-    mcc_mean_grid = df_summary.pivot(
-        index="C", columns="gamma", values="mcc_mean").values
-
-    fig, axes = plt.subplots(1, 2, figsize=(20, 8), sharex=True, sharey=True)
-
-    # Colormaps to highlight performance (higher = better)
-    f1_cmap = plt.cm.Greens
-    mcc_cmap = plt.cm.Purples
-
-    # F1 Mean plot
-    cf1 = axes[0].contourf(gamma_grid, C_grid, f1_mean_grid,
-                           levels=30, cmap=f1_cmap)
-    cbar1 = fig.colorbar(cf1, ax=axes[0])
-    axes[0].set_title("F1 Mean (Bootstrap)", fontsize=16)
-    axes[0].set_xlabel("Gamma")
-    axes[0].set_ylabel("C")
-    axes[0].plot(best_gamma, best_C, marker='o', color='red',
-                 markersize=10, label='Best (C, γ)')
-    axes[0].legend()
-    axes[0].contour(gamma_grid, C_grid, f1_mean_grid,
-                    levels=10, colors='black', linewidths=0.5)
-
-    # MCC Mean plot
-    cf2 = axes[1].contourf(gamma_grid, C_grid, mcc_mean_grid,
-                           levels=30, cmap=mcc_cmap)
-    cbar2 = fig.colorbar(cf2, ax=axes[1])
-    axes[1].set_title("MCC Mean (Bootstrap)", fontsize=16)
-    axes[1].set_xlabel("Gamma")
-    axes[1].set_ylabel("")
-    axes[1].plot(best_gamma, best_C, marker='o', color='red',
-                 markersize=10, label='Best (C, γ)')
-    axes[1].legend()
-    axes[1].contour(gamma_grid, C_grid, mcc_mean_grid,
-                    levels=10, colors='black', linewidths=0.5)
-
-    plt.tight_layout()
-    plt.show()
-
+# --- NOT USED ---
 # # Parametro di penalizzazione
 # lambda_penalty = 0  # puoi aumentare a 1.5, 2, ecc.
 

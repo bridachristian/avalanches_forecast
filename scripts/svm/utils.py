@@ -351,6 +351,37 @@ def plot_threshold_scoring(X, y, X_test, y_test, model):
     plt.tight_layout()
     plt.show()
 
+    # # Convert 12 cm x 9 cm to inches for figsize
+    # fig_width = 15 / 2.54  # ~4.72 inches
+    # fig_height = 12 / 2.54  # ~3.54 inches
+
+    # plt.figure(figsize=(fig_width, fig_height))
+
+    # plt.plot(thresholds, mcc_scores, label="MCC", linestyle="-", color="darkgreen")
+    # plt.plot(thresholds, f1_scores, label="F1-score",
+    #          linestyle="--", color="orange")
+    # # plt.plot(thresholds, prec_scores, label="Precision", linestyle=":", color="purple")
+    # # plt.plot(thresholds, recall_scores, label="Recall", linestyle="-.", color="brown")
+    # plt.plot(thresholds, hk_scores, label="HK", linestyle="-", color="blue")
+    # plt.plot(thresholds, hss_scores, label="HSS", linestyle="--", color="red")
+    # # plt.plot(thresholds, oa_scores, label="Accuracy", linestyle=":", color="black")
+
+    # plt.xlabel("Threshold", fontsize=11)
+    # plt.ylabel("Performance Measure", fontsize=11)
+    # plt.title("Performance Metrics vs. Threshold", fontsize=12)
+    # plt.axvline(x=0.5, color='grey', linestyle='--', linewidth=0.7)
+
+    # plt.legend(loc='best', fontsize=10)
+    # plt.grid(True, linestyle='--', alpha=0.7)
+    # plt.xticks(fontsize=10)
+    # plt.yticks(fontsize=10)
+    # plt.tight_layout()
+
+    # # Optionally save the figure in high quality for thesis
+    # # plt.savefig('performance_vs_threshold.pdf', format='pdf', dpi=300, bbox_inches='tight')
+
+    # plt.show()
+
     # Print best thresholds
     print(f"Optimal Threshold (MCC): {thresholds[np.argmax(mcc_scores)]:.2f}")
     print(

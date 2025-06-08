@@ -378,21 +378,69 @@ if __name__ == '__main__':
         'importance': feature_importance
     }).sort_values(by='importance', ascending=False)
 
-    importance_df.plot(kind='barh', x='feature', y='importance',
-                       figsize=(9, 16), title='Top SHAP Features for Class 1')
-    plt.gca().invert_yaxis()
+    # plt.figure(figsize=(12, 18))
+    # plt.rcParams.update({
+    #     'font.size': 13,
+    #     'axes.titlesize': 15,
+    #     'axes.labelsize': 13,
+    #     'xtick.labelsize': 11,
+    #     'ytick.labelsize': 11
+    # })
+
+    # importance_df.plot(kind='barh', x='feature', y='importance',
+    #                    figsize=(9, 16), title='Top SHAP Features for Class 1')
+    # plt.gca().invert_yaxis()
+    # plt.tight_layout()
+    # plt.show()
+    # Imposta stile Seaborn
+    sns.set(style='whitegrid')
+
+    # Crea figura grande per adattarsi a pagina tesi
+    # dimensione simile ad A4 in pollici
+    fig, ax = plt.subplots(figsize=(12, 16))
+
+    # Colori
+    colors = sns.color_palette("Blues_d", len(importance_df))
+
+    # Bar plot orizzontale
+    sns.barplot(
+        x='importance',
+        y='feature',
+        data=importance_df,
+        color="#1f77b4",  # blu sobrio
+        # palette=colors,
+        ax=ax
+    )
+
+    # Titolo e layout
+    ax.set_title("Feature Importance using SHAP values for Class 1",
+                 fontsize=18, weight='bold', pad=20)
+    ax.set_xlabel("Importance = ($mean\|SHAP values\|$)", fontsize=14)
+    ax.set_ylabel("Feature", fontsize=14)
+
+    # Rimuovi bordi superflui
+    sns.despine(left=True, bottom=True)
+
+    # Etichette più strette
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+
+    # Margini stretti e layout compatto
     plt.tight_layout()
+
+    # Mostra grafico
     plt.show()
 
     importance_df['cumulative'] = importance_df['importance'].cumsum()
     importance_df['cumulative'] /= importance_df['importance'].sum()
 
-    # Seleziona feature che coprono almeno l'85% dell'importanza
+    # Seleziona feature che coprono almeno l'95% dell'importanza
     selected_features = importance_df[importance_df['cumulative']
-        <= 0.85]['feature']
+        <= 0.95]['feature']
+    selected_features_list = selected_features.tolist()
 
     # feature_counts = np.arange(1, 35, step=1)
-    feature_counts = np.arange(1, X_train_scaled.shape[1])
+    feature_counts = np.arange(1, X_train_scaled.shape[1]+1)
     scores = []
 
     for k in feature_counts:
@@ -438,12 +486,12 @@ if __name__ == '__main__':
     plt.tight_layout()
     plt.show()
 
-    features_22 = results_df.loc[19, 'Features']
+    features_22 = results_df.loc[20, 'Features']
     print("Selected features (n=22):")
     print(features_22)
 
     results_path = Path(
-        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\0X_FEATURE_SELECTION\\SHAP\\')
+        'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\05_Plots\\04_SVM\\0XX_FEATURE_SELECTION\\SHAP\\')
 
     save_outputfile(results_df, results_path /
                     'result_shap_values.csv')
@@ -492,16 +540,31 @@ if __name__ == '__main__':
     plt.tight_layout()
     plt.show()
 
-    # --- VIOLIN PLOT ---------
-    plt.figure(figsize=(12, 16))
+    # Imposta dimensioni e font per una tesi (leggibilità prima di tutto)
+    # Impostazioni grafiche per tesi
+    plt.figure(figsize=(12, 18))
+    plt.rcParams.update({
+        'font.size': 13,
+        'axes.titlesize': 15,
+        'axes.labelsize': 13,
+        'xtick.labelsize': 11,
+        'ytick.labelsize': 11
+    })
 
+    # SHAP summary plot (violin)
     shap.summary_plot(
         shap_values_class1,
         X_train,
-        plot_type="violin",        # default: 'dot' = beeswarm
+        plot_type="violin",
+        max_display=20,
+        plot_size=(12, 15),
         class_names=['No Avalanche', 'Avalanche'],
-        show=True, max_display=39
+        show=False   # <--- Importante: evita che SHAP disegni subito
     )
+
+    # Aggiungi titolo dopo aver creato il plot
+    plt.title("SHAP Summary Violin Plot – Avalanche Class (Top 20 Features)", pad=20)
+    plt.tight_layout()
 
 
 # -------------------------------------------------------
@@ -1236,6 +1299,8 @@ summary_results = []
             'TminG_delta_5d', 'TminG_delta_3d', 'Tsnow_delta_3d',
             'TaG_delta_5d', 'Tsnow_delta_1d',
             'TmaxG_delta_1d', 'Precip_2d']  # 20 features
+    
+
 
     res_SHAP=evaluate_svm_with_feature_selection(mod1, SHAP)
 

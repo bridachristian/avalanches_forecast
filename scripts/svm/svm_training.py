@@ -128,6 +128,44 @@ def cross_validate_svm(X, y, param_grid, cv=5, title='CV scores', scoring='f1_ma
     # Show the plot
     plt.show()
 
+    # Converti dimensioni in pollici (tesi: 15×12 cm)
+    fig_width = 15 / 2.54
+    fig_height = 12 / 2.54
+
+    # Meshgrid per i valori di gamma (x) e C (y)
+    X, Y = np.meshgrid(gamma_values, c_values)
+
+    # Crea figura
+    plt.figure(figsize=(fig_width, fig_height))
+
+    # Contour plot colorato senza linee di contorno
+    contour = plt.contourf(X, Y, scores_matrix, levels=20, cmap="cividis")
+    cbar = plt.colorbar(contour)
+    cbar.set_label("F1-Score", fontsize=11)
+
+    # Punto migliore evidenziato con marker rosso
+    best_C = best_params["C"]
+    best_gamma = best_params["gamma"]
+    plt.plot(best_gamma, best_C, 'o', color='red', markersize=8,
+             markeredgecolor='black', label="Best hyperparameters: $C = 2$, $\gamma =  0.5$")
+
+    # Scala logaritmica per entrambi gli assi
+    plt.xscale("log")
+    plt.yscale("log")
+
+    # Etichette e stile
+    plt.xlabel("Gamma (log scale)", fontsize=11)
+    plt.ylabel("C (log scale)", fontsize=11)
+    plt.title(f'{title} – Grid Search (F1-Score)', fontsize=12, weight='bold')
+    plt.xticks(fontsize=10)
+    plt.yticks(fontsize=10)
+    # plt.grid(True, which='both', linestyle='--', alpha=0.4)
+    plt.legend(loc="lower right", fontsize=9)
+
+    # Ottimizza il layout per la stampa
+    plt.tight_layout()
+    plt.show()
+
     # Return the best model and evaluation metrics
     return {
         'best_model': best_model,

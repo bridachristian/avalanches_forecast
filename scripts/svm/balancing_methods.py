@@ -95,6 +95,20 @@ if __name__ == '__main__':
                   10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     }
 
+    # --- NO BALANCING ---
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.25, random_state=42)
+
+    scaler = MinMaxScaler()
+    X_train = pd.DataFrame(scaler.fit_transform(
+        X_train), columns=X_train.columns, index=X_train.index)
+    X_test = pd.DataFrame(scaler.transform(
+        X_test), columns=X_test.columns, index=X_test.index)
+
+    res_NO_RESAMPLING = tune_train_evaluate_svm(
+        X_train, y_train, X_test, y_test, param_grid,
+        resampling_method='No Resampling')
+
     # --- UNDERSAMPLING ---
 
     # ... 1. Random undersampling ...
@@ -399,6 +413,19 @@ if __name__ == '__main__':
                   10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     }
 
+    # --- NO BALANCING ---
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.25, random_state=42)
+
+    scaler = MinMaxScaler()
+    X_train = pd.DataFrame(scaler.fit_transform(
+        X_train), columns=X_train.columns, index=X_train.index)
+    X_test = pd.DataFrame(scaler.transform(
+        X_test), columns=X_test.columns, index=X_test.index)
+
+    res_NO_RESAMPLING = tune_train_evaluate_svm(
+        X_train, y_train, X_test, y_test, param_grid,
+        resampling_method='No Resampling')
     # --- UNDERSAMPLING ---
 
     # ... 1. Random undersampling ...
@@ -666,6 +693,19 @@ if __name__ == '__main__':
                   1, 2, 3, 4, 5, 6, 7, 8, 9,
                   10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     }
+    # --- NO BALANCING ---
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.25, random_state=42)
+
+    scaler = MinMaxScaler()
+    X_train = pd.DataFrame(scaler.fit_transform(
+        X_train), columns=X_train.columns, index=X_train.index)
+    X_test = pd.DataFrame(scaler.transform(
+        X_test), columns=X_test.columns, index=X_test.index)
+
+    res_NO_RESAMPLING = tune_train_evaluate_svm(
+        X_train, y_train, X_test, y_test, param_grid,
+        resampling_method='No Resampling')
 
     # --- UNDERSAMPLING ---
 
@@ -968,6 +1008,20 @@ if __name__ == '__main__':
                   1, 2, 3, 4, 5, 6, 7, 8, 9,
                   10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     }
+
+    # --- NO BALANCING ---
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.25, random_state=42)
+
+    scaler = MinMaxScaler()
+    X_train = pd.DataFrame(scaler.fit_transform(
+        X_train), columns=X_train.columns, index=X_train.index)
+    X_test = pd.DataFrame(scaler.transform(
+        X_test), columns=X_test.columns, index=X_test.index)
+
+    res_NO_RESAMPLING = tune_train_evaluate_svm(
+        X_train, y_train, X_test, y_test, param_grid,
+        resampling_method='No Resampling')
 
     # --- UNDERSAMPLING ---
 

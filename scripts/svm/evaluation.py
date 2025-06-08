@@ -41,8 +41,21 @@ def plot_learning_curve(clf, X, y, title, cv=5, scoring='f1'):
     else:
         scorer = scoring
 
+    train_sizes = np.linspace(0.01, 1.0, 20)
+
     train_sizes, train_scores, val_scores = learning_curve(
-        clf, X, y, cv=cv, scoring=scorer)
+        estimator=clf,
+        X=X,
+        y=y,
+        cv=cv,
+        scoring=scorer,
+        train_sizes=train_sizes,
+        shuffle=True,        # Consigliato per mescolare i dati
+        random_state=42      # Per riproducibilità
+    )
+
+    # train_sizes, train_scores, val_scores = learning_curve(
+    #     clf, X, y, cv=cv, scoring=scorer)
 
     train_mean = train_scores.mean(axis=1)
     val_mean = val_scores.mean(axis=1)
@@ -56,6 +69,29 @@ def plot_learning_curve(clf, X, y, title, cv=5, scoring='f1'):
     plt.title(f'Learning Curve - {title}')
     plt.grid(True)
     plt.show()
+
+    # # Dimensioni pensate per stampa: 12cm x 9cm ≈ 4.72 x 3.54 inches
+    # fig_width = 15 / 2.54  # convert cm to inches
+    # fig_height = 12 / 2.54
+
+    # plt.figure(figsize=(fig_width, fig_height))
+    # plt.plot(train_sizes, train_mean, lw=2.2,
+    #          color='blue', label='Training Score')
+    # plt.plot(train_sizes, val_mean, lw=2.2,
+    #          color='orange', label='Validation Score')
+
+    # # Aumentare dimensione dei testi per leggibilità su carta
+    # plt.title(f'Learning Curve – {title}', fontsize=12, weight='bold')
+    # plt.xlabel('Training Set Size', fontsize=11)
+    # # plt.ylabel(f'{scoring} Score', fontsize=11)
+    # plt.ylabel(f'F1-Score', fontsize=11)
+    # plt.ylim(0, 1.05)
+    # plt.grid(True, linestyle='--', alpha=0.7)
+    # plt.legend(loc='best', fontsize=10)
+    # plt.xticks(fontsize=11)
+    # plt.yticks(fontsize=11)
+    # plt.tight_layout()
+    # plt.show()
 
 
 def plot_confusion_matrix(y_test, y_pred):
@@ -94,6 +130,44 @@ def plot_confusion_matrix(y_test, y_pred):
     plt.ylabel('True')
     plt.title('Confusion Matrix')
     plt.show()
+
+    # # Convert dimensions from cm to inches for thesis-ready layout
+    # fig_width = 15 / 2.54
+    # fig_height = 12 / 2.54
+
+    # plt.figure(figsize=(fig_width, fig_height))
+
+    # # Create the heatmap without annotations
+    # ax = sns.heatmap(
+    #     cm,
+    #     cmap='YlGnBu',
+    #     xticklabels=['No Avalanche', 'Avalanche'],
+    #     yticklabels=['No Avalanche', 'Avalanche'],
+    #     cbar=True,
+    #     linewidths=0.5,
+    #     linecolor='gray',
+    #     square=True
+    # )
+
+    # # Annotate each cell manually with dynamic text color
+    # for i in range(cm.shape[0]):
+    #     for j in range(cm.shape[1]):
+    #         value = cm[i, j]
+    #         text_color = 'white' if value > cm.max() / 2 else 'black'
+    #         ax.text(j + 0.5, i + 0.5, str(value),
+    #                 ha='center', va='center', fontsize=11, color=text_color)
+
+    # # Axis labels and title
+    # plt.xlabel('Predicted Label', fontsize=11)
+    # plt.ylabel('Observed Label', fontsize=11)
+    # plt.title('Confusion Matrix', fontsize=12, weight='bold')
+
+    # # Ticks
+    # plt.xticks(fontsize=11)
+    # plt.yticks(fontsize=11, rotation=0)
+
+    # plt.tight_layout()
+    # plt.show()
 
     return cm
 
@@ -141,6 +215,42 @@ def plot_roc_curve(X_test, y_test, clf):
     plt.legend(loc="lower right")
     plt.grid()
     plt.show()
+
+    # # Convert dimensions from cm to inches for thesis-ready layout
+    # fig_width = 15 / 2.54  # ~5.9 inches
+    # fig_height = 12 / 2.54  # ~4.7 inches
+
+    # plt.figure(figsize=(fig_width, fig_height))
+
+    # # Plot the ROC curve
+    # plt.plot(fpr, tpr, color='navy', lw=2.2,
+    #          label=f'ROC Curve (AUC = {roc_auc:.2f})')
+
+    # # Plot the diagonal line (random classifier)
+    # plt.plot([0, 1], [0, 1], color='darkgray', lw=2, linestyle='--', label='Random Classifier')
+
+    # # Axes limits
+    # plt.xlim([0.0, 1.0])
+    # plt.ylim([0.0, 1.05])
+
+    # # Axis labels and title
+    # plt.xlabel('False Positive Rate', fontsize=11)
+    # plt.ylabel('True Positive Rate', fontsize=11)
+    # plt.title('Receiver Operating Characteristic (ROC) Curve', fontsize=12, weight='bold')
+
+    # # Legend
+    # plt.legend(loc="lower right", fontsize=10)
+
+    # # Grid styling
+    # plt.grid(True, linestyle='--', alpha=0.7)
+
+    # # Tick font size
+    # plt.xticks(fontsize=11)
+    # plt.yticks(fontsize=11)
+
+    # # Improve layout for publication
+    # plt.tight_layout()
+    # plt.show()
 
 
 def permutation_ranking(classifier, X, y, scoring='f1_macro', importance_threshold=0.001):
@@ -313,12 +423,12 @@ def evaluate_svm_with_feature_selection(data, feature_list):
     #     X_test), columns=X_test.columns, index=X_test.index)
 
     result = tune_train_evaluate_svm(
-        X_train_scaled, y_train, X_test_scaled, y_test, param_grid,
+        X_train_scaled_df, y_train, X_test_scaled_df, y_test, param_grid,
         resampling_method='Random undersampling')
 
     # Step 6: Train the final model with the best hyperparameters and evaluate it
     classifier, evaluation_metrics = train_evaluate_final_svm(
-        X_train_scaled, y_train, X_test_scaled, y_test, result['best_params']
+        X_train_scaled_df, y_train, X_test_scaled_df, y_test, result['best_params']
     )
 
     return feature_list, classifier, evaluation_metrics

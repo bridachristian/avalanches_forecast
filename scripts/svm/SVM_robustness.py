@@ -5,6 +5,7 @@ Created on Sun May 18 10:37:12 2025
 @author: Christian
 """
 
+import os
 from pathlib import Path
 from scripts.svm.data_loading import load_data
 import matplotlib.pyplot as plt
@@ -15,7 +16,8 @@ import shap
 from scripts.svm.undersampling_methods import undersampling_random
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
-from scripts.svm.svm_training import train_evaluate_final_svm
+from scripts.svm.svm_training import (train_evaluate_final_svm,
+                                      tune_train_evaluate_svm)
 from sklearn import svm
 import numpy as np
 import matplotlib.dates as mdates
@@ -94,6 +96,25 @@ if __name__ == '__main__':
     # # Convert the scaled test data into a pandas DataFrame and assign column names
     # X_test_scaled_df = pd.DataFrame(X_test_scaled,
     #                                 columns=X_test.columns, index=X_test.index)
+    # # Tuning of parameter C and gamma for SVM classification
+    # param_grid = {
+    #     'C': [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
+    #           0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
+    #           0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+    #           1, 2, 3, 4, 5, 6, 7, 8, 9,
+    #           10, 20, 30, 40, 50, 60, 70, 80, 90,
+    #           100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
+    #     'gamma': [0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009,
+    #               0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009,
+    #               0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09,
+    #               0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+    #               1, 2, 3, 4, 5, 6, 7, 8, 9,
+    #               10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    # }
+
+    # res = tune_train_evaluate_svm(
+    #     X_train_scaled, y_train, X_test_scaled, y_test, param_grid,
+    #     resampling_method='Random Undersampling')
 
     # classifier, evaluation_metrics = train_evaluate_final_svm(
     #     X_train_scaled, y_train, X_test_scaled, y_test, {'C': 2, 'gamma': 0.5})
@@ -172,34 +193,54 @@ if __name__ == '__main__':
     # Usa uno stile professionale
     sns.set_style("whitegrid")
 
-    plt.figure(figsize=(15, 8))
+    # Parametri dimensione figura in cm convertiti in pollici
+    fig_width_cm = 15
+    fig_height_cm = 12
+    fig_width = fig_width_cm / 2.54
+    fig_height = fig_height_cm / 2.54
+
+    sns.set_style("whitegrid")
+    plt.rcParams.update({
+        'font.size': 11,          # da 14 a 12
+        'axes.titlesize': 14,     # da 18 a 16
+        'axes.labelsize': 12,     # da 16 a 14
+        'legend.fontsize': 8,    # da 12 a 10
+        'xtick.labelsize': 8,    # da 12 a 10
+        'ytick.labelsize': 8,    # da 12 a 10
+        'figure.dpi': 300,
+        'axes.grid': True,
+        'grid.linestyle': '--',
+        'grid.alpha': 0.6
+    })
+
+    plt.figure(figsize=(fig_width, fig_height))
 
     plt.plot(results_df.index, results_df['Prob_AvalDay'],
-             label='Model Probability', color='#0077b6', linewidth=2, zorder=1)
+             label='Model Probability',
+             color='#1f77b4', linewidth=2.2, zorder=2)
 
-    # Punti sulla linea (dietro, ma sopra la linea)
     plt.scatter(results_df.index, results_df['Prob_AvalDay'],
-                color='#0077b6', s=10, alpha=0.8, zorder=1)
+                color='#1f77b4', s=15, alpha=0.9,
+                edgecolors='face', linewidth=0.3, zorder=3)
 
-    # 3. Valanghe piccole – davanti
     plt.scatter(results_df.index[results_df['True_AvalDay'] == 1],
                 results_df['Prob_AvalDay'][results_df['True_AvalDay'] == 1],
-                color='#ffa600', label='Small avalanches observed', marker='s', s=60, zorder=4)
+                color='#b07d02', label='Small avalanches obs.',
+                marker='o', s=40, edgecolor='black', linewidth=0.7, zorder=5)
 
-    # 4. Valanghe medie – davanti
     plt.scatter(results_df.index[results_df['True_AvalDay'] == 2],
                 results_df['Prob_AvalDay'][results_df['True_AvalDay'] == 2],
-                color='#d62728', label='Medium-large avalanches observed', marker='o', s=120, zorder=5)
+                color='#d62728', label='Medium-large avalanches obs.',
+                marker='o', s=70, edgecolor='black', linewidth=0.9, zorder=6)
 
-    # 2. Linea di soglia con etichetta
-    plt.axhline(y=threshold, color='#333333', linestyle='--',
-                linewidth=1.2, label='Probability threshold ($p = 0.5$)')
+    threshold = 0.5
+    plt.axhline(y=threshold, color='#7f7f7f', linestyle='--',
+                linewidth=1.5, label='Probability threshold ($p = 0.5$)', zorder=1)
 
-    # 5. Evidenzia periodi oltre soglia (bande rosse trasparenti)
     above_thresh = results_df['Prob_AvalDay'] > threshold
     in_period = False
     start = None
-    span_added = False  # Per aggiungere la legenda una sola volta
+    span_added = False
 
     for i in range(len(results_df)):
         if above_thresh.iloc[i] and not in_period:
@@ -210,12 +251,12 @@ if __name__ == '__main__':
             if not span_added:
                 plt.axvspan(start - pd.Timedelta(hours=12),
                             end - pd.Timedelta(hours=12),
-                            color='#ff6b6b', alpha=0.2, label='Period with $p > 0.5$', zorder=0)
+                            color='#e0e0e0', alpha=0.75, label='Period with $p > 0.5$', zorder=0)
                 span_added = True
             else:
                 plt.axvspan(start - pd.Timedelta(hours=12),
                             end - pd.Timedelta(hours=12),
-                            color='#ff6b6b', alpha=0.2, zorder=0)
+                            color='#e0e0e0', alpha=0.75, zorder=0)
             in_period = False
 
     if in_period:
@@ -223,32 +264,37 @@ if __name__ == '__main__':
         if not span_added:
             plt.axvspan(start - pd.Timedelta(hours=12),
                         end - pd.Timedelta(hours=12),
-                        color='#ff6b6b', alpha=0.2, label='Period with $p > 0.5$', zorder=0)
+                        color='#e0e0e0', alpha=0.75, label='Period with $p > 0.5$', zorder=0)
         else:
             plt.axvspan(start - pd.Timedelta(hours=12),
                         end - pd.Timedelta(hours=12),
-                        color='#ff6b6b', alpha=0.2, zorder=0)
+                        color='#e0e0e0', alpha=0.75, zorder=0)
 
-    # 6. Formattazione asse X
     ax = plt.gca()
-    ax.xaxis.set_major_locator(mdates.DayLocator(
-        interval=7))  # un tick ogni 7 giorni
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-    plt.xticks(rotation=90)
+    ax.xaxis.set_major_locator(mdates.DayLocator(interval=7))
+    ax.xaxis.set_minor_locator(mdates.DayLocator(interval=1))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d-%b'))
 
-    # 7. Titoli ed etichette
-    plt.title("SVM predicted probability – Season 2024–2025", fontsize=16)
+    plt.xticks(rotation=90, ha='center')
+
+    plt.title("SVM predicted probability – Season 2024–2025")
     plt.xlabel("Date")
-    plt.ylabel("Model Probability")
-    plt.ylim(0, 1)
+    plt.ylabel("Model probability")
+    plt.ylim(0, 1.05)
 
-    # 8. Legenda fuori dal grafico
-    # plt.legend(loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0.)
-    plt.legend()
-    # 9. Ottimizzazione layout e griglia
-    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.legend(
+        loc='upper right',            # sposta in alto a destra, più pulito
+        frameon=True,                 # mantiene il bordo
+        fancybox=True,                # bordi arrotondati
+        shadow=False,                 # niente ombra per pulizia
+        # borderpad=0.5,                # padding più stretto
+        # borderaxespad=0.5,            # padding esterno
+        facecolor='white',            # sfondo bianco
+        edgecolor='gray',             # bordo grigio chiaro
+        framealpha=0.5,              # leggera trasparenza
+        fontsize=8                  # font un po' più piccolo
+    )
     plt.tight_layout()
-    # plt.savefig("avalanche_probability_plot.png", dpi=300)  # Salva ad alta risoluzione
     plt.show()
 
     # ---- SHAP ANALYSIS ---------------------------------------------
@@ -261,6 +307,8 @@ if __name__ == '__main__':
     # 2. Calcola SHAP
     shap_values = explainer.shap_values(X_real_scaled)
     shap_values_class1 = shap_values[:, :, 1]
+
+    shap.summary_plot(shap_values_class1, X_real_scaled_df)
 
     # 3. SHAP dataframe
     shap_df = pd.DataFrame(
@@ -395,7 +443,7 @@ if __name__ == '__main__':
     plt.tight_layout()
     plt.show()
 
-    # DEPENDENCE PLOT DI ALCUNE DATA SELEZIONATE
+    # FORCE PLOT DI ALCUNE DATA SELEZIONATE
 
     date_list = ['2025-01-28', '2025-02-04', '2025-02-19', '2025-03-12']
     html_blocks = []
@@ -453,3 +501,239 @@ if __name__ == '__main__':
     output_file = Path("shap_force_4_cases.html")
     output_file.write_text(final_html, encoding='utf-8')
     print(f"✅ File salvato: {output_file.absolute()}")
+
+    date_list = ['2025-01-28', '2025-02-04', '2025-02-08', '2025-03-12']
+    html_blocks = []
+    base_value = explainer.expected_value[1]
+
+    x_min_fixed = 0.0
+    x_max_fixed = 1.15
+
+    # Colori e descrizioni per la legenda
+    color_map = {
+        ('Avalanche', 'Avalanche'): ('green', '✅ Correct avalanche prediction'),
+        ('No Avalanche', 'No Avalanche'): ('gray', '✅ Correct no avalanche prediction'),
+        ('No Avalanche', 'Avalanche'): ('red', '❌ Missed avalanche prediction'),
+        ('Avalanche', 'No Avalanche'): ('orange', '⚠️ False alarm')
+    }
+
+    for data_target in date_list:
+        if data_target in results_df.index:
+            i = results_df.index.get_loc(data_target)
+            # prob = model.predict_proba(X_test_scaled)[i, 1]
+            prob = results_df.iloc[i, 2]
+            pred = 'Avalanche' if prob > 0.5 else 'No Avalanche'
+            true = 'Avalanche' if y.loc[data_target] in [
+                1, 2] else 'No Avalanche'
+
+            color, label = color_map[(pred, true)]
+
+            # Testo descrittivo migliorato, righe separate
+            description = f"""
+            <div style='border-left: 10px solid {color}; padding-left: 10px; margin: 15px 0;
+                        background-color: #f9f9f9; font-family:Arial,sans-serif; font-size:14px'>
+                <h3 style='margin-bottom: 6px'>{data_target} | SHAP SUM: {prob:.3f}</h3>
+                <p style='margin: 0'><strong>Predicted:</strong> {pred} - <strong>Observed:</strong> {true}</p>
+                <p style='margin: 6px 0'><strong style='color:{color}'>{label}</strong></p>
+            </div>
+            """
+
+            force = shap.force_plot(
+                base_value=base_value,
+                shap_values=shap_values[i, :, 1],
+                features=X.iloc[i],
+                feature_names=X.columns,
+                show=False
+            )
+
+            html = force.html()
+            html = html.replace(
+                '"plot_cmap":', f'"xMin": {x_min_fixed}, "xMax": {x_max_fixed}, "plot_cmap":'
+            )
+
+            # Inserimento HTML e modifica dimensioni e margini del grafico SVG
+            html = force.html()
+
+            # Fissa asse x e aumenta dimensione SVG per evitare sormonto
+            html = html.replace(
+                '"plot_cmap":',
+                f'"xMin": {x_min_fixed}, "xMax": {x_max_fixed}, "plot_cmap":'
+            ).replace(
+                'width:100%;', 'width:100%; min-width:570px; max-width:100%;'
+            ).replace(
+                '"height":60', '"height":150'  # aumenta altezza elementi SHAP
+            )
+
+            html_blocks.append(description + html)
+
+    # CSS globale per il file HTML
+    style = """
+        <style>
+          body {
+            margin: 10px auto 40px auto;  /* Ridotto spazio superiore */
+            padding: 0 40px;
+            font-family: Arial, sans-serif;
+            font-size: 16px;   /* 14px per tutto il testo come nel div */
+            line-height: 1.4;  /* leggermente più compatto */
+            background-color: #ffffff;
+            color: #000000;
+          }
+          h3 {
+            margin-bottom: 6px;
+            font-size: 15px;   /* un po’ più grande, simile a quello del blocco html */
+            font-weight: bold;
+          }
+          p {
+            margin: 0;
+            font-size: 14px;
+          }
+          p + p {
+            margin: 6px 0;  /* secondo p ha margine verticale */
+          }
+        </style>
+        """
+
+    # Composizione finale HTML
+    final_html = f"<html><head><meta charset='utf-8'>{style}{shap.getjs()}</head><body>" + \
+        "".join(html_blocks) + "</body></html>"
+
+    # Salva il file HTML
+    output_file = Path("shap_force_tesi_realcase.html")
+    output_file.write_text(final_html, encoding='utf-8')
+    print(f"✅ File salvato: {output_file.absolute()}")
+
+    # ---- quali valori sono importanti ----
+    # Calcola la media assoluta dei valori SHAP per ogni feature (importanza globale)
+    shap_abs_mean = np.abs(shap_values_class1).mean(
+        axis=0)  # media per feature
+
+    # Ordina le feature per importanza decrescente
+    feature_importance = pd.Series(
+        shap_abs_mean, index=X.columns).sort_values(ascending=False)
+
+    print(feature_importance)
+
+    import scipy.stats as stats_lib
+
+    N = 6  # Numero di feature da analizzare
+    stats = []
+
+    for i in range(N):
+        feature_name = feature_importance.index[i]
+        feature_values = X[feature_name]
+        shap_values_feature = shap_values_class1[:, X.columns.get_loc(
+            feature_name)]
+
+        positive_idx = shap_values_feature >= 0
+        values_positive = feature_values[positive_idx]
+
+        count = values_positive.count()
+        mean_val = values_positive.mean()
+        median_val = values_positive.median()
+        std_val = values_positive.std()
+        q25 = values_positive.quantile(0.25)
+        q75 = values_positive.quantile(0.75)
+        min_val = values_positive.min()
+        max_val = values_positive.max()
+        skewness = stats_lib.skew(values_positive)
+        kurtosis = stats_lib.kurtosis(values_positive)
+
+        stats.append({
+            'Feature': feature_name,
+            'Count (SHAP>0)': count,
+            'Mean (SHAP>0)': mean_val,
+            'Median (SHAP>0)': median_val,
+            'Std Dev': std_val,
+            '25% Quantile': q25,
+            '75% Quantile': q75,
+            'Min': min_val,
+            'Max': max_val,
+            'Skewness': skewness,
+            'Kurtosis': kurtosis
+        })
+
+    df_stats = pd.DataFrame(stats)
+    print(df_stats)
+
+import numpy as np
+import pandas as pd
+
+thresholds = []
+
+for feature in feature_importance.index[:N]:
+    shap_vals = shap_values_class1[:, X.columns.get_loc(feature)]
+    feature_vals = X[feature]
+
+    # Gruppo SHAP > 0 (valanga)
+    valanga_vals = feature_vals[shap_vals > 0]
+    # Gruppo SHAP <= 0 (no valanga)
+    no_valanga_vals = feature_vals[shap_vals <= 0]
+
+    # Medie e deviazioni standard
+    mean_valanga = valanga_vals.mean()
+    std_valanga = valanga_vals.std()
+    mean_no_valanga = no_valanga_vals.mean()
+    std_no_valanga = no_valanga_vals.std()
+
+    # Soglia: punto medio tra le medie
+    soglia = (mean_valanga + mean_no_valanga) / 2
+
+    # Incertezza: somma deviazioni standard
+    incertezza = std_valanga + std_no_valanga
+
+    thresholds.append({
+        'Feature': feature,
+        'Threshold': soglia,
+        'Uncertainty': incertezza,
+        'Mean Valanga': mean_valanga,
+        'Std Valanga': std_valanga,
+        'Mean No Valanga': mean_no_valanga,
+        'Std No Valanga': std_no_valanga
+    })
+
+df_thresholds = pd.DataFrame(thresholds)
+print(df_thresholds)
+
+# 1. Crea il force plot e salva l'HTML
+date_list = ['2025-01-28', '2025-02-04', '2025-02-08', '2025-03-12']
+html_blocks = []
+base_value = explainer.expected_value[1]
+
+# Cartella per salvare immagini, creala se non esiste
+output_dir = "force_plots"
+os.makedirs(output_dir, exist_ok=True)
+
+for data_target in date_list:
+    if data_target in results_df.index:
+        i = results_df.index.get_loc(data_target)
+
+        # Crea plot con matplotlib=True e show=False per poterlo personalizzare
+        shap.plots.force(
+            base_value=base_value,
+            shap_values=shap_values[i, :, 1],
+            features=X.iloc[i],
+            feature_names=X.columns,
+            matplotlib=True,
+            show=False,
+            figsize=(12, 6),
+            contribution_threshold=0.15,
+            text_rotation=90
+        )
+
+        ax = plt.gca()
+
+        # Imposta limiti orizzontali (asse x)
+        ax.set_xlim(0, 1.2)
+
+         # Riduci dimensione delle label degli assi
+         ax.tick_params(axis='x', labelsize=9)
+          ax.tick_params(axis='y', labelsize=9)
+
+           for text in ax.texts:
+                text.set_fontsize(16)  # puoi aumentare a 12, 14, ecc.
+
+            # Salva file con nome unico per data
+            filename = f"force_plot_{data_target}.png"
+            filepath = os.path.join(output_dir, filename)
+            plt.savefig(filepath, bbox_inches='tight', dpi=300)
+            plt.close()
