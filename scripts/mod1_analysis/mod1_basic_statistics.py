@@ -4,6 +4,9 @@ Created on Wed May 29 16:01:43 2024
 
 @author: Christian
 """
+import matplotlib.patches as mpatches
+import matplotlib.lines as mlines
+import matplotlib.gridspec as gridspec
 from datetime import datetime
 import numpy as np
 import pandas as pd
@@ -132,6 +135,9 @@ def L1_classification(df, savefig=False):
 
 
 def L1_classification_bar(df, savefig=False):
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+
     global plot_folder
     global codice_nivometeo
 
@@ -158,24 +164,7 @@ def L1_classification_bar(df, savefig=False):
         'count': [aggregated_counts.get(k, 0) for k in ordered_keys]
     })
 
-    # Plot
-    plt.figure(figsize=(15, 5))
-    bars = plt.bar(grouped['L1'].astype(str), grouped['count'],
-                   color='steelblue', edgecolor='black')
-
-    for bar in bars:
-        height = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width() / 2, height + max(grouped['count']) * 0.01,
-                 f'{int(height)}', ha='center', va='bottom', fontsize=10)
-
-    plt.title('Distribution of Avalanche Sizes (L1)',
-              fontsize=14, fontweight='bold')
-    plt.xlabel('Avalanche Size Code', fontsize=12)
-    plt.ylabel('Number of Avalanches', fontsize=12)
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    plt.xticks(rotation=0)
-
-    # Legenda in alto a destra
+    # Etichette descrittive
     legend_labels = {
         1: 'Small avalanches (sluff)',
         2: 'Medium-size avalanches',
@@ -184,18 +173,61 @@ def L1_classification_bar(df, savefig=False):
         5: 'Several large avalanches',
         '6–9': 'Old classification'
     }
-    legend_handles = [plt.Line2D([0], [0], color='steelblue', lw=10, label=f'{k}: {v}')
-                      for k, v in legend_labels.items()]
-    plt.legend(handles=legend_handles, title='Legend',
-               fontsize=12, title_fontsize=14, loc='upper right')
+    grouped['label'] = grouped['L1'].map(legend_labels)
+
+    # Plot
+    plt.rcParams.update({
+        'axes.titlesize': 14,
+        'axes.labelsize': 12,
+        'xtick.labelsize': 10,
+        'ytick.labelsize': 10,
+        'legend.fontsize': 9,
+        'figure.titlesize': 14
+    })
+
+    cm_to_inch = 1 / 2.54
+    fig_width = 15 * cm_to_inch
+    fig_height = 6 * cm_to_inch
+
+    fig = plt.figure(figsize=(fig_width, fig_height))
+    ax = fig.add_subplot(111)
+
+    # --- Main plot ---
+    bars = ax.bar(grouped['L1'].astype(str), grouped['count'],
+                  color='steelblue', edgecolor='black')
+
+    for bar in bars:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width() / 2, height + max(grouped['count']) * 0.01,
+                f'{int(height)}', ha='center', va='bottom', fontsize=8)
+
+    ax.set_title('Avalanche Sizes (L1)', fontsize=14, fontweight='bold')
+    ax.set_xlabel('Avalanche Size Code')
+    ax.set_ylabel('N. Avalanches')
+    ax.set_ylim(0, 350)
+    ax.grid(axis='y', linestyle='--', alpha=0.7)
+    ax.set_xticks(range(len(grouped)))
+    ax.set_xticklabels(grouped['L1'].astype(str), rotation=0)
+
+    # --- Legend ---
+    legend_handles = []
+    for code, label in zip(grouped['L1'], grouped['label']):
+        patch = mpatches.Patch(color='steelblue', label=f'{code}: {label}')
+        legend_handles.append(patch)
+
+    ax.legend(
+        handles=legend_handles,
+        title='',
+        fontsize=8,
+        loc='upper center',
+        bbox_to_anchor=(0.5, -0.35),
+        ncol=2,
+        frameon=False
+    )
 
     plt.tight_layout()
-
-    if savefig:
-        outpath = plot_folder / 'L1_avalanche_size_distribution_bar.png'
-        plt.savefig(outpath, dpi=300)
-    else:
-        plt.show()
+    plt.subplots_adjust(bottom=0.25)
+    plt.show()
 
 
 def L2_classification(df, savefig=False):
@@ -248,7 +280,6 @@ def L2_classification_bar(df, savefig=False):
     ----------
     df : pandas.DataFrame
         DataFrame from Mod.1 AINEVA with 'L2' column.
-
     savefig : bool, optional
         Whether to save the figure to disk. Default is False.
 
@@ -256,6 +287,9 @@ def L2_classification_bar(df, savefig=False):
     -------
     None
     '''
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+
     global plot_folder
     global codice_nivometeo
 
@@ -263,54 +297,67 @@ def L2_classification_bar(df, savefig=False):
     index_mapping = codice_nivometeo['L2']
     index_mapping_numeric = {float(k): v for k, v in index_mapping.items()}
 
-    # Count classes, remove missing or 0 if present
+    # Count L2 classes and remove code 0 if present
     class_counts = df['L2'].value_counts().sort_index()
-    if 0 in class_counts.index:
-        class_counts = class_counts.drop(0)
+    class_counts = class_counts[class_counts.index != 0]
 
-    # Match code to label
-    labels = [index_mapping_numeric.get(x, str(x)) for x in class_counts.index]
+    # Build labels
+    # labels = [index_mapping_numeric.get(x, str(x)) for x in class_counts.index]
 
-    # Prepare DataFrame
+    labels = ['Surface slab avalanche',
+              'Ground slab avalanches',
+              'Surface Loose snow avalanches',
+              'Ground Loose snow avalanches',
+              'Surface slab and loose snow avalanches',
+              'Ground slab and loose snow avalanches']
+
+    # Create DataFrame
     grouped = pd.DataFrame({
         'L2': class_counts.index.astype(int),
         'label': labels,
         'count': class_counts.values
     })
 
-    # Definisci colori in base a codice L2
+    # Define color by L2 code
     def get_color(code):
         if code in [1, 2]:
-            return 'steelblue'      # blu per 1 e 2
+            return 'steelblue'
         elif code in [3, 4]:
-            return 'darkorange'     # arancione per 3 e 4
+            return 'darkorange'
         elif code in [5, 6]:
-            return 'mediumorchid'   # viola per 5 e 6
+            return 'mediumorchid'
         else:
-            return 'gray'           # colore di default
+            return 'gray'
 
     colors = grouped['L2'].map(get_color)
 
-    plt.figure(figsize=(15, 5))
-    bars = plt.bar(grouped['L2'].astype(str), grouped['count'],
-                   color=colors, edgecolor='black')
+    # Figure setup
+    cm_to_inch = 1 / 2.54
+    fig_width = 15 * cm_to_inch
+    fig_height = 6 * cm_to_inch
+
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+
+    # Plot bars
+    bars = ax.bar(grouped['L2'].astype(str), grouped['count'],
+                  color=colors, edgecolor='black')
 
     for bar in bars:
         height = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width() / 2, height + max(grouped['count']) * 0.01,
-                 f'{int(height)}', ha='center', va='bottom', fontsize=10)
+        ax.text(bar.get_x() + bar.get_width() / 2, height + max(grouped['count']) * 0.01,
+                f'{int(height)}', ha='center', va='bottom', fontsize=8)
 
-    plt.title('Distribution of Avalanche Types (L2)',
-              fontsize=14, fontweight='bold')
-    plt.xlabel('Avalanche Type Code', fontsize=12)
-    plt.ylabel('Number of Avalanches', fontsize=12)
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    plt.xticks(rotation=0)
+    # Titles and labels
+    ax.set_title('Avalanche Type (L2)', fontsize=14, fontweight='bold')
+    ax.set_xlabel('Avalanche Type Code')
+    ax.set_ylabel('N. Avalanches')
+    ax.set_ylim(0, 470)
+    ax.grid(axis='y', linestyle='--', alpha=0.7)
+    ax.set_xticks(range(len(grouped)))
+    ax.set_xticklabels(grouped['L2'].astype(str), rotation=0)
 
-    # Legend: crea patch colorati per ogni codice con descrizione
-    import matplotlib.patches as mpatches
+    # Legend
     legend_handles = []
-    # Per mantenere ordine e non duplicati
     seen_codes = set()
     for code, label in zip(grouped['L2'], grouped['label']):
         if code not in seen_codes:
@@ -319,16 +366,20 @@ def L2_classification_bar(df, savefig=False):
             legend_handles.append(patch)
             seen_codes.add(code)
 
-    plt.legend(handles=legend_handles, title='Legend',
-               fontsize=12, title_fontsize=14, loc='upper right')
+    ax.legend(
+        handles=legend_handles,
+        title='',
+        fontsize=8,
+        title_fontsize=9,
+        loc='upper center',
+        bbox_to_anchor=(0.5, -0.35),
+        ncol=2,
+        frameon=False
+    )
 
     plt.tight_layout()
-
-    if savefig:
-        outpath = plot_folder / 'L2_types_of_avalanches_bar.png'
-        plt.savefig(outpath, dpi=300)
-    else:
-        plt.show()
+    plt.subplots_adjust(bottom=0.25)
+    plt.show()
 
 
 def L3_classification(df, savefig=False):
@@ -599,8 +650,29 @@ def L1_timeline_season_class(df, savefig=False):
     xticks_labels = [s if i % label_step ==
                      0 else '' for i, s in enumerate(stagioni)]
 
-    # --- Absolute Counts Plot ---
-    plt.figure(figsize=(12, 7))
+    plt.rcParams.update({
+        'axes.titlesize': 14,
+        'axes.labelsize': 12,
+        'xtick.labelsize': 10,
+        'ytick.labelsize': 10,
+        'legend.fontsize': 10,
+        'figure.titlesize': 14
+    })
+
+    cm_to_inch = 1 / 2.54
+    fig_width = 15 * cm_to_inch
+    fig_height = 12 * cm_to_inch
+    import matplotlib.ticker as ticker
+
+    # Genera xtick positions
+    xtick_positions = list(range(len(stagioni)))
+
+    # Etichette ogni 5 stagioni, altrimenti stringa vuota
+    # xtick_labels = [label if i % 5 == 0 else '' for i, label in enumerate(xticks_labels)]
+
+    plt.figure(figsize=(fig_width, fig_height))
+
+    # Bar plots
     plt.bar(stagioni, grouped_df['Avalanche_Days'],
             color="#44a5c2", label='Avalanche Days')
     plt.bar(stagioni, grouped_df['No_Avalanche_Days'],
@@ -610,13 +682,23 @@ def L1_timeline_season_class(df, savefig=False):
             grouped_df['No_Avalanche_Days'],
             color="#D3D3D3", label='Missing Data')
 
-    plt.title('Number of Avalanche Observation Days per Winter Season', fontsize=14)
+    # Titoli e label
+    plt.title('Number of Avalanche Days per Winter Season',
+              fontsize=14, fontweight='bold')
     plt.xlabel('Winter Season')
     plt.ylabel('Number of Days')
-    plt.xticks(ticks=range(len(stagioni)), labels=xticks_labels, rotation=90)
-    plt.grid(axis='y', linestyle='--', alpha=0.6)
-    plt.ylim(0, 170)                   # <-- Set y-axis limit here
-    plt.legend(loc='upper right')     # <-- Move legend here
+
+    # Applica solo le etichette ogni 5 stagioni
+    plt.xticks(ticks=xtick_positions, rotation=90)
+
+    # Griglia Y e X ogni 5
+    ax = plt.gca()
+    ax.yaxis.grid(True, linestyle='--', alpha=0.6)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(5))
+    ax.grid(True, which='major', axis='x', linestyle='--', alpha=0.3)
+
+    plt.ylim(0, 174)
+    plt.legend(loc='upper right')
     plt.tight_layout()
 
     if savefig:
@@ -1067,41 +1149,118 @@ def avalanche_seasonality_by_type_weekly_grouped(df, savefig=False, year_range=N
         'Both type': 'solid'
     }
 
-    plt.figure(figsize=(15, 9))
-    for label in weekly_df.columns:
-        plt.plot(weekly_df.index, weekly_df[label], label=label,
-                 color=colors[label], linestyle=linestyles[label], linewidth=4)
 
-    # Titolo con intervallo anni se fornito
-    if year_range:
-        title = f'Weekly Avalanche Frequency by Grouped Type (Dec – Apr, {year_range})'
-    else:
-        title = 'Weekly Mean Avalanche by Grouped Type (Dec – Apr)'
-    plt.title(title, fontsize=16, fontweight='bold')
-    plt.xlabel('Week', fontsize=14)
-    plt.ylabel('Mean Number of Avalanches', fontsize=14)
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
+fig_width = 15 / 2.54  # 15 cm
+fig_height = 12 / 2.54  # 12 cm
 
-    # Legenda con testo più grande
-    plt.legend(title='Avalanche Type', fontsize=12,
-               title_fontsize=14, loc='upper right')
+plt.rcParams.update({
+    'axes.titlesize': 14,
+    'axes.labelsize': 12,
+    'xtick.labelsize': 10,
+    'ytick.labelsize': 10,
+    'legend.fontsize': 10,
+    'figure.titlesize': 14
+})
 
-    # Personalizza asse X: etichetta "Week n – dd MMM"
-    def format_week_label(x, pos=None):
-        dt = mdates.num2date(x)
-        week_num = dt.isocalendar().week
-        return f'Week {week_num} – {dt.strftime("%d %b")}'
+fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+for label in weekly_df.columns:
+    ax.plot(
+        weekly_df.index, weekly_df[label],
+        label=label,
+        color=colors[label],
+        linestyle=linestyles[label],
+        linewidth=2
+    )
 
-    plt.gca().xaxis.set_major_formatter(mticker.FuncFormatter(format_week_label))
-    plt.xticks(rotation=45)
+# Titolo dinamico
+if year_range:
+    title = f'Weekly Avalanche Frequency by Grouped Type (Dec – Apr, {year_range})'
+else:
+    title = 'Weekly Mean Avalanche by Grouped Type (Dec – Apr)'
+ax.set_title(title, fontsize=14, fontweight='bold')
+ax.set_xlabel('Week', fontsize=12)
+ax.set_ylabel('Mean N. Avalanches per week', fontsize=12)
+ax.grid(axis='y', linestyle='--', alpha=0.7)
 
-    plt.tight_layout()
+# Formatta le etichette dell'asse X
 
-    if savefig:
-        outpath = plot_folder / 'avalanche_seasonality_by_type_weekly_grouped.png'
-        plt.savefig(outpath, dpi=300)
-    else:
-        plt.show()
+
+def format_week_label(x, pos=None):
+    dt = mdates.num2date(x)
+    return dt.strftime('%d %b')
+
+
+ax.xaxis.set_major_formatter(mticker.FuncFormatter(format_week_label))
+plt.xticks(rotation=0)
+
+# Legenda sotto il grafico
+legend = ax.legend(
+    title='Avalanche Type',
+    fontsize=9,
+    title_fontsize=10,
+    loc='upper center',
+    bbox_to_anchor=(0.5, -0.15),
+    ncol=3,
+    frameon=False
+)
+
+# Rende il titolo della legenda in grassetto
+legend.get_title().set_fontweight('bold')
+
+plt.tight_layout()
+plt.subplots_adjust(bottom=0.25)  # Spazio per la legenda
+plt.show()
+
+#
+# # Figure setup
+# cm_to_inch = 1 / 2.54
+# fig_width = 15 * cm_to_inch
+# fig_height = 6 * cm_to_inch
+
+# fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+
+# # Plot bars
+# bars = ax.bar(grouped['L2'].astype(str), grouped['count'],
+#               color=colors, edgecolor='black')
+
+# for bar in bars:
+#     height = bar.get_height()
+#     ax.text(bar.get_x() + bar.get_width() / 2, height + max(grouped['count']) * 0.01,
+#             f'{int(height)}', ha='center', va='bottom', fontsize=8)
+
+# # Titles and labels
+# ax.set_title('Avalanche Type (L2)', fontsize=14, fontweight='bold')
+# ax.set_xlabel('Avalanche Type Code')
+# ax.set_ylabel('N. Avalanches')
+# ax.set_ylim(0, 470)
+# ax.grid(axis='y', linestyle='--', alpha=0.7)
+# ax.set_xticks(range(len(grouped)))
+# ax.set_xticklabels(grouped['L2'].astype(str), rotation=0)
+
+# # Legend
+# legend_handles = []
+# seen_codes = set()
+# for code, label in zip(grouped['L2'], grouped['label']):
+#     if code not in seen_codes:
+#         patch = mpatches.Patch(color=get_color(
+#             code), label=f'{code}: {label}')
+#         legend_handles.append(patch)
+#         seen_codes.add(code)
+
+# ax.legend(
+#     handles=legend_handles,
+#     title='',
+#     fontsize=8,
+#     title_fontsize=9,
+#     loc='upper center',
+#     bbox_to_anchor=(0.5, -0.35),
+#     ncol=2,
+#     frameon=False
+# )
+
+# plt.tight_layout()
+# plt.subplots_adjust(bottom=0.25)
+# plt.show()
 
 
 def avalanche_seasonality_by_type_2(df, savefig=False):

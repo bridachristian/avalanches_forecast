@@ -275,12 +275,13 @@ if __name__ == '__main__':
     sns.set(style='whitegrid')
 
     # Global font size settings – slightly increased
+
     plt.rcParams.update({
         'axes.titlesize': 18,
         'axes.labelsize': 16,
         'xtick.labelsize': 14,
         'ytick.labelsize': 14,
-        'legend.fontsize': 13,
+        'legend.fontsize': 14,
         'figure.titlesize': 20
     })
 
