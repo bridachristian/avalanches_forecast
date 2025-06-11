@@ -5,6 +5,7 @@ Created on Fri Sep  6 09:38:13 2024
 @author: Christian
 """
 
+from scipy.cluster.hierarchy import linkage, leaves_list
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
@@ -444,27 +445,61 @@ mod1_features['AvalDay120h'] = mod1_features['AvalDay'].rolling(
 
 # ------ Correlation Matrix------
 
-mod1_features_final = mod1_features.drop(columns=['Stagione', 'WindSlab'])
+filepath = Path(
+    'C:\\Users\\Christian\\OneDrive\\Desktop\\Family\\Christian\\MasterMeteoUnitn\\Corsi\\4_Tesi\\03_Dati\\MOD1_manipulation\\mod1_newfeatures_NEW.csv')
+
+plot_folder = Path(
+    'C:/Users/Christian/OneDrive/Desktop/Family/Christian/MasterMeteoUnitn/Corsi/4_Tesi/05_Plots/03_Correlation_feature_engineering')
+
+mod1 = pd.read_csv(filepath, sep=';', na_values=['NaN', '/', '//', '///'])
+mod1['DataRilievo'] = pd.to_datetime(mod1['DataRilievo'], format="%Y-%m-%d")
+
+
+# Preprocessing
+mod1_features_final = mod1.drop(
+    columns=['DataRilievo', 'Stagione',
+             'Penetration_ratio',  'DegreeDays_cumsum_5d',
+             'DegreeDays_cumsum_3d',  'DegreeDays_Pos', 'DegreeDays_cumsum_2d',
+             'AvalDay_2d', 'AvalDay_3d', 'AvalDay_5d'])
 corr_matrix_features = mod1_features_final.corr()
 
-# Generate a mask for the upper triangle
-mask = np.triu(np.ones_like(corr_matrix_features, dtype=bool))
+# Cluster ordering using hierarchical clustering
+link = linkage(corr_matrix_features, method='average')
+idx = leaves_list(link)
 
-# Set up the matplotlib figure
-plt.figure(figsize=(10, 8))
+# Reorder the correlation matrix and mask
+ordered_corr = corr_matrix_features.iloc[idx, :].iloc[:, idx]
+mask = np.triu(np.ones_like(ordered_corr, dtype=bool))
 
-sns.heatmap(corr_matrix_features, mask=mask, annot=False, cmap='coolwarm',
-            vmin=-1, vmax=1, fmt='.2f', linewidths=0.1,
-            cbar_kws={'shrink': 0.8},  # Shrink the color bar slightly
-            xticklabels=corr_matrix_features.columns, yticklabels=corr_matrix_features.columns)
+# Plot heatmap
+plt.figure(figsize=(15, 12))
+sns.heatmap(
+    ordered_corr,
+    mask=mask,
+    cmap='coolwarm',
+    vmin=-1, vmax=1, alpha=0.9,
+    annot=False,
+    fmt='.2f',
+    linewidths=0,          # No visible gridlines
+    linecolor='white',     # Neutral background if anything leaks
+    square=True,           # Uniform cell shape
+    cbar_kws={'shrink': 0.8, 'label': 'Correlation Coefficient'},
+    xticklabels=ordered_corr.columns,
+    yticklabels=ordered_corr.columns
+)
 
-# Decrease the size of x and y labels
-plt.xticks(fontsize=8)  # Decrease x-label font size
-plt.yticks(fontsize=8)  # Decrease y-label font size
+# Improve aesthetics
+plt.xticks(rotation=90, ha='right', fontsize=9)
+plt.yticks(fontsize=9)
+plt.title('Feature Engineering Correlation Matrix',
+          fontsize=20, weight='bold', pad=20)
+plt.tight_layout()
 
+# Optional: save figure
+# plt.savefig('clustered_correlation_matrix.png', dpi=300, bbox_inches='tight')
 
-# Add title
-plt.title('Correlation Matrix', size=16)
+plt.show()
+
 
 # Show the plot
 # plt.show()

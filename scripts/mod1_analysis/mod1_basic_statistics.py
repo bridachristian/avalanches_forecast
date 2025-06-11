@@ -4,12 +4,24 @@ Created on Wed May 29 16:01:43 2024
 
 @author: Christian
 """
+from datetime import datetime
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from pathlib import Path
 import json
+import seaborn as sns
+
+# Global font size settings
+plt.rcParams.update({
+    'axes.titlesize': 16,
+    'axes.labelsize': 14,
+    'xtick.labelsize': 12,
+    'ytick.labelsize': 12,
+    'legend.fontsize': 12,
+    'figure.titlesize': 18
+})
 
 
 def make_autopct(values):
@@ -65,7 +77,7 @@ def L1_counts(df, savefig=False):
         'Count': [nan_count, zero_count, non_zero_count]
     }, index=['NaN', 'No Avalanche', 'Avalanche'])
 
-    plt.figure(figsize=(8, 8))
+    plt.figure(figsize=(12, 9))
     plt.pie(counts_df['Count'], labels=counts_df.index,
             autopct=make_autopct(counts_df['Count']), startangle=140)
     plt.title('Distribution of Avalanche data from L1')
@@ -106,7 +118,7 @@ def L1_classification(df, savefig=False):
     class_distribution.index = class_distribution.index.map(
         index_mapping_numeric)
 
-    plt.figure(figsize=(8, 8))
+    plt.figure(figsize=(12, 9))
     plt.pie(class_distribution, labels=class_distribution.index,
             autopct=make_autopct(class_distribution), startangle=140)
     plt.title('Distribution of number and size of observed avalanches from L1')
@@ -114,6 +126,73 @@ def L1_classification(df, savefig=False):
     if savefig == True:
         # Save figure with high resolution (300 dpi)
         outpath = plot_folder / 'L1_classification_of_magnitude_pie.png'
+        plt.savefig(outpath, dpi=300)
+    else:
+        plt.show()
+
+
+def L1_classification_bar(df, savefig=False):
+    global plot_folder
+    global codice_nivometeo
+
+    # Mappatura delle etichette
+    index_mapping = codice_nivometeo['L1']
+    index_mapping_numeric = {float(k): v for k, v in index_mapping.items()}
+
+    # Rimuove L1=0 se presente
+    class_counts = df['L1'].value_counts().sort_index()
+    class_counts = class_counts[class_counts.index != 0]
+
+    # Aggrega valori 6–9 in una nuova categoria
+    aggregated_counts = {}
+    for idx, count in class_counts.items():
+        if idx in [6, 7, 8, 9]:
+            aggregated_counts['6–9'] = aggregated_counts.get('6–9', 0) + count
+        else:
+            aggregated_counts[int(idx)] = count
+
+    # Ordina per chiave (1–5 numeriche, poi "6–9")
+    ordered_keys = [1, 2, 3, 4, 5, '6–9']
+    grouped = pd.DataFrame({
+        'L1': ordered_keys,
+        'count': [aggregated_counts.get(k, 0) for k in ordered_keys]
+    })
+
+    # Plot
+    plt.figure(figsize=(15, 5))
+    bars = plt.bar(grouped['L1'].astype(str), grouped['count'],
+                   color='steelblue', edgecolor='black')
+
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width() / 2, height + max(grouped['count']) * 0.01,
+                 f'{int(height)}', ha='center', va='bottom', fontsize=10)
+
+    plt.title('Distribution of Avalanche Sizes (L1)',
+              fontsize=14, fontweight='bold')
+    plt.xlabel('Avalanche Size Code', fontsize=12)
+    plt.ylabel('Number of Avalanches', fontsize=12)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.xticks(rotation=0)
+
+    # Legenda in alto a destra
+    legend_labels = {
+        1: 'Small avalanches (sluff)',
+        2: 'Medium-size avalanches',
+        3: 'Many medium-sized avalanches',
+        4: 'Single large avalanches',
+        5: 'Several large avalanches',
+        '6–9': 'Old classification'
+    }
+    legend_handles = [plt.Line2D([0], [0], color='steelblue', lw=10, label=f'{k}: {v}')
+                      for k, v in legend_labels.items()]
+    plt.legend(handles=legend_handles, title='Legend',
+               fontsize=12, title_fontsize=14, loc='upper right')
+
+    plt.tight_layout()
+
+    if savefig:
+        outpath = plot_folder / 'L1_avalanche_size_distribution_bar.png'
         plt.savefig(outpath, dpi=300)
     else:
         plt.show()
@@ -147,7 +226,7 @@ def L2_classification(df, savefig=False):
     class_distribution.index = class_distribution.index.map(
         index_mapping_numeric)
 
-    plt.figure(figsize=(8, 8))
+    plt.figure(figsize=(12, 9))
     plt.pie(class_distribution, labels=class_distribution.index,
             autopct=make_autopct(class_distribution), startangle=140)
     plt.title('Distribution of types of avalanches from L2')
@@ -155,6 +234,98 @@ def L2_classification(df, savefig=False):
     if savefig == True:
         # Save figure with high resolution (300 dpi)
         outpath = plot_folder / 'L2_types_of_avalanches_pie.png'
+        plt.savefig(outpath, dpi=300)
+    else:
+        plt.show()
+
+
+def L2_classification_bar(df, savefig=False):
+    '''
+    Classify the type of avalanche following mod.1 AINEVA and
+    plot bar chart to summarise L2 types.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame from Mod.1 AINEVA with 'L2' column.
+
+    savefig : bool, optional
+        Whether to save the figure to disk. Default is False.
+
+    Returns
+    -------
+    None
+    '''
+    global plot_folder
+    global codice_nivometeo
+
+    # Mapping
+    index_mapping = codice_nivometeo['L2']
+    index_mapping_numeric = {float(k): v for k, v in index_mapping.items()}
+
+    # Count classes, remove missing or 0 if present
+    class_counts = df['L2'].value_counts().sort_index()
+    if 0 in class_counts.index:
+        class_counts = class_counts.drop(0)
+
+    # Match code to label
+    labels = [index_mapping_numeric.get(x, str(x)) for x in class_counts.index]
+
+    # Prepare DataFrame
+    grouped = pd.DataFrame({
+        'L2': class_counts.index.astype(int),
+        'label': labels,
+        'count': class_counts.values
+    })
+
+    # Definisci colori in base a codice L2
+    def get_color(code):
+        if code in [1, 2]:
+            return 'steelblue'      # blu per 1 e 2
+        elif code in [3, 4]:
+            return 'darkorange'     # arancione per 3 e 4
+        elif code in [5, 6]:
+            return 'mediumorchid'   # viola per 5 e 6
+        else:
+            return 'gray'           # colore di default
+
+    colors = grouped['L2'].map(get_color)
+
+    plt.figure(figsize=(15, 5))
+    bars = plt.bar(grouped['L2'].astype(str), grouped['count'],
+                   color=colors, edgecolor='black')
+
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width() / 2, height + max(grouped['count']) * 0.01,
+                 f'{int(height)}', ha='center', va='bottom', fontsize=10)
+
+    plt.title('Distribution of Avalanche Types (L2)',
+              fontsize=14, fontweight='bold')
+    plt.xlabel('Avalanche Type Code', fontsize=12)
+    plt.ylabel('Number of Avalanches', fontsize=12)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.xticks(rotation=0)
+
+    # Legend: crea patch colorati per ogni codice con descrizione
+    import matplotlib.patches as mpatches
+    legend_handles = []
+    # Per mantenere ordine e non duplicati
+    seen_codes = set()
+    for code, label in zip(grouped['L2'], grouped['label']):
+        if code not in seen_codes:
+            patch = mpatches.Patch(color=get_color(
+                code), label=f'{code}: {label}')
+            legend_handles.append(patch)
+            seen_codes.add(code)
+
+    plt.legend(handles=legend_handles, title='Legend',
+               fontsize=12, title_fontsize=14, loc='upper right')
+
+    plt.tight_layout()
+
+    if savefig:
+        outpath = plot_folder / 'L2_types_of_avalanches_bar.png'
         plt.savefig(outpath, dpi=300)
     else:
         plt.show()
@@ -188,7 +359,7 @@ def L3_classification(df, savefig=False):
     class_distribution.index = class_distribution.index.map(
         index_mapping_numeric)
 
-    plt.figure(figsize=(8, 8))
+    plt.figure(figsize=(12, 9))
     plt.pie(class_distribution, labels=class_distribution.index,
             autopct=make_autopct(class_distribution), startangle=140)
     plt.title('Distribution of aspect of avalanche release from L3')
@@ -229,7 +400,7 @@ def L4_classification(df, savefig=False):
     class_distribution.index = class_distribution.index.map(
         index_mapping_numeric)
 
-    plt.figure(figsize=(8, 8))
+    plt.figure(figsize=(12, 9))
     plt.pie(class_distribution, labels=class_distribution.index,
             autopct=make_autopct(class_distribution), startangle=140)
     plt.title('Distribution of release avalanches altitude from L4')
@@ -275,7 +446,7 @@ def L5_classification(df, savefig=False):
     class_distribution.index = class_distribution.index.map(
         index_mapping_numeric)
 
-    plt.figure(figsize=(8, 8))
+    plt.figure(figsize=(12, 9))
     plt.pie(class_distribution, labels=class_distribution.index,
             autopct=make_autopct(class_distribution), startangle=140)
     plt.title('Distribution of period of avalanches release from L5')
@@ -321,7 +492,7 @@ def L6_classification(df, savefig=False):
     class_distribution.index = class_distribution.index.map(
         index_mapping_numeric)
 
-    plt.figure(figsize=(8, 8))
+    plt.figure(figsize=(12, 9))
     plt.pie(class_distribution, labels=class_distribution.index,
             autopct=make_autopct(class_distribution), startangle=140)
     plt.title('Distribution of avalanche triggering results from L6')
@@ -365,7 +536,7 @@ def L1_timeline_season(df, savefig=False):
         'Stagione').sum(numeric_only=True).reset_index()
 
     # Plotting
-    plt.figure(figsize=(8, 8))
+    plt.figure(figsize=(12, 9))
     plt.bar(grouped_df['Stagione'], grouped_df['AvNoAv'])
     plt.title('Number of avalanche days for each winter season')
     plt.xlabel('Season')
@@ -388,26 +559,22 @@ def L1_timeline_season(df, savefig=False):
 
 
 def L1_timeline_season_class(df, savefig=False):
-    '''
-    Count avalanche days vs non avalanche days and plot a timeline
-    grouped by month or year
+    """
+    Plot absolute and percentage number of avalanche observation days per winter season.
 
     Parameters
     ----------
-    df : dataframe of mod1 AINEVA
-        the dataframe shold contain the columns L1
-
-    savefig : optionla
-     default = False
+    df : pd.DataFrame
+        DataFrame containing at least 'L1' and 'Stagione' columns.
+        'L1' should be 1 for avalanche, 0 for no avalanche, and NaN for missing.
+    savefig : bool, optional
+        If True, saves the plots to 'plot_folder'. Default is False.
 
     Returns
     -------
-    None.
-
-    '''
-    global plot_folder
-
-    def transform_value(x):
+    None
+    """
+    def classify_L1(x):
         if pd.isna(x):
             return np.nan
         elif x == 0:
@@ -415,101 +582,77 @@ def L1_timeline_season_class(df, savefig=False):
         else:
             return 1
 
-    # --- Calculate and plot number of avalanche days ---
+    df['AvNoAv'] = df['L1'].apply(classify_L1)
 
-    df['AvNoAv'] = df['L1'].apply(transform_value)
-    df['NoAval'] = df['L1'].apply(transform_value)
-    df['NaNDay'] = df['L1'].apply(transform_value)
+    grouped_df = df.groupby('Stagione').agg(
+        Avalanche_Days=('AvNoAv', lambda x: x.eq(1).sum()),
+        No_Avalanche_Days=('AvNoAv', lambda x: x.eq(0).sum()),
+        Missing_Days=('AvNoAv', lambda x: x.isna().sum())
+    ).reset_index()
 
-    # Group by 'Stagione' and aggregate columns using different functions
-    grouped_df = df.groupby('Stagione').agg({
-        'AvNoAv': 'sum',             # Sum of avalanche days
-        'NoAval': lambda x: x.eq(0).sum(),   # Count of 0 values
-        'NaNDay': lambda x: x.isna().sum()   # Count of NaN values
-    }).reset_index()
+    grouped_df['Total_Days'] = grouped_df[['Avalanche_Days',
+                                           'No_Avalanche_Days', 'Missing_Days']].sum(axis=1)
 
-    grouped_df['TotalDays'] = grouped_df.drop(columns=['Stagione']).sum(axis=1)
+    # Determine which labels to show (reduce clutter)
+    stagioni = grouped_df['Stagione'].tolist()
+    label_step = max(1, len(stagioni) // 10)  # Show approx. 10 labels
+    xticks_labels = [s if i % label_step ==
+                     0 else '' for i, s in enumerate(stagioni)]
 
-    # Plotting
-    plt.figure(figsize=(8, 8))
+    # --- Absolute Counts Plot ---
+    plt.figure(figsize=(12, 7))
+    plt.bar(stagioni, grouped_df['Avalanche_Days'],
+            color="#44a5c2", label='Avalanche Days')
+    plt.bar(stagioni, grouped_df['No_Avalanche_Days'],
+            bottom=grouped_df['Avalanche_Days'], color="#ffae49", label='No Avalanche Days')
+    plt.bar(stagioni, grouped_df['Missing_Days'],
+            bottom=grouped_df['Avalanche_Days'] +
+            grouped_df['No_Avalanche_Days'],
+            color="#D3D3D3", label='Missing Data')
 
-    avnoav_bar = plt.bar(grouped_df['Stagione'],
-                         grouped_df['AvNoAv'], color="#44a5c2")
-    noaval_bar = plt.bar(grouped_df['Stagione'], grouped_df['NoAval'],
-                         bottom=grouped_df['AvNoAv'], color="#ffae49")
-    nanday_bar = plt.bar(grouped_df['Stagione'], grouped_df['NaNDay'], bottom=np.add(
-        grouped_df['AvNoAv'], grouped_df['NoAval']), color="#D3D3D3")
+    plt.title('Number of Avalanche Observation Days per Winter Season', fontsize=14)
+    plt.xlabel('Winter Season')
+    plt.ylabel('Number of Days')
+    plt.xticks(ticks=range(len(stagioni)), labels=xticks_labels, rotation=90)
+    plt.grid(axis='y', linestyle='--', alpha=0.6)
+    plt.ylim(0, 170)                   # <-- Set y-axis limit here
+    plt.legend(loc='upper right')     # <-- Move legend here
+    plt.tight_layout()
 
-    plt.title('Number of avalanche days for each winter season')
-    plt.xlabel('Season')
-    plt.ylabel('Days')
-    plt.xticks(rotation=90)  # Rotate x-axis labels for better readability
-    plt.tight_layout()  # Adjust layout to ensure everything fits without overlapping
-
-    # Add color legend
-    legend_labels = ['Avalanche Days', 'No Avalanche Days', 'NaN Days']
-    legend_colors = ["#44a5c2", "#ffae49", "#D3D3D3"]
-    plt.legend([plt.Rectangle((0, 0), 1, 1, color=color)
-               for color in legend_colors], legend_labels)
-
-    # Add vertical grid lines every 5 seasons
-    for i, stagione in enumerate(grouped_df['Stagione']):
-        if i % 5 == 0:  # Check if it's the 5th season and not the first one
-            plt.axvline(x=stagione, color='gray', linestyle='--',
-                        linewidth=0.5)  # Add vertical line
-
-    if savefig == True:
-        # Save figure with high resolution (300 dpi)
-        outpath = plot_folder / 'avalanche_number_days_plot.png'
-        plt.savefig(outpath, dpi=300)
+    if savefig:
+        (plot_folder / 'avalanche_days_absolute.png').parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(plot_folder / 'avalanche_days_absolute.png', dpi=300)
     else:
         plt.show()
 
-    # --- Calculate and plot percentage of avalanche days ---
+    # --- Percentage Plot ---
+    grouped_df['Avalanche_%'] = (
+        grouped_df['Avalanche_Days'] / grouped_df['Total_Days']) * 100
+    grouped_df['No_Avalanche_%'] = (
+        grouped_df['No_Avalanche_Days'] / grouped_df['Total_Days']) * 100
+    grouped_df['Missing_%'] = (
+        grouped_df['Missing_Days'] / grouped_df['Total_Days']) * 100
 
-    grouped_df_percent = pd.DataFrame(grouped_df)
+    plt.figure(figsize=(12, 7))
+    plt.bar(stagioni, grouped_df['Avalanche_%'],
+            color="#44a5c2", label='Avalanche Days (%)')
+    plt.bar(stagioni, grouped_df['No_Avalanche_%'],
+            bottom=grouped_df['Avalanche_%'], color="#ffae49", label='No Avalanche Days (%)')
+    plt.bar(stagioni, grouped_df['Missing_%'],
+            bottom=grouped_df['Avalanche_%'] + grouped_df['No_Avalanche_%'],
+            color="#D3D3D3", label='Missing Data (%)')
 
-    # Calculate percentage for each column
-    grouped_df_percent['AvNoAv'] = (
-        grouped_df_percent['AvNoAv'] / grouped_df_percent['TotalDays']) * 100
-    grouped_df_percent['NoAval'] = (
-        grouped_df_percent['NoAval'] / grouped_df_percent['TotalDays']) * 100
-    grouped_df_percent['NaNDay'] = (
-        grouped_df_percent['NaNDay'] / grouped_df_percent['TotalDays']) * 100
+    plt.title(
+        'Percentage of Avalanche Observation Days per Winter Season', fontsize=14)
+    plt.xlabel('Winter Season')
+    plt.ylabel('Percentage of Days (%)')
+    plt.xticks(ticks=range(len(stagioni)), labels=xticks_labels, rotation=90)
+    plt.grid(axis='y', linestyle='--', alpha=0.6)
+    plt.legend()
+    plt.tight_layout()
 
-    # Plotting
-    plt.figure(figsize=(8, 8))
-
-    av_bar = plt.bar(grouped_df_percent['Stagione'],
-                     grouped_df_percent['AvNoAv'], color="#44a5c2")
-    noaval_bar = plt.bar(grouped_df_percent['Stagione'], grouped_df_percent['NoAval'],
-                         bottom=grouped_df_percent['AvNoAv'], color="#ffae49")
-    nanday_bar = plt.bar(grouped_df_percent['Stagione'], grouped_df_percent['NaNDay'], bottom=np.add(
-        grouped_df_percent['AvNoAv'], grouped_df_percent['NoAval']), color="#D3D3D3")
-
-    plt.title('Percentange of avalanche days for each winter season')
-    plt.xlabel('Season')
-    plt.ylabel('% of season days')
-    plt.xticks(rotation=90)  # Rotate x-axis labels for better readability
-    plt.tight_layout()  # Adjust layout to ensure everything fits without overlapping
-
-    # Add color legend
-    legend_labels = ['Avalanche Days Percent',
-                     'No Avalanche Days Percent', 'NaN Days Percent']
-    legend_colors = ["#44a5c2", "#ffae49", "#D3D3D3"]
-    plt.legend([plt.Rectangle((0, 0), 1, 1, color=color)
-               for color in legend_colors], legend_labels)
-
-    # Add vertical grid lines every 5 seasons
-    for i, stagione in enumerate(grouped_df['Stagione']):
-        if i % 5 == 0:  # Check if it's the 5th season and not the first one
-            plt.axvline(x=stagione, color='gray', linestyle='--',
-                        linewidth=0.5)  # Add vertical line
-
-    if savefig == True:
-        # Save figure with high resolution (300 dpi)
-        outpath = plot_folder / 'avalanche_percent_days_plot.png'
-        plt.savefig(outpath, dpi=300)
+    if savefig:
+        plt.savefig(plot_folder / 'avalanche_days_percentage.png', dpi=300)
     else:
         plt.show()
 
@@ -569,7 +712,7 @@ def L1_period(df, savefig=False):
         grouped_df['NaNDay']
 
     # Plotting
-    plt.figure(figsize=(8, 8))
+    plt.figure(figsize=(12, 9))
 
     # Plot step lines
     observ_line = plt.step(grouped_df['season_day'], grouped_df['total_data'],
@@ -680,15 +823,41 @@ def L3L4_elevation_aspect_plot(df, savefig=False):
 
     angles = np.linspace(0, 2 * np.pi, 4, endpoint=False).tolist()
 
-    # Convert wind speeds to colors
-    tot_counts = total['count'].values
-    colors1 = [plt.cm.Blues(i / max(tot_counts)) for i in counts1]
-    colors2 = [plt.cm.Blues(i / max(tot_counts)) for i in counts2]
-    colors3 = [plt.cm.Blues(i / max(tot_counts)) for i in counts3]
-    colors4 = [plt.cm.Blues(i / max(tot_counts)) for i in counts4]
+    # # Convert wind speeds to colors
+    # tot_counts = total['count'].values
+    # colors1 = [plt.cm.viridis(i / max(tot_counts)) for i in counts1]
+    # colors2 = [plt.cm.viridis(i / max(tot_counts)) for i in counts2]
+    # colors3 = [plt.cm.viridis(i / max(tot_counts)) for i in counts3]
+    # colors4 = [plt.cm.viridis(i / max(tot_counts)) for i in counts4]
+    # Normalizza tra 0 e 50: i valori >50 saranno trattati come 50
+    from matplotlib import cm
+    from matplotlib.colors import Normalize
 
-    fig, ax = plt.subplots(
-        subplot_kw={'projection': 'polar', 'frame_on': False})
+    # clip=True tronca i valori > vmax
+    norm = Normalize(vmin=0, vmax=50, clip=True)
+    cmap = cm.YlOrRd
+
+    colors1 = [cmap(norm(i)) for i in counts1]
+    colors2 = [cmap(norm(i)) for i in counts2]
+    colors3 = [cmap(norm(i)) for i in counts3]
+    colors4 = [cmap(norm(i)) for i in counts4]
+
+    def get_text_color(rgba):
+        r, g, b, _ = rgba
+        luminance = 0.299 * r + 0.587 * g + 0.114 * b
+        return 'white' if luminance < 0.5 else 'black'
+
+    def add_labels(bars, counts, radius_factor, colors):
+        for i, bar in enumerate(bars):
+            angle_rad = angles[i]
+            text_color = get_text_color(colors[i])
+            ax.text(angle_rad, radius_factor, str(counts[i]),
+                    color=text_color, fontsize=20,
+                    ha='center', va='center',
+                    transform=ax.get_xaxis_transform())
+
+    fig, ax = plt.subplots(figsize=(12, 12),
+                           subplot_kw={'projection': 'polar', 'frame_on': False})
 
     bars4 = ax.bar(angles, 1, width=1.57, color=colors4,
                    edgecolor='lightgrey', linestyle=':', alpha=1)
@@ -706,40 +875,311 @@ def L3L4_elevation_aspect_plot(df, savefig=False):
     radius_labels = [2800, 2300, 1800, 1300]
     for radius, label in zip([0.4, 0.6, 0.8, 1.0], radius_labels):
         ax.text(np.pi/4, radius-0.1, f'{label}m',
-                fontsize=8, color='dimgrey')
+                fontsize=16, color='dimgrey')
 
     ax.set_rticks([])  # Remove the default radial ticks
     ax.grid(False)
 
     # Add count labels to each sector
-    def add_labels(bars, counts, radius_factor):
-        for i, bar in enumerate(bars):
-            angle_rad = angles[i]
-            ax.text(angle_rad, radius_factor, str(counts[i]),
-                    transform=ax.get_xaxis_transform(), ha='center', va='center', fontsize=10)
-            # , bbox=dict(facecolor='white', edgecolor='none', alpha=0.6))
+    # def add_labels(bars, counts, radius_factor):
+    #     for i, bar in enumerate(bars):
+    #         angle_rad = angles[i]
+    #         ax.text(angle_rad, radius_factor, str(counts[i]),
+    #                 transform=ax.get_xaxis_transform(), ha='center', va='center', fontsize=10)
+    #         # , bbox=dict(facecolor='white', edgecolor='none', alpha=0.6))
 
-    add_labels(bars1, counts1, 0.2)
-    add_labels(bars2, counts2, 0.5)
-    add_labels(bars3, counts3, 0.7)
-    add_labels(bars4, counts4, 0.9)
+    # add_labels(bars1, counts1, 0.2)
+    # add_labels(bars2, counts2, 0.5)
+    # add_labels(bars3, counts3, 0.7)
+    # add_labels(bars4, counts4, 0.9)
+
+    # Etichette conteggi con contrasto leggibile
+    add_labels(bars1, counts1, 0.2, colors1)
+    add_labels(bars2, counts2, 0.5, colors2)
+    add_labels(bars3, counts3, 0.7, colors3)
+    add_labels(bars4, counts4, 0.9, colors4)
 
     ax.set_theta_offset(np.pi / 2)
     ax.set_theta_direction(-1)
     ax.set_rlabel_position(0)
     ax.set_xticks(np.radians([0, 90, 180, 270]))
-    ax.set_xticklabels(['North', 'East', 'South', 'West'])
+    ax.set_xticklabels(['North', 'East', 'South', 'West'], fontsize=16)
 
     # # n.valanghe classificate come 'diverse altitidutini' e 'diverse esposizioni'
     # av_class_all = 666 - sum(tot_counts)
     # plt.figtext(0.5, -0.5, f'Note:\nAval. days classified on aspect and elevation: {sum(tot_counts)}\nAval. days at various altitudes and various aspects: {av_class_all}',
     #             horizontalalignment='center', fontsize=10, wrap=True)
 
-    plt.title(f'Geographical distribution of avalanche release')
+    plt.title(f'Geographical distribution of avalanche release',
+              fontsize=22, fontweight='bold')
+    plt.tight_layout()
 
     if savefig == True:
         # Save figure with high resolution (300 dpi)
         outpath = plot_folder / 'geograpyical_distribution_L3L4.png'
+        plt.savefig(outpath, dpi=300)
+    else:
+        plt.show()
+
+
+def avalanche_seasonality_by_type(df, savefig=False):
+    global plot_folder
+    global codice_nivometeo
+
+    df['DataRilievo'] = pd.to_datetime(df['DataRilievo'], errors='coerce')
+    df_filtered = df[(df['L2'] != 0) & (~df['L2'].isna())]
+
+    # Etichette tipo valanga
+    index_mapping = codice_nivometeo['L2']
+    index_mapping_numeric = {float(k): v for k, v in index_mapping.items()}
+    df_filtered['L2_label'] = df_filtered['L2'].map(index_mapping_numeric)
+
+    # Estrai giorno e mese
+    df_filtered['day'] = df_filtered['DataRilievo'].dt.day
+    df_filtered['month'] = df_filtered['DataRilievo'].dt.month
+
+    # Escludi mesi fuori da intervallo desiderato
+    df_filtered = df_filtered[df_filtered['month'].isin([12, 1, 2, 3, 4])]
+
+    # Crea asse temporale con anno fittizio per ordinamento
+    def assign_fake_date(row):
+        year = 1999 if row['month'] == 12 else 2000
+        return datetime(year, row['month'], row['day'])
+
+    df_filtered['fake_date'] = df_filtered.apply(assign_fake_date, axis=1)
+
+    # Aggrega eventi per tipo e giorno
+    grouped = df_filtered.groupby(
+        ['fake_date', 'L2_label']).size().reset_index(name='count')
+    pivot_df = grouped.pivot(
+        index='fake_date', columns='L2_label', values='count').fillna(0)
+
+    # Ordina
+    pivot_df = pivot_df.sort_index()
+
+    # Colori per tipo
+    def get_color(label):
+        if 'slab' in label.lower():
+            return 'steelblue'
+        elif 'loose' in label.lower():
+            return 'darkorange'
+        elif '+' in label:
+            return 'mediumorchid'
+        else:
+            return 'gray'
+
+    colors = [get_color(col) for col in pivot_df.columns]
+
+    # Plot
+    plt.figure(figsize=(15, 6))
+    for label, color in zip(pivot_df.columns, colors):
+        plt.plot(pivot_df.index, pivot_df[label],
+                 label=label, color=color, linewidth=2)
+
+    plt.title('Seasonal Avalanche Frequency by Type (1 Dec – 15 Apr)',
+              fontsize=16, fontweight='bold')
+    plt.xlabel('Season', fontsize=14)
+    plt.ylabel('Number of Avalanches', fontsize=14)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.legend(title='Avalanche Type', fontsize=10,
+               title_fontsize=12, loc='upper right')
+    plt.tight_layout()
+
+    # Format asse X come "dd - mm"
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d - %m'))
+    plt.xticks(rotation=45)
+
+    if savefig:
+        outpath = plot_folder / 'avalanche_seasonality_by_type_doy_fixed.png'
+        plt.savefig(outpath, dpi=300)
+    else:
+        plt.show()
+
+
+def avalanche_seasonality_by_type_weekly_grouped(df, savefig=False, year_range=None):
+    import matplotlib.dates as mdates
+    import matplotlib.ticker as mticker
+
+    global plot_folder
+    global codice_nivometeo
+
+    df['DataRilievo'] = pd.to_datetime(df['DataRilievo'], errors='coerce')
+    df_filtered = df[(df['L2'] != 0) & (~df['L2'].isna())].copy()
+
+    # Mappa codici L2 in etichette
+    index_mapping = codice_nivometeo['L2']
+    index_mapping_numeric = {float(k): v for k, v in index_mapping.items()}
+    df_filtered['L2_label'] = df_filtered['L2'].map(index_mapping_numeric)
+
+    # Estrai giorno e mese
+    df_filtered['day'] = df_filtered['DataRilievo'].dt.day
+    df_filtered['month'] = df_filtered['DataRilievo'].dt.month
+
+    # Filtra mesi dicembre-aprile
+    df_filtered = df_filtered[df_filtered['month'].isin(
+        [12, 1, 2, 3, 4])].copy()
+
+    # Crea data fittizia per ordinamento
+    def assign_fake_date(row):
+        year = 1999 if row['month'] == 12 else 2000
+        return datetime(year, row['month'], row['day'])
+
+    df_filtered['fake_date'] = df_filtered.apply(assign_fake_date, axis=1)
+
+    # Raggruppa e conta eventi per data e tipo L2
+    grouped = df_filtered.groupby(
+        ['fake_date', 'L2']).size().reset_index(name='count')
+
+    # Pivot per avere colonne L2 e indice fake_date
+    pivot_df = grouped.pivot(
+        index='fake_date', columns='L2', values='count').fillna(0)
+
+    # Somma colonne per gruppi di interesse
+    slab_sum = pivot_df[[col for col in [1, 2]
+                         if col in pivot_df.columns]].sum(axis=1)
+    loose_sum = pivot_df[[col for col in [3, 4]
+                          if col in pivot_df.columns]].sum(axis=1)
+    both_sum = pivot_df[[col for col in [5, 6]
+                         if col in pivot_df.columns]].sum(axis=1)
+
+    aggregated_df = pd.DataFrame({
+        'Slab': slab_sum,
+        'Loose Snow': loose_sum,
+        'Both type': both_sum
+    })
+
+    aggregated_df.index = pd.to_datetime(aggregated_df.index)
+    aggregated_df = aggregated_df.sort_index()
+
+    # Resample settimanale (somma)
+    # Settimane che iniziano il lunedì
+    weekly_df = aggregated_df.resample('W-MON').mean()
+
+    # Colori e stili linea per maggiore differenziazione
+    colors = {
+        'Slab': 'steelblue',
+        'Loose Snow': 'darkorange',
+        'Both type': 'mediumorchid'
+    }
+    linestyles = {
+        'Slab': 'solid',
+        'Loose Snow': 'solid',
+        'Both type': 'solid'
+    }
+
+    plt.figure(figsize=(15, 9))
+    for label in weekly_df.columns:
+        plt.plot(weekly_df.index, weekly_df[label], label=label,
+                 color=colors[label], linestyle=linestyles[label], linewidth=4)
+
+    # Titolo con intervallo anni se fornito
+    if year_range:
+        title = f'Weekly Avalanche Frequency by Grouped Type (Dec – Apr, {year_range})'
+    else:
+        title = 'Weekly Mean Avalanche by Grouped Type (Dec – Apr)'
+    plt.title(title, fontsize=16, fontweight='bold')
+    plt.xlabel('Week', fontsize=14)
+    plt.ylabel('Mean Number of Avalanches', fontsize=14)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+    # Legenda con testo più grande
+    plt.legend(title='Avalanche Type', fontsize=12,
+               title_fontsize=14, loc='upper right')
+
+    # Personalizza asse X: etichetta "Week n – dd MMM"
+    def format_week_label(x, pos=None):
+        dt = mdates.num2date(x)
+        week_num = dt.isocalendar().week
+        return f'Week {week_num} – {dt.strftime("%d %b")}'
+
+    plt.gca().xaxis.set_major_formatter(mticker.FuncFormatter(format_week_label))
+    plt.xticks(rotation=45)
+
+    plt.tight_layout()
+
+    if savefig:
+        outpath = plot_folder / 'avalanche_seasonality_by_type_weekly_grouped.png'
+        plt.savefig(outpath, dpi=300)
+    else:
+        plt.show()
+
+
+def avalanche_seasonality_by_type_2(df, savefig=False):
+    global plot_folder
+    global codice_nivometeo
+
+    df['DataRilievo'] = pd.to_datetime(df['DataRilievo'], errors='coerce')
+    df_filtered = df[(df['L2'] != 0) & (~df['L2'].isna())].copy()
+
+    # Etichette tipo valanga
+    index_mapping = codice_nivometeo['L2']
+    index_mapping_numeric = {float(k): v for k, v in index_mapping.items()}
+    df_filtered['L2_label'] = df_filtered['L2'].map(index_mapping_numeric)
+
+    # Estrai giorno e mese
+    df_filtered['day'] = df_filtered['DataRilievo'].dt.day
+    df_filtered['month'] = df_filtered['DataRilievo'].dt.month
+
+    # Escludi mesi fuori da intervallo desiderato
+    df_filtered = df_filtered[df_filtered['month'].isin(
+        [12, 1, 2, 3, 4])].copy()
+
+    # Crea asse temporale con anno fittizio per ordinamento
+    def assign_fake_date(row):
+        year = 1999 if row['month'] == 12 else 2000
+        return datetime(year, row['month'], row['day'])
+
+    df_filtered['fake_date'] = df_filtered.apply(assign_fake_date, axis=1)
+
+    # Aggrega eventi per tipo e giorno
+    grouped = df_filtered.groupby(
+        ['fake_date', 'L2']).size().reset_index(name='count')
+    pivot_df = grouped.pivot(
+        index='fake_date', columns='L2', values='count').fillna(0)
+
+    # Somma le colonne secondo i gruppi richiesti
+    slab_sum = pivot_df[[col for col in [1, 2]
+                         if col in pivot_df.columns]].sum(axis=1)
+    loose_sum = pivot_df[[col for col in [3, 4]
+                          if col in pivot_df.columns]].sum(axis=1)
+    both_sum = pivot_df[[col for col in [5, 6]
+                         if col in pivot_df.columns]].sum(axis=1)
+
+    # Costruisci dataframe con i 3 gruppi
+    grouped_df = pd.DataFrame({
+        'slab': slab_sum,
+        'loose snow': loose_sum,
+        'both': both_sum
+    })
+
+    # Colori fissi
+    colors = {
+        'slab': 'steelblue',
+        'loose snow': 'darkorange',
+        'both': 'mediumorchid'
+    }
+
+    # Plot
+    plt.figure(figsize=(15, 6))
+    for label in grouped_df.columns:
+        plt.plot(grouped_df.index,
+                 grouped_df[label], label=label, color=colors[label], linewidth=2)
+
+    plt.title('Seasonal Avalanche Frequency by Grouped Type (1 Dec – 15 Apr)',
+              fontsize=16, fontweight='bold')
+    plt.xlabel('Season', fontsize=14)
+    plt.ylabel('Number of Avalanches', fontsize=14)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.legend(title='Avalanche Type', fontsize=10,
+               title_fontsize=12, loc='upper right')
+    plt.tight_layout()
+
+    # Format asse X come "dd - mm"
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d - %m'))
+    plt.xticks(rotation=45)
+
+    if savefig:
+        outpath = plot_folder / 'avalanche_seasonality_by_type_grouped.png'
         plt.savefig(outpath, dpi=300)
     else:
         plt.show()
@@ -780,3 +1220,29 @@ if __name__ == '__main__':
     L1_period(df, savefig)
 
     L3L4_elevation_aspect_plot(df, savefig)
+
+    L1_classification_bar(df, savefig)
+    L2_classification_bar(df, savefig)
+    avalanche_seasonality_by_type(df, savefig)
+    avalanche_seasonality_by_type_2(df, savefig)
+    avalanche_seasonality_by_type_weekly_grouped(df, savefig)
+
+    # --- 1. EDA tabella ---
+    print(df.shape)
+    print(df.dtypes)
+    print(df.describe().T)
+
+    table = df.describe().T
+
+    # Valori mancanti assoluti e percentuali
+    missing = df.isnull().sum()
+    missing_percent = (missing / len(df)) * 100
+    missing_summary = pd.DataFrame({'Missing': missing, '%': missing_percent})
+    print(missing_summary[missing_summary['Missing'] > 0])
+
+    # --- Aggiunta colonne dei missing alla tabella descrittiva ---
+    table['Missing'] = missing
+    table['Missing_perc'] = missing_percent.round(2)
+
+    # --- Visualizza tabella finale ---
+    print(table)
