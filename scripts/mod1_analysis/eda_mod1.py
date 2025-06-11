@@ -89,7 +89,7 @@ def eda_nivometeo(df):
         cbar.ax.tick_params(labelsize=8)
 
         # Titolo e assi
-        ax.set_title('Matrice di Correlazione delle Variabili',
+        ax.set_title('Correlation Matrix between Features',
                      fontsize=10, fontweight='bold', pad=14)
         ax.set_xticklabels(ax.get_xticklabels(), fontsize=10,
                            rotation=90, ha='right')

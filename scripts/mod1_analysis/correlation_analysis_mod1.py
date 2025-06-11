@@ -472,7 +472,55 @@ ordered_corr = corr_matrix_features.iloc[idx, :].iloc[:, idx]
 mask = np.triu(np.ones_like(ordered_corr, dtype=bool))
 
 # Plot heatmap
-plt.figure(figsize=(15, 12))
+cm_to_inch = 1 / 2.54
+fig_width = 15 * cm_to_inch
+fig_height = 12 * cm_to_inch
+
+
+fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+
+# Heatmap
+sns.heatmap(
+    ordered_corr,
+    mask=mask,
+    annot=False,
+    cmap='RdBu_r',
+    center=0,
+    fmt='.2f',
+    square=True,
+    annot_kws={"size": 6},
+    linewidths=0,          # 🔹 Disattiva le linee tra celle
+    linecolor='none',      # 🔹 Nessun colore per linee
+    cbar=False,  # Disabilita colorbar automatica
+    ax=ax
+)
+
+# Colorbar manuale a tutta altezza
+norm = plt.Normalize(vmin=ordered_corr.values.min(),
+                     vmax=ordered_corr.values.max())
+sm = plt.cm.ScalarMappable(cmap='RdBu_r', norm=norm)
+sm.set_array([])  # necessario per versioni recenti di Matplotlib
+
+cbar = fig.colorbar(sm, ax=ax, fraction=0.03, pad=0.0)
+cbar.ax.tick_params(labelsize=8)
+
+# Titolo e assi
+ax.set_title('Feature Engineering Correlation Matrix',
+             fontsize=10, fontweight='bold', pad=14)
+ax.set_xticks(np.arange(len(ordered_corr.columns)) + 0.5)
+ax.set_xticklabels(ordered_corr.columns, fontsize=4, rotation=90, ha='right')
+
+ax.set_yticks(np.arange(len(ordered_corr.index)) + 0.5)
+ax.set_yticklabels(ordered_corr.index, fontsize=4, rotation=0)
+# ax.set_xticklabels(ax.get_xticklabels(), fontsize=3,
+#                    rotation=90, ha='right')
+# ax.set_yticklabels(ax.get_yticklabels(), fontsize=3, rotation=0)
+ax.grid(True, which='major', color='lightgray',
+        linewidth=0.3, linestyle='--')
+
+plt.tight_layout()
+plt.show()
+
 sns.heatmap(
     ordered_corr,
     mask=mask,
@@ -493,6 +541,9 @@ plt.xticks(rotation=90, ha='right', fontsize=9)
 plt.yticks(fontsize=9)
 plt.title('Feature Engineering Correlation Matrix',
           fontsize=20, weight='bold', pad=20)
+
+ax.grid(True, which='major', color='lightgray',
+        linewidth=0.3, linestyle='--')
 plt.tight_layout()
 
 # Optional: save figure
