@@ -1149,118 +1149,64 @@ def avalanche_seasonality_by_type_weekly_grouped(df, savefig=False, year_range=N
         'Both type': 'solid'
     }
 
+    fig_width = 15 / 2.54  # 15 cm
+    fig_height = 12 / 2.54  # 12 cm
 
-fig_width = 15 / 2.54  # 15 cm
-fig_height = 12 / 2.54  # 12 cm
+    plt.rcParams.update({
+        'axes.titlesize': 14,
+        'axes.labelsize': 12,
+        'xtick.labelsize': 10,
+        'ytick.labelsize': 10,
+        'legend.fontsize': 10,
+        'figure.titlesize': 14
+    })
 
-plt.rcParams.update({
-    'axes.titlesize': 14,
-    'axes.labelsize': 12,
-    'xtick.labelsize': 10,
-    'ytick.labelsize': 10,
-    'legend.fontsize': 10,
-    'figure.titlesize': 14
-})
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+    for label in weekly_df.columns:
+        ax.plot(
+            weekly_df.index, weekly_df[label],
+            label=label,
+            color=colors[label],
+            linestyle=linestyles[label],
+            linewidth=2
+        )
 
-fig, ax = plt.subplots(figsize=(fig_width, fig_height))
-for label in weekly_df.columns:
-    ax.plot(
-        weekly_df.index, weekly_df[label],
-        label=label,
-        color=colors[label],
-        linestyle=linestyles[label],
-        linewidth=2
+    # Titolo dinamico
+    if year_range:
+        title = f'Weekly Avalanche Frequency by Grouped Type (Dec – Apr, {year_range})'
+    else:
+        title = 'Weekly Mean Avalanche by Grouped Type (Dec – Apr)'
+    ax.set_title(title, fontsize=14, fontweight='bold')
+    ax.set_xlabel('Week', fontsize=12)
+    ax.set_ylabel('Mean N. Avalanches per week', fontsize=12)
+    ax.grid(axis='y', linestyle='--', alpha=0.7)
+
+    # Formatta le etichette dell'asse X
+
+    def format_week_label(x, pos=None):
+        dt = mdates.num2date(x)
+        return dt.strftime('%d %b')
+
+    ax.xaxis.set_major_formatter(mticker.FuncFormatter(format_week_label))
+    plt.xticks(rotation=0)
+
+    # Legenda sotto il grafico
+    legend = ax.legend(
+        title='Avalanche Type',
+        fontsize=9,
+        title_fontsize=10,
+        loc='upper center',
+        bbox_to_anchor=(0.5, -0.15),
+        ncol=3,
+        frameon=False
     )
 
-# Titolo dinamico
-if year_range:
-    title = f'Weekly Avalanche Frequency by Grouped Type (Dec – Apr, {year_range})'
-else:
-    title = 'Weekly Mean Avalanche by Grouped Type (Dec – Apr)'
-ax.set_title(title, fontsize=14, fontweight='bold')
-ax.set_xlabel('Week', fontsize=12)
-ax.set_ylabel('Mean N. Avalanches per week', fontsize=12)
-ax.grid(axis='y', linestyle='--', alpha=0.7)
+    # Rende il titolo della legenda in grassetto
+    legend.get_title().set_fontweight('bold')
 
-# Formatta le etichette dell'asse X
-
-
-def format_week_label(x, pos=None):
-    dt = mdates.num2date(x)
-    return dt.strftime('%d %b')
-
-
-ax.xaxis.set_major_formatter(mticker.FuncFormatter(format_week_label))
-plt.xticks(rotation=0)
-
-# Legenda sotto il grafico
-legend = ax.legend(
-    title='Avalanche Type',
-    fontsize=9,
-    title_fontsize=10,
-    loc='upper center',
-    bbox_to_anchor=(0.5, -0.15),
-    ncol=3,
-    frameon=False
-)
-
-# Rende il titolo della legenda in grassetto
-legend.get_title().set_fontweight('bold')
-
-plt.tight_layout()
-plt.subplots_adjust(bottom=0.25)  # Spazio per la legenda
-plt.show()
-
-#
-# # Figure setup
-# cm_to_inch = 1 / 2.54
-# fig_width = 15 * cm_to_inch
-# fig_height = 6 * cm_to_inch
-
-# fig, ax = plt.subplots(figsize=(fig_width, fig_height))
-
-# # Plot bars
-# bars = ax.bar(grouped['L2'].astype(str), grouped['count'],
-#               color=colors, edgecolor='black')
-
-# for bar in bars:
-#     height = bar.get_height()
-#     ax.text(bar.get_x() + bar.get_width() / 2, height + max(grouped['count']) * 0.01,
-#             f'{int(height)}', ha='center', va='bottom', fontsize=8)
-
-# # Titles and labels
-# ax.set_title('Avalanche Type (L2)', fontsize=14, fontweight='bold')
-# ax.set_xlabel('Avalanche Type Code')
-# ax.set_ylabel('N. Avalanches')
-# ax.set_ylim(0, 470)
-# ax.grid(axis='y', linestyle='--', alpha=0.7)
-# ax.set_xticks(range(len(grouped)))
-# ax.set_xticklabels(grouped['L2'].astype(str), rotation=0)
-
-# # Legend
-# legend_handles = []
-# seen_codes = set()
-# for code, label in zip(grouped['L2'], grouped['label']):
-#     if code not in seen_codes:
-#         patch = mpatches.Patch(color=get_color(
-#             code), label=f'{code}: {label}')
-#         legend_handles.append(patch)
-#         seen_codes.add(code)
-
-# ax.legend(
-#     handles=legend_handles,
-#     title='',
-#     fontsize=8,
-#     title_fontsize=9,
-#     loc='upper center',
-#     bbox_to_anchor=(0.5, -0.35),
-#     ncol=2,
-#     frameon=False
-# )
-
-# plt.tight_layout()
-# plt.subplots_adjust(bottom=0.25)
-# plt.show()
+    plt.tight_layout()
+    plt.subplots_adjust(bottom=0.25)  # Spazio per la legenda
+    plt.show()
 
 
 def avalanche_seasonality_by_type_2(df, savefig=False):
