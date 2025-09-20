@@ -1,4 +1,5 @@
-# avalanches_forecast
+# Avalanche Forecasting in the Pejo Ski Area: A Data-Driven Approach Using Support Vector Machines
+
 Snow avalanches are fast-moving snow masses that can cause severe damage to infrastructure and loss of life,
  making them one of the most dangerous natural hazards in mountain regions.
  The prediction of snow avalanches is a crucial issue in Alpine regions, significantly impacting public safety
