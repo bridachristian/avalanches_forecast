@@ -33,5 +33,10 @@ ditional methods, especially when combined with understandable insights. This re
  development of data-driven tools in snow science, aiming to improve risk management and safety for the
  public in mountainous areas.
 
-How to Cite:
+### Keywords: 
+Avalanche forecasting, local forecasting, risk management, data-driven approach, nivo-meteorological data, machine learning, Support Vector Machine, model interpretability.
+
+
+
+### How to Cite:
 Brida, C., Rosatti, G., Bee, C., & Salucci, M. (2025). Avalanche Forecasting in the Pejo Ski Area: A Data-Driven Approach Using Support Vector Machines [Zenodo]. https://doi.org/10.5281/zenodo.17163947
